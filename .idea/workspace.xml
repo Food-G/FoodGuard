@@ -5,66 +5,9 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="5cf40e29-3cc9-4695-8ab3-20a40cad9768" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/.idea/gradle.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/backend/GEMINI.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.gitattributes" beforeDir="false" afterPath="$PROJECT_DIR$/backend/.gitattributes" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/backend/.gitignore" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.postman/resources.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/backend/.postman/resources.yaml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/build.gradle" beforeDir="false" afterPath="$PROJECT_DIR$/backend/build.gradle" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gradle/wrapper/gradle-wrapper.jar" beforeDir="false" afterPath="$PROJECT_DIR$/backend/gradle/wrapper/gradle-wrapper.jar" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gradle/wrapper/gradle-wrapper.properties" beforeDir="false" afterPath="$PROJECT_DIR$/backend/gradle/wrapper/gradle-wrapper.properties" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gradlew" beforeDir="false" afterPath="$PROJECT_DIR$/backend/gradlew" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gradlew.bat" beforeDir="false" afterPath="$PROJECT_DIR$/backend/gradlew.bat" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/postman/environments/New Environment 1.environment.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/backend/postman/environments/New Environment 1.environment.yaml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/postman/environments/New Environment.environment.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/backend/postman/environments/New Environment.environment.yaml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/postman/globals/workspace.globals.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/backend/postman/globals/workspace.globals.yaml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/settings.gradle" beforeDir="false" afterPath="$PROJECT_DIR$/backend/settings.gradle" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/foodguard/FoodguardApplication.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/FoodguardApplication.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/foodguard/config/SecurityConfig.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/config/SecurityConfig.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/foodguard/controller/AuthController.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/controller/AuthController.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/foodguard/controller/IngredientController.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/controller/IngredientController.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/foodguard/controller/InventoryController.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/controller/InventoryController.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/foodguard/controller/MenuController.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/controller/MenuController.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/foodguard/controller/NotificationController.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/controller/NotificationController.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/foodguard/controller/OrderRequestController.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/controller/OrderRequestController.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/foodguard/controller/SalesDataController.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/controller/SalesDataController.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/foodguard/controller/StoreController.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/controller/StoreController.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/foodguard/dto/LoginRequest.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/dto/LoginRequest.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/foodguard/dto/SaleRequest.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/dto/SaleRequest.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/foodguard/dto/SaleResponse.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/dto/SaleResponse.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/foodguard/dto/SignupRequest.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/dto/SignupRequest.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/foodguard/entity/Ingredient.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/entity/Ingredient.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/foodguard/entity/Inventory.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/entity/Inventory.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/foodguard/entity/Menu.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/entity/Menu.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/foodguard/entity/Notification.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/entity/Notification.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/foodguard/entity/OrderRequest.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/entity/OrderRequest.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/foodguard/entity/PredictionResult.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/entity/PredictionResult.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/foodguard/entity/SalesData.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/entity/SalesData.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/foodguard/entity/Store.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/entity/Store.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/foodguard/entity/User.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/entity/User.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/foodguard/filter/JwtFilter.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/filter/JwtFilter.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/foodguard/repository/IngredientRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/repository/IngredientRepository.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/foodguard/repository/InventoryRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/repository/InventoryRepository.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/foodguard/repository/MenuRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/repository/MenuRepository.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/foodguard/repository/NotificationRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/repository/NotificationRepository.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/foodguard/repository/OrderRequestRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/repository/OrderRequestRepository.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/foodguard/repository/PredictionResultRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/repository/PredictionResultRepository.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/foodguard/repository/SalesDataRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/repository/SalesDataRepository.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/foodguard/repository/StoreRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/repository/StoreRepository.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/foodguard/repository/UserRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/repository/UserRepository.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/foodguard/service/IngredientService.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/service/IngredientService.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/foodguard/service/InventoryService.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/service/InventoryService.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/foodguard/service/MenuService.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/service/MenuService.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/foodguard/service/NotificationService.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/service/NotificationService.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/foodguard/service/OrderRequestService.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/service/OrderRequestService.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/foodguard/service/SalesDataService.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/service/SalesDataService.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/foodguard/service/StoreService.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/service/StoreService.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/foodguard/service/UserService.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/service/UserService.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/com/foodguard/util/JwtUtil.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/util/JwtUtil.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/test/java/com/foodguard/FoodguardApplicationTests.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/test/java/com/foodguard/FoodguardApplicationTests.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/config/CorsConfig.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/.gitignore" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -91,6 +34,9 @@
   "associatedIndex": 2
 }]]></component>
   <component name="ProjectId" id="3CTDXiMTP3JOkAY9DpRD3Fap3NF" />
+  <component name="ProjectLevelVcsManager">
+    <ConfirmationsSetting value="2" id="Add" />
+  </component>
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
@@ -120,7 +66,7 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1776400707713</updated>
-      <workItem from="1776400709251" duration="315000" />
+      <workItem from="1776400709251" duration="1191000" />
     </task>
     <servers />
   </component>

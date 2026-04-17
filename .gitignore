@@ -1,0 +1,16 @@
+# ── Backend (Spring Boot) ──────────────────
+backend/build/
+backend/out/
+backend/.gradle/
+backend/src/main/resources/application.properties
+
+# ── Frontend (React) ───────────────────────
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/.env.local
+
+# ── 공통 ───────────────────────────────────
+.idea/
+*.iml
+.DS_Store
