@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Typography, Box, Paper, CircularProgress } from '@mui/material';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
-import { storeService } from '../services/storeService';
+import { storeService } from '../../services/storeService';
 
 const StoreManagement = () => {
   const [rows, setRows] = useState([]);

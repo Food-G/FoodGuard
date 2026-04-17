@@ -3,12 +3,14 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { ThemeProvider, CssBaseline } from '@mui/material';
 import theme from './theme/theme';
 import BreakpointsProvider from './providers/BreakpointsProvider';
-import MainLayout from './layouts/MainLayout';
+import MainLayout from './layouts/main-layout';
+import AuthLayout from './layouts/auth-layout';
 import Dashboard from './pages/Dashboard';
 import Inventory from './pages/Inventory';
 import SalesEntry from './pages/SalesEntry';
 import Predictions from './pages/Predictions';
 import Orders from './pages/Orders';
+import StoreManagement from './pages/admin/StoreManagement';
 import Login from './pages/auth/Login';
 import Signup from './pages/auth/Signup';
 import { useAuth } from './hooks/useAuth';
@@ -28,14 +30,21 @@ function App() {
     return <MainLayout role={user?.role || 'OWNER'} onLogout={logout}>{children}</MainLayout>;
   };
 
+  const PublicRoute = ({ children, isAuthPage = true }: { children: React.ReactNode, isAuthPage?: boolean }) => {
+    if (isLoggedIn) {
+      return <Navigate to="/" replace />;
+    }
+    return isAuthPage ? <AuthLayout>{children}</AuthLayout> : <>{children}</>;
+  };
+
   return (
     <ThemeProvider theme={theme}>
       <BreakpointsProvider>
         <CssBaseline />
         <Router>
           <Routes>
-            <Route path="/login" element={isLoggedIn ? <Navigate to="/" replace /> : <Login onLogin={login} />} />
-            <Route path="/signup" element={isLoggedIn ? <Navigate to="/" replace /> : <Signup />} />
+            <Route path="/login" element={<PublicRoute><Login onLogin={login} /></PublicRoute>} />
+            <Route path="/signup" element={<PublicRoute><Signup /></PublicRoute>} />
 
             <Route path="/" element={
               <ProtectedRoute>
@@ -67,6 +76,13 @@ function App() {
               </ProtectedRoute>
             } />
 
+            {/* HQ Admin Routes */}
+            <Route path="/admin/stores" element={
+              <ProtectedRoute role="HQ">
+                <StoreManagement />
+              </ProtectedRoute>
+            } />
+
 
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
@@ -75,12 +91,5 @@ function App() {
     </ThemeProvider>
   );
 }
-
-// Temporary Typography for placeholder
-const Typography = ({ children, variant }: any) => (
-  <div style={{ color: 'white', padding: '20px' }}>
-    <h1>{children}</h1>
-  </div>
-);
 
 export default App;

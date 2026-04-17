@@ -1,64 +1,136 @@
 import React, { useState } from 'react';
-import { Box, Button, TextField, Typography, Paper, Container, Link, Alert } from '@mui/material';
+import {
+  Box,
+  Link,
+  Paper,
+  Stack,
+  Button,
+  TextField,
+  IconButton,
+  Typography,
+  InputAdornment,
+  Alert,
+} from '@mui/material';
+import { useNavigate } from 'react-router-dom';
+import IconifyIcon from '../../components/base/IconifyIcon';
+import Image from '../../components/base/Image';
 import { authService } from '../../services/authService';
+const logoWithText = '/Logo-with-text.png';
 
 const Login = ({ onLogin }: { onLogin: (token: string) => void }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       const token = await authService.login({ email, password });
       onLogin(token);
+      navigate('/');
     } catch (err: any) {
       setError('로그인 실패: ' + err.message);
     }
   };
 
+  const handleClickShowPassword = () => {
+    setShowPassword((prev) => !prev);
+  };
+
   return (
-    <Container component="main" maxWidth="xs" sx={{ height: '100vh', display: 'flex', alignItems: 'center' }}>
-      <Paper elevation={3} sx={{ p: 4, display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%', borderRadius: 2 }}>
-        <Typography component="h1" variant="h4" color="primary" fontWeight="bold" gutterBottom>
-          FoodGuard
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-          AI 식자재 수요 예측 플랫폼
-        </Typography>
-        {error && <Alert severity="error" sx={{ width: '100%', mb: 2 }}>{error}</Alert>}
-        <Box component="form" onSubmit={handleSubmit} sx={{ mt: 1, width: '100%' }}>
+    <>
+      <Box component="figure" mb={5} mx="auto" textAlign="center">
+        <Link href="/">
+          <Image src={logoWithText} alt="logo with text" height={60} />
+        </Link>
+      </Box>
+      <Paper
+        sx={{
+          py: 6,
+          px: { xs: 5, sm: 7.5 },
+        }}
+      >
+        <Stack component="form" onSubmit={handleSubmit} justifyContent="center" gap={5}>
+          <Typography variant="h3" textAlign="center" color="text.secondary">
+            로그인
+          </Typography>
+          <Typography variant="h6" fontWeight={500} textAlign="center" color="text.primary">
+            계정이 없으신가요?{' '}
+            <Link onClick={() => navigate('/signup')} sx={{ cursor: 'pointer' }} underline="none">
+              회원가입
+            </Link>
+          </Typography>
+          
+          {error && <Alert severity="error">{error}</Alert>}
+
           <TextField
-            margin="normal"
-            required
-            fullWidth
+            variant="filled"
             label="이메일"
-            autoComplete="email"
-            autoFocus
+            type="email"
+            required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            sx={{
+              '.MuiFilledInput-root': {
+                bgcolor: 'grey.A100',
+                ':hover': { bgcolor: 'background.default' },
+                ':focus': { bgcolor: 'background.default' },
+                ':focus-within': { bgcolor: 'background.default' },
+              },
+              borderRadius: 2,
+            }}
           />
           <TextField
-            margin="normal"
-            required
-            fullWidth
+            variant="filled"
             label="비밀번호"
-            type="password"
-            autoComplete="current-password"
+            required
+            type={showPassword ? 'text' : 'password'}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            sx={{
+              '.MuiFilledInput-root': {
+                bgcolor: 'grey.A100',
+                ':hover': { bgcolor: 'background.default' },
+                ':focus': { bgcolor: 'background.default' },
+                ':focus-within': { bgcolor: 'background.default' },
+              },
+              borderRadius: 2,
+            }}
+            InputProps={{
+              endAdornment: (
+                <InputAdornment position="end">
+                  <IconButton
+                    aria-label="toggle password visibility"
+                    onClick={handleClickShowPassword}
+                    size="small"
+                    edge="end"
+                    sx={{ mr: 2 }}
+                  >
+                    {showPassword ? (
+                      <IconifyIcon icon="el:eye-open" color="text.secondary" />
+                    ) : (
+                      <IconifyIcon icon="el:eye-close" color="text.primary" />
+                    )}
+                  </IconButton>
+                </InputAdornment>
+              ),
+            }}
           />
-          <Button type="submit" fullWidth variant="contained" sx={{ mt: 3, mb: 2, py: 1.5, fontWeight: 'bold' }}>
+          
+          <Button
+            type="submit"
+            sx={{
+              fontWeight: 'fontWeightRegular',
+              py: 1.5
+            }}
+          >
             로그인
           </Button>
-          <Box sx={{ textAlign: 'center' }}>
-            <Link href="#" variant="body2" color="primary">
-              {"회원가입하러 가기"}
-            </Link>
-          </Box>
-        </Box>
+        </Stack>
       </Paper>
-    </Container>
+    </>
   );
 };
 

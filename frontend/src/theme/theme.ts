@@ -1,16 +1,19 @@
-import { createTheme } from '@mui/material';
-import palette from './palette';
+import { createTheme, ThemeOptions } from '@mui/material';
 
-const theme = createTheme({
-  palette,
-  typography: {
-    fontFamily: ['Inter', 'sans-serif'].join(', '),
-    h1: { fontSize: '2.5rem', fontWeight: 700 },
-    h4: { fontSize: '1.5rem', fontWeight: 600 },
-  },
-  shape: {
-    borderRadius: 8,
-  },
+import components from './component-overrides';
+import breakpoints from './breakpoints';
+import typography from './typography';
+import palette from './palette';
+import spacing from './spacing';
+import shape from './shape';
+
+const theme: ThemeOptions = createTheme({
+  breakpoints: breakpoints,
+  components: components,
+  typography: typography,
+  palette: palette,
+  spacing: spacing,
+  shape: shape,
 });
 
 export default theme;

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Typography, Box, Paper, Button, Grid, TextField, MenuItem, CircularProgress, Alert } from '@mui/material';
+import { Typography, Box, Paper, Button, Grid, TextField, MenuItem, CircularProgress, Alert, Stack } from '@mui/material';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { salesService } from '../services/salesService';
 import { menuService } from '../services/menuService';
@@ -7,7 +7,7 @@ import { storeService } from '../services/storeService';
 import IconifyIcon from '../components/base/IconifyIcon';
 
 const SalesEntry = ({ user }: any) => {
-  const [rows, setRows] = useState([]);
+  const [rows, setRows] = useState<any[]>([]);
   const [menus, setMenus] = useState([]);
   const [loading, setLoading] = useState(true);
   const [storeId, setStoreId] = useState<number | null>(null);
@@ -40,7 +40,6 @@ const SalesEntry = ({ user }: any) => {
         setLoading(false);
       }
     };
-
     fetchData();
   }, [user]);
 
@@ -78,30 +77,30 @@ const SalesEntry = ({ user }: any) => {
   };
 
   const columns: GridColDef[] = [
-    { field: 'saleDate', headerName: '판매 일자', width: 120 },
-    { field: 'menuName', headerName: '메뉴명', flex: 1 },
-    { field: 'quantity', headerName: '수량', width: 100, type: 'number' },
-    { field: 'totalPrice', headerName: '총 금액', width: 150, type: 'number', valueFormatter: (params: any) => `₩${params.value.toLocaleString()}` },
+    { field: 'saleDate', headerName: '판매 일자', width: 150 },
+    { field: 'menuName', headerName: '메뉴명', flex: 1, minWidth: 200 },
+    { field: 'quantity', headerName: '수량', width: 100, type: 'number', align: 'right', headerAlign: 'right' },
+    { field: 'totalPrice', headerName: '총 금액', width: 150, type: 'number', align: 'right', headerAlign: 'right', valueFormatter: (params: any) => `₩${params.value.toLocaleString()}` },
   ];
 
   return (
-    <Box>
-      <Typography variant="h4" color="text.primary" sx={{ mb: 3 }}>매출 입력</Typography>
+    <Stack gap={4}>
+      <Typography variant="h4" color="common.white">매출 입력</Typography>
       
-      <Grid container spacing={3}>
+      <Grid container spacing={3.5}>
         <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 3, bgcolor: 'background.paper', borderRadius: 2 }}>
-            <Typography variant="h6" sx={{ mb: 2 }}>매출 등록</Typography>
-            {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
-            <Box component="form" onSubmit={handleSubmit}>
+          <Paper sx={{ p: 4, bgcolor: 'background.paper' }}>
+            <Typography variant="h6" color="common.white" sx={{ mb: 3 }}>매출 등록</Typography>
+            {success && <Alert severity="success" sx={{ mb: 3 }}>{success}</Alert>}
+            <Stack component="form" onSubmit={handleSubmit} gap={3}>
               <TextField
                 select
                 fullWidth
+                variant="filled"
                 label="메뉴 선택"
                 required
                 value={formData.menuId}
                 onChange={(e) => setFormData({ ...formData, menuId: e.target.value })}
-                sx={{ mb: 2 }}
               >
                 {menus.map((menu: any) => (
                   <MenuItem key={menu.id} value={menu.id}>{menu.menuName} (₩{menu.price})</MenuItem>
@@ -109,32 +108,32 @@ const SalesEntry = ({ user }: any) => {
               </TextField>
               <TextField
                 fullWidth
+                variant="filled"
                 type="number"
                 label="수량"
                 required
                 value={formData.quantity}
                 onChange={(e) => setFormData({ ...formData, quantity: parseInt(e.target.value) })}
-                sx={{ mb: 2 }}
               />
               <TextField
                 fullWidth
+                variant="filled"
                 type="date"
                 label="판매 일자"
                 required
                 InputLabelProps={{ shrink: true }}
                 value={formData.saleDate}
                 onChange={(e) => setFormData({ ...formData, saleDate: e.target.value })}
-                sx={{ mb: 3 }}
               />
               <Button type="submit" fullWidth variant="contained" startIcon={<IconifyIcon icon="mingcute:save-line" />}>
                 매출 기록 저장
               </Button>
-            </Box>
+            </Stack>
           </Paper>
         </Grid>
         
         <Grid item xs={12} md={8}>
-          <Paper sx={{ height: 600, width: '100%', bgcolor: 'background.paper' }}>
+          <Paper sx={{ height: 650, width: '100%', p: 2 }}>
             {loading ? (
               <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
                 <CircularProgress />
@@ -147,17 +146,13 @@ const SalesEntry = ({ user }: any) => {
                   pagination: { paginationModel: { pageSize: 10 } },
                 }}
                 pageSizeOptions={[10, 20]}
-                sx={{
-                  border: 'none',
-                  '& .MuiDataGrid-cell': { color: 'text.primary' },
-                  '& .MuiDataGrid-columnHeaders': { bgcolor: 'background.default' },
-                }}
+                sx={{ border: 'none' }}
               />
             )}
           </Paper>
         </Grid>
       </Grid>
-    </Box>
+    </Stack>
   );
 };
 

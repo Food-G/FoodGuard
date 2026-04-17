@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { Typography, Box, Paper, Button, CircularProgress } from '@mui/material';
+import { useEffect, useState } from 'react';
+import { Typography, Box, Paper, Button, CircularProgress, Stack } from '@mui/material';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { inventoryService } from '../services/inventoryService';
 import { storeService } from '../services/storeService';
@@ -8,7 +8,6 @@ import IconifyIcon from '../components/base/IconifyIcon';
 const Inventory = ({ user }: any) => {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [storeId, setStoreId] = useState<number | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -16,9 +15,7 @@ const Inventory = ({ user }: any) => {
         if (user?.id) {
           const stores = await storeService.getMyStores(user.id);
           if (stores && stores.length > 0) {
-            const firstStoreId = stores[0].id;
-            setStoreId(firstStoreId);
-            const inventory = await inventoryService.getByStore(firstStoreId);
+            const inventory = await inventoryService.getByStore(stores[0].id);
             setRows(inventory.map((item: any) => ({
               id: item.id,
               name: item.ingredient.name,
@@ -35,28 +32,27 @@ const Inventory = ({ user }: any) => {
         setLoading(false);
       }
     };
-
     fetchData();
   }, [user]);
 
   const columns: GridColDef[] = [
-    { field: 'name', headerName: '식자재명', flex: 1 },
-    { field: 'category', headerName: '분류', width: 120 },
-    { field: 'quantity', headerName: '현재고', width: 120, type: 'number' },
+    { field: 'name', headerName: '식자재명', flex: 1, minWidth: 200 },
+    { field: 'category', headerName: '분류', width: 150 },
+    { field: 'quantity', headerName: '현재고', width: 150, align: 'right', headerAlign: 'right' },
     { field: 'unit', headerName: '단위', width: 100 },
-    { field: 'updatedAt', headerName: '최근 업데이트', width: 200 },
+    { field: 'updatedAt', headerName: '최근 업데이트', width: 250 },
   ];
 
   return (
-    <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4" color="text.primary">재고 현황</Typography>
+    <Stack gap={4}>
+      <Stack direction="row" justifyContent="space-between" alignItems="center">
+        <Typography variant="h4" color="common.white">재고 현황</Typography>
         <Button variant="contained" startIcon={<IconifyIcon icon="mingcute:add-line" />}>
           재고 등록
         </Button>
-      </Box>
+      </Stack>
       
-      <Paper sx={{ height: 600, width: '100%', bgcolor: 'background.paper' }}>
+      <Paper sx={{ height: 650, width: '100%', p: 2 }}>
         {loading ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
             <CircularProgress />
@@ -65,21 +61,16 @@ const Inventory = ({ user }: any) => {
           <DataGrid
             rows={rows}
             columns={columns}
+            disableRowSelectionOnClick
             initialState={{
               pagination: { paginationModel: { pageSize: 10 } },
             }}
             pageSizeOptions={[10, 20]}
-            checkboxSelection
-            disableRowSelectionOnClick
-            sx={{
-              border: 'none',
-              '& .MuiDataGrid-cell': { color: 'text.primary' },
-              '& .MuiDataGrid-columnHeaders': { bgcolor: 'background.default' },
-            }}
+            sx={{ border: 'none' }}
           />
         )}
       </Paper>
-    </Box>
+    </Stack>
   );
 };
 
