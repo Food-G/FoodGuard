@@ -2,7 +2,7 @@
 backend/build/
 backend/out/
 backend/.gradle/
-backend/src/main/resources/application.properties
+backend/.env
 
 # ── Frontend (React) ───────────────────────
 frontend/node_modules/

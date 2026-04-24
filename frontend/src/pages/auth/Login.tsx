@@ -11,7 +11,7 @@ import {
   InputAdornment,
   Alert,
 } from '@mui/material';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import IconifyIcon from '../../components/base/IconifyIcon';
 import Image from '../../components/base/Image';
 import { authService } from '../../services/authService';
@@ -58,7 +58,7 @@ const Login = ({ onLogin }: { onLogin: (token: string) => void }) => {
           </Typography>
           <Typography variant="h6" fontWeight={500} textAlign="center" color="text.primary">
             계정이 없으신가요?{' '}
-            <Link onClick={() => navigate('/signup')} sx={{ cursor: 'pointer' }} underline="none">
+            <Link component={RouterLink} to="/signup" sx={{ cursor: 'pointer' }} underline="none">
               회원가입
             </Link>
           </Typography>

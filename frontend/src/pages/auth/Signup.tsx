@@ -14,8 +14,9 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  Divider,
 } from '@mui/material';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import IconifyIcon from '../../components/base/IconifyIcon';
 import Image from '../../components/base/Image';
 import { authService } from '../../services/authService';
@@ -24,6 +25,7 @@ const logoWithText = '/Logo-with-text.png';
 const Signup = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [role, setRole] = useState('OWNER');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
@@ -32,12 +34,19 @@ const Signup = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
+
+    if (password !== confirmPassword) {
+      setError('비밀번호가 일치하지 않습니다.');
+      return;
+    }
+
     try {
       await authService.signup({ email, password, role });
       setSuccess(true);
       setTimeout(() => navigate('/login'), 2000);
     } catch (err: any) {
-      setError('회원가입 실패: ' + err.message);
+      setError(err.message);
     }
   };
 
@@ -58,13 +67,13 @@ const Signup = () => {
           px: { xs: 5, sm: 7.5 },
         }}
       >
-        <Stack component="form" onSubmit={handleSubmit} justifyContent="center" gap={5}>
+        <Stack component="form" onSubmit={handleSubmit} justifyContent="center" gap={4}>
           <Typography variant="h3" textAlign="center" color="text.secondary">
-            회원가입
+            계정 생성
           </Typography>
           <Typography variant="h6" fontWeight={500} textAlign="center" color="text.primary">
             이미 계정이 있으신가요?{' '}
-            <Link onClick={() => navigate('/login')} sx={{ cursor: 'pointer' }} underline="none">
+            <Link component={RouterLink} to="/login" sx={{ cursor: 'pointer' }} underline="none">
               로그인
             </Link>
           </Typography>
@@ -74,9 +83,10 @@ const Signup = () => {
 
           <TextField
             variant="filled"
-            label="이메일"
+            label="이메일 주소"
             type="email"
             required
+            fullWidth
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             sx={{
@@ -89,10 +99,12 @@ const Signup = () => {
               borderRadius: 2,
             }}
           />
+          
           <TextField
             variant="filled"
             label="비밀번호"
             required
+            fullWidth
             type={showPassword ? 'text' : 'password'}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -126,11 +138,30 @@ const Signup = () => {
             }}
           />
 
+          <TextField
+            variant="filled"
+            label="비밀번호 확인"
+            required
+            fullWidth
+            type={showPassword ? 'text' : 'password'}
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            sx={{
+              '.MuiFilledInput-root': {
+                bgcolor: 'grey.A100',
+                ':hover': { bgcolor: 'background.default' },
+                ':focus': { bgcolor: 'background.default' },
+                ':focus-within': { bgcolor: 'background.default' },
+              },
+              borderRadius: 2,
+            }}
+          />
+
           <FormControl fullWidth variant="filled">
             <InputLabel>가입 유형</InputLabel>
             <Select
               value={role}
-              onChange={(e) => setRole(e.target.value)}
+              onChange={(e) => setRole(e.target.value as string)}
               sx={{
                 bgcolor: 'grey.A100',
                 borderRadius: 2,
@@ -144,13 +175,45 @@ const Signup = () => {
           
           <Button
             type="submit"
+            fullWidth
+            variant="contained"
             sx={{
               fontWeight: 'fontWeightRegular',
-              py: 1.5
+              py: 1.5,
+              mt: 2
             }}
           >
             가입하기
           </Button>
+
+          <Typography variant="body2" textAlign="center" color="text.secondary">
+            가입 시 FoodGuard의{' '}
+            <Link href="#!" underline="none">
+              이용약관
+            </Link>
+            에 동의하게 됩니다.
+          </Typography>
+          
+          <Divider>또는</Divider>
+
+          <Stack gap={1.5} direction="row" justifyContent="space-between">
+            <Button
+              startIcon={<IconifyIcon icon="flat-color-icons:google" />}
+              variant="outlined"
+              fullWidth
+              sx={{ fontSize: 'subtitle2.fontSize' }}
+            >
+              Google
+            </Button>
+            <Button
+              startIcon={<IconifyIcon icon="logos:facebook" />}
+              variant="outlined"
+              fullWidth
+              sx={{ fontSize: 'subtitle2.fontSize' }}
+            >
+              Facebook
+            </Button>
+          </Stack>
         </Stack>
       </Paper>
     </>

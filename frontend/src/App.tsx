@@ -30,11 +30,12 @@ function App() {
     return <MainLayout role={user?.role || 'OWNER'} onLogout={logout}>{children}</MainLayout>;
   };
 
-  const PublicRoute = ({ children, isAuthPage = true }: { children: React.ReactNode, isAuthPage?: boolean }) => {
-    if (isLoggedIn) {
+  const PublicRoute = ({ children }: { children: React.ReactNode }) => {
+    // 엄격하게 토큰과 유저 정보가 모두 있을 때만 리다이렉트
+    if (isLoggedIn && user) {
       return <Navigate to="/" replace />;
     }
-    return isAuthPage ? <AuthLayout>{children}</AuthLayout> : <>{children}</>;
+    return <AuthLayout>{children}</AuthLayout>;
   };
 
   return (

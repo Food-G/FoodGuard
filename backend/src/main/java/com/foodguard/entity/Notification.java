@@ -7,24 +7,34 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "notification")
-@Getter @Setter @NoArgsConstructor
+@Table(name = "NOTIFICATION")
+@Getter @Setter
+@NoArgsConstructor
 public class Notification {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "notification_id")
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "store_id", nullable = false)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "store_id")
     private Store store;
 
     @Column(nullable = false)
-    private String message;              // 알림 내용
+    private String type; // STOCK, WASTE, ORDER, ACCURACY
 
-    private String type;                // 알림 유형 (재고부족/발주승인 등)
+    @Column(name = "is_read", nullable = false)
+    private boolean isRead = false;
 
-    private Boolean isRead = false;     // 읽음 여부
+    @Column(nullable = false, columnDefinition = "TEXT")
+    private String message;
 
-    private LocalDateTime createdAt = LocalDateTime.now();
+    @Column(name = "created_at", insertable = false, updatable = false)
+    private LocalDateTime createdAt;
+    
+    public void setIsRead(boolean isRead) { this.isRead = isRead; }
 }

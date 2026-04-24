@@ -5,264 +5,40 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="5cf40e29-3cc9-4695-8ab3-20a40cad9768" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/1조 설계도.pdf" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/26학년도 캡스톤 디자인-컴퓨터공학과-1조 (수정본).pdf" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/frontend/src/App.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/frontend/src/components/Layout.jsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/frontend/src/components/base/IconifyIcon.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/frontend/src/hooks/useAuth.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/frontend/src/layouts/MainLayout.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/frontend/src/pages/Dashboard.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/frontend/src/pages/Inventory.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/frontend/src/pages/Orders.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/frontend/src/pages/Predictions.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/frontend/src/pages/SalesEntry.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/frontend/src/pages/admin/StoreManagement.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/frontend/src/pages/auth/Login.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/frontend/src/pages/auth/Signup.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/frontend/src/providers/BreakpointsProvider.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/frontend/src/services/api.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/frontend/src/services/authService.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/frontend/src/services/inventoryService.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/frontend/src/services/menuService.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/frontend/src/services/orderService.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/frontend/src/services/predictionService.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/frontend/src/services/salesService.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/frontend/src/services/storeService.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/frontend/src/theme/colors.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/frontend/src/theme/palette.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/frontend/src/theme/theme.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/frontend/src/utils/jwt.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/frontend/tsconfig.json" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/frontend/vite.config.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/.package-lock.json" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/LICENSE" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/README.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/generative-ai.d.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/index.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/index.js.map" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/index.mjs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/index.mjs.map" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/scripts/check-format.d.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/scripts/format-patterns.d.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/scripts/license.d.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/scripts/run-format.d.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/server/index.js" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/server/index.js.map" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/server/index.mjs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/server/index.mjs.map" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/server/scripts/check-format.d.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/server/scripts/format-patterns.d.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/server/scripts/license.d.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/server/scripts/run-format.d.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/server/server.d.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/server/src/errors.d.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/server/src/gen-ai.d.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/server/src/index.d.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/server/src/methods/chat-session-helpers.d.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/server/src/methods/chat-session.d.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/server/src/methods/count-tokens.d.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/server/src/methods/embed-content.d.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/server/src/methods/generate-content.d.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/server/src/models/generative-model.d.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/server/src/requests/request-helpers.d.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/server/src/requests/request.d.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/server/src/requests/response-helpers.d.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/server/src/requests/stream-reader.d.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/server/src/server/cache-manager.d.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/server/src/server/constants.d.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/server/src/server/file-manager.d.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/server/src/server/index.d.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/server/src/server/request.d.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/server/types/content.d.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/server/types/enums.d.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/server/types/function-calling.d.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/server/types/index.d.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/server/types/requests.d.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/server/types/responses.d.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/server/types/search-grounding.d.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/server/types/server/caching.d.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/server/types/server/files.d.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/server/types/server/index.d.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/server/types/server/shared.d.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/src/errors.d.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/src/gen-ai.d.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/src/index.d.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/src/methods/chat-session-helpers.d.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/src/methods/chat-session.d.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/src/methods/count-tokens.d.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/src/methods/embed-content.d.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/src/methods/generate-content.d.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/src/models/generative-model.d.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/src/requests/request-helpers.d.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/src/requests/request.d.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/src/requests/response-helpers.d.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/src/requests/stream-reader.d.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/src/server/cache-manager.d.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/src/server/constants.d.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/src/server/file-manager.d.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/src/server/index.d.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/src/server/request.d.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/tsdoc-metadata.json" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/types/content.d.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/types/enums.d.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/types/function-calling.d.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/types/index.d.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/types/requests.d.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/types/responses.d.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/types/search-grounding.d.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/types/server/caching.d.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/types/server/files.d.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/types/server/index.d.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/dist/types/server/shared.d.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/package.json" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/node_modules/@google/generative-ai/server/package.json" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/.eslintrc.cjs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/.gitignore" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/.prettierignore" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/.prettierrc.cjs" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/README.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/index.html" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/package-lock.json" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/package.json" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/public/LOGO.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/public/Logo-with-text.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/public/homepage.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/public/homepage_2.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/public/vite.svg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/App.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/assets/images/account/Profile.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/assets/images/error/error.svg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/assets/images/error/no-results.svg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/assets/images/todays-sales/new-customer.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/assets/images/todays-sales/product-sold.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/assets/images/todays-sales/total-order.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/assets/images/todays-sales/total-sales.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/assets/images/trending-now/apple-smartwatch.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/assets/images/trending-now/bathroom-essentials.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/assets/images/trending-now/disney-princess-dresses.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/assets/images/trending-now/home-decor-range.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/components/base/IconifyIcon.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/components/base/Image.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/components/base/ReactEChart.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/components/base/ReactSwiper.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/components/common/CustomNoResultsOverlay.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/components/common/CustomPagination.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/components/icons/CheckBoxBlankIcon.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/components/icons/CheckBoxCheckedIcon.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/components/icons/CheckBoxIndeterminateIcon.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/components/loading/PageLoader.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/components/loading/Splash.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/components/sections/dashboard/customer-fulfilment/CustomerFulfillment.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/components/sections/dashboard/customer-fulfilment/CustomerFulfillmentChart.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/components/sections/dashboard/customers/CustomerTable.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/components/sections/dashboard/customers/Customers.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/components/sections/dashboard/earnings/Earnings.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/components/sections/dashboard/earnings/EarningsChart.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/components/sections/dashboard/level/Level.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/components/sections/dashboard/level/LevelChart.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/components/sections/dashboard/todays-sales/SaleCard.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/components/sections/dashboard/todays-sales/TodaysSales.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/components/sections/dashboard/top-products/ProductItemRow.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/components/sections/dashboard/top-products/TopProducts.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/components/sections/dashboard/trending-now/SlideItem.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/components/sections/dashboard/trending-now/TrendingNow.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/components/sections/dashboard/visitor-insights/VisitorInsights.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/components/sections/dashboard/visitor-insights/VisitorInsightsChart.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/data/chart-data/customer-fulfillment.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/data/chart-data/level.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/data/chart-data/visitor-insights.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/data/customer-data.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/data/nav-items.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/data/product-data.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/data/sales-data.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/data/trending-items.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/data/usermenu-items.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/helpers/format-functions.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/helpers/string-avatar.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/index.css" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/layouts/auth-layout/index.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/layouts/main-layout/Footer/Footer.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/layouts/main-layout/Sidebar/NavItem.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/layouts/main-layout/Sidebar/Sidebar.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/layouts/main-layout/Topbar/Topbar.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/layouts/main-layout/Topbar/UserDropdown.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/layouts/main-layout/index.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/main.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/pages/authentication/Login.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/pages/authentication/SignUp.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/pages/dashboard/Dashboard.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/pages/error/ErrorPage.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/providers/BreakpointsProvider.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/routes/paths.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/routes/router.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/theme/breakpoints.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/theme/colors.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/theme/component-overrides.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/theme/components/Appbar.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/theme/components/Avatar.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/theme/components/Button.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/theme/components/ButtonBase.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/theme/components/Card.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/theme/components/CardContent.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/theme/components/CardMedia.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/theme/components/Checkbox.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/theme/components/Chip.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/theme/components/CssBaseline.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/theme/components/DataGrid/DataGrid.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/theme/components/Divider.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/theme/components/Drawer.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/theme/components/FilledInput.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/theme/components/Grid.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/theme/components/Grid2.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/theme/components/IconButton.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/theme/components/InputAdornment.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/theme/components/InputBase.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/theme/components/InputLabel.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/theme/components/LinearProgress.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/theme/components/Link.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/theme/components/List.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/theme/components/ListItemButton.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/theme/components/ListItemIcon.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/theme/components/ListItemText.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/theme/components/Menu.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/theme/components/MenuItem.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/theme/components/OutlinedInput.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/theme/components/Pagination.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/theme/components/PaginationItem.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/theme/components/Paper.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/theme/components/Stack.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/theme/components/TableCell.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/theme/components/TableContainer.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/theme/components/TextField.tsx" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/theme/functions/px-to-rem.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/theme/palette.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/theme/shape.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/theme/spacing.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/theme/styles/echart.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/theme/styles/scrollbar.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/theme/styles/simplebar.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/theme/styles/swiper.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/theme/theme.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/theme/typography.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/src/vite-env.d.ts" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/tsconfig.json" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/tsconfig.node.json" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/sample/vite.config.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/gradle.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/gradle.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/index.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/package-lock.json" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/package-lock.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/package.json" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/App.css" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/App.css" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/App.jsx" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/main.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/main.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/vite.config.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/controller/AuthController.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/controller/AuthController.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/entity/Ingredient.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/entity/Ingredient.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/entity/Inventory.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/entity/Inventory.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/entity/Menu.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/entity/Menu.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/entity/Notification.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/entity/Notification.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/entity/OrderRequest.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/entity/OrderRequest.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/entity/PredictionResult.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/entity/PredictionResult.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/entity/SalesData.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/entity/SalesData.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/entity/Store.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/entity/Store.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/entity/User.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/entity/User.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/service/UserService.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/service/UserService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/App.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/App.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/hooks/useAuth.ts" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/hooks/useAuth.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/pages/auth/Login.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/pages/auth/Login.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/pages/auth/Signup.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/pages/auth/Signup.tsx" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="ExternalProjectsManager">
+    <system id="GRADLE">
+      <state>
+        <projects_view>
+          <tree_state>
+            <expand />
+            <select />
+          </tree_state>
+        </projects_view>
+      </state>
+    </system>
   </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
@@ -299,7 +75,7 @@
     "RunOnceActivity.git.unshallow": "true",
     "RunOnceActivity.typescript.service.memoryLimit.init": "true",
     "codeWithMe.voiceChat.enabledByDefault": "false",
-    "com.google.cloudcode.ide_session_index": "20260417_0009",
+    "com.google.cloudcode.ide_session_index": "20260424_0004",
     "git-widget-placeholder": "dev2",
     "kotlin-language-version-configured": "true",
     "last_opened_file_path": "C:/Test-Repository",
@@ -327,7 +103,9 @@
       <workItem from="1776405213256" duration="1107000" />
       <workItem from="1776406340424" duration="271000" />
       <workItem from="1776407096552" duration="3833000" />
-      <workItem from="1776410959980" duration="9000" />
+      <workItem from="1776410959980" duration="872000" />
+      <workItem from="1776999281548" duration="1734000" />
+      <workItem from="1777001055904" duration="5037000" />
     </task>
     <servers />
   </component>
