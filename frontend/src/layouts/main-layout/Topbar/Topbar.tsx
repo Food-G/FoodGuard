@@ -61,7 +61,7 @@ const Topbar = ({
           >
             <IconifyIcon
               icon={open ? 'ri:menu-unfold-4-line' : 'ri:menu-unfold-3-line'}
-              color="common.white"
+              color="text.primary"
             />
           </IconButton>
           <TextField

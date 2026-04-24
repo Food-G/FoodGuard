@@ -15,4 +15,4 @@
 ## 📁 디렉토리 구조
 - `/backend`: Spring Boot 기반 API 서버
 - `/frontend`: Vite + React 기반 웹 클라이언트
-- `/sample`: 디자인 및 코드 레퍼런스 (UI 구현 시 최우선 참고)
+- `/sample`: 디자인 및 코드 레퍼런스 (UI 구현 시 우선 참고)

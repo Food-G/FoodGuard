@@ -11,6 +11,8 @@ import SalesEntry from './pages/SalesEntry';
 import Predictions from './pages/Predictions';
 import Orders from './pages/Orders';
 import StoreManagement from './pages/admin/StoreManagement';
+import Stats from './pages/admin/Stats';
+import AdminOrders from './pages/admin/AdminOrders';
 import Login from './pages/auth/Login';
 import Signup from './pages/auth/Signup';
 import { useAuth } from './hooks/useAuth';
@@ -81,6 +83,18 @@ function App() {
             <Route path="/admin/stores" element={
               <ProtectedRoute role="HQ">
                 <StoreManagement />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/admin/stats" element={
+              <ProtectedRoute role="HQ">
+                <Stats />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/admin/orders" element={
+              <ProtectedRoute role="HQ">
+                <AdminOrders />
               </ProtectedRoute>
             } />
 

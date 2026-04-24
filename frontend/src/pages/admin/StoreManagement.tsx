@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Typography, Box, Paper, CircularProgress } from '@mui/material';
+import { Typography, Box, Paper, CircularProgress, Stack, useTheme } from '@mui/material';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { storeService } from '../../services/storeService';
 
 const StoreManagement = () => {
+  const theme = useTheme();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -37,9 +38,12 @@ const StoreManagement = () => {
   ];
 
   return (
-    <Box>
-      <Typography variant="h4" color="text.primary" sx={{ mb: 3 }}>전 가맹점 현황</Typography>
-      <Paper sx={{ height: 600, width: '100%', bgcolor: 'background.paper' }}>
+    <Stack gap={4}>
+      <Box>
+        <Typography variant="h2" color="primary.main" fontWeight={800}>FoodGuard</Typography>
+        <Typography variant="h5" color="text.secondary" fontWeight={600}>지속 가능한 가맹점 네트워크 관리</Typography>
+      </Box>
+      <Paper sx={{ height: 600, width: '100%', bgcolor: 'background.paper', p: 2, border: `1px solid ${theme.palette.divider}` }}>
         {loading ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
             <CircularProgress />
@@ -60,7 +64,7 @@ const StoreManagement = () => {
           />
         )}
       </Paper>
-    </Box>
+    </Stack>
   );
 };
 

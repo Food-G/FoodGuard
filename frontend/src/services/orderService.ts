@@ -10,7 +10,13 @@ export const orderService = {
   updateStatus: async (id: number, status: string) => {
     return api.put(`/orders/${id}/status`, { status });
   },
+  approve: async (id: number) => {
+    return api.put(`/orders/${id}/status`, { status: 'APPROVED' });
+  },
   cancel: async (id: number) => {
     return api.delete(`/orders/${id}`);
+  },
+  getAll: async () => {
+    return api.get('/orders');
   },
 };

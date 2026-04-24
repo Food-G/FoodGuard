@@ -1,44 +1,49 @@
 import { PaletteOptions } from '@mui/material/styles';
+import { grey } from './colors';
 
 export const palette: PaletteOptions = {
   mode: 'light',
   primary: {
-    main: '#2E7D32', // Forest Green
-    light: '#4CAF50',
-    dark: '#1B5E20',
+    light: '#E8F5F1',
+    main: '#1D9E75', // Emerald Green
+    dark: '#147A5A',
     contrastText: '#FFFFFF',
   },
   secondary: {
-    main: '#81C784', // Light Sage
-    light: '#A5D6A7',
-    dark: '#66BB6A',
-    contrastText: '#000000',
+    light: '#ECF3E7',
+    main: '#3B6D11', // Forest Green
+    dark: '#2A4E0C',
+    contrastText: '#FFFFFF',
   },
   info: {
-    main: '#00796B', // Teal Green
-    light: '#4DB6AC',
-    dark: '#004D40',
+    light: '#E0F2F1',
+    main: '#00897B',
+    dark: '#00695C',
   },
   success: {
+    light: '#E8F5E9',
     main: '#43A047',
-    light: '#81C784',
     dark: '#2E7D32',
   },
   warning: {
-    main: '#FFB300', // Earthy Yellow
-    light: '#FFD54F',
-    dark: '#FF8F00',
+    light: '#FFF8E1',
+    main: '#FFB300',
+    dark: '#FFA000',
   },
   error: {
-    main: '#D32F2F',
+    light: '#FFEBEE',
+    main: '#E53935',
+    dark: '#B71C1C',
   },
   background: {
-    default: '#F1F8E9',
+    default: '#FFFFFF', // Pure white background
     paper: '#FFFFFF',
   },
   text: {
-    primary: '#1B5E20',
-    secondary: '#4E6E4E',
+    primary: '#1A1C1E', // Very dark grey for readability
+    secondary: '#44474E',
+    disabled: '#8E9199',
   },
-  divider: '#C8E6C9',
+  divider: '#C4C7CF',
+  grey: grey,
 };

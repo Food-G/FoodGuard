@@ -2,7 +2,7 @@ import { TypographyOptions } from '@mui/material/styles/createTypography';
 import pxToRem from './functions/px-to-rem';
 
 const typography: TypographyOptions = {
-  fontFamily: ['Inter', 'sans-serif'].join(', '),
+  fontFamily: ['Pretendard', 'Noto Sans KR', 'Inter', 'sans-serif'].join(', '),
   h1: {
     fontSize: pxToRem(48), // 3rem
     fontWeight: 700,

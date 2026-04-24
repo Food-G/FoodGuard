@@ -6,9 +6,21 @@
   <component name="ChangeListManager">
     <list default="true" id="5cf40e29-3cc9-4695-8ab3-20a40cad9768" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/GEMINI.md" beforeDir="false" afterPath="$PROJECT_DIR$/GEMINI.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/GEMINI.md" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/GEMINI.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/App.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/App.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/layouts/main-layout/Sidebar/Sidebar.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/layouts/main-layout/Sidebar/Sidebar.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/layouts/main-layout/Topbar/Topbar.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/layouts/main-layout/Topbar/Topbar.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/layouts/main-layout/Topbar/UserDropdown.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/layouts/main-layout/Topbar/UserDropdown.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/pages/Dashboard.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/pages/Dashboard.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/pages/auth/Signup.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/pages/auth/Signup.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/pages/Inventory.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/pages/Inventory.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/pages/Orders.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/pages/Orders.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/pages/Predictions.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/pages/Predictions.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/pages/SalesEntry.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/pages/SalesEntry.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/pages/admin/StoreManagement.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/pages/admin/StoreManagement.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/services/orderService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/services/orderService.ts" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/theme/palette.ts" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/theme/palette.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/theme/typography.ts" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/theme/typography.ts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -92,7 +104,7 @@
       <workItem from="1776407096552" duration="3833000" />
       <workItem from="1776410959980" duration="872000" />
       <workItem from="1776999281548" duration="1734000" />
-      <workItem from="1777001055904" duration="9439000" />
+      <workItem from="1777001055904" duration="15556000" />
     </task>
     <servers />
   </component>
