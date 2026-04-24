@@ -19,10 +19,10 @@ public class Store {
     @Column(name = "store_name", nullable = false, length = 100)
     private String storeName;
 
-    // DB에 없는 필드지만 서비스에서 사용함
-    @Transient
+    @Column(length = 255)
     private String address;
-    @Transient
+
+    @Column(length = 20)
     private String phone;
 
     @Column(nullable = false, length = 100)
@@ -34,7 +34,6 @@ public class Store {
     @Column(name = "opened_at", nullable = false)
     private java.time.LocalDate openedAt;
 
-    // 서비스에서 setUser(user)를 호출하고 있으므로 연관관계 필요
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "hq_user_id")
     private User user;

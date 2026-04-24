@@ -29,15 +29,11 @@ public class Menu {
     @Column(name = "is_active", nullable = false)
     private boolean isActive = true;
 
-    // 서비스에서 사용하는 필드명 대응
-    @Transient
-    private Integer price;
+    @Column(nullable = false)
+    private Integer price = 0;
 
     @Column(name = "created_at", insertable = false, updatable = false)
     private LocalDateTime createdAt;
-    
-    // setPrice 대응
-    public void setPrice(Integer price) { this.price = price; }
-    // setIsActive 대응 (Lombok은 isActive()와 setIsActive()를 생성하지만 boolean 필드명에 따라 달라질 수 있음)
+
     public void setIsActive(boolean isActive) { this.isActive = isActive; }
 }

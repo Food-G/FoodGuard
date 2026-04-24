@@ -17,6 +17,8 @@ public class UserService {
     private final BCryptPasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
 
+    private final com.foodguard.repository.StoreRepository storeRepository;
+
     // 회원가입
     public String signup(SignupRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
@@ -25,10 +27,24 @@ public class UserService {
 
         User user = new User();
         user.setEmail(request.getEmail());
+        user.setUserName(request.getUserName());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setRole(request.getRole());
 
-        userRepository.save(user);
+        User savedUser = userRepository.save(user);
+
+        // 점주일 경우 매장 정보도 함께 생성
+        if ("OWNER".equals(request.getRole()) && request.getStoreName() != null) {
+            com.foodguard.entity.Store store = new com.foodguard.entity.Store();
+            store.setStoreName(request.getStoreName());
+            store.setRegion(request.getRegion());
+            store.setAddress(request.getAddress());
+            store.setPhone(request.getPhone());
+            store.setOpenedAt(java.time.LocalDate.now());
+            store.setUser(savedUser); // 매장과 유저 연결
+            storeRepository.save(store);
+        }
+
         return "회원가입 성공";
     }
 
