@@ -1,52 +1,44 @@
-import { PaletteOptions } from '@mui/material';
-import { teal, grey, green, stone, fuchsia, bluishCyan, pinkishRed, yellowOrange } from './colors';
+import { PaletteOptions } from '@mui/material/styles';
 
-const palette: PaletteOptions = {
+export const palette: PaletteOptions = {
+  mode: 'light',
   primary: {
-    light: teal[50],
-    main: teal[100],
-    dark: teal[200],
+    main: '#2E7D32', // Forest Green
+    light: '#4CAF50',
+    dark: '#1B5E20',
+    contrastText: '#FFFFFF',
   },
   secondary: {
-    light: fuchsia[50],
-    main: fuchsia[100],
-    dark: fuchsia[400],
-  },
-  success: {
-    light: green[200],
-    main: green[600],
-    dark: green[900],
+    main: '#81C784', // Light Sage
+    light: '#A5D6A7',
+    dark: '#66BB6A',
+    contrastText: '#000000',
   },
   info: {
-    light: bluishCyan[100],
-    main: bluishCyan[500],
-    dark: bluishCyan[900],
+    main: '#00796B', // Teal Green
+    light: '#4DB6AC',
+    dark: '#004D40',
+  },
+  success: {
+    main: '#43A047',
+    light: '#81C784',
+    dark: '#2E7D32',
   },
   warning: {
-    light: yellowOrange[50],
-    main: yellowOrange[300],
-    dark: yellowOrange[700],
+    main: '#FFB300', // Earthy Yellow
+    light: '#FFD54F',
+    dark: '#FF8F00',
   },
   error: {
-    light: pinkishRed[300],
-    main: pinkishRed[600],
-    dark: pinkishRed[900],
+    main: '#D32F2F',
   },
   background: {
-    default: stone[900],
-    paper: grey[900],
+    default: '#F1F8E9',
+    paper: '#FFFFFF',
   },
   text: {
-    primary: stone[600],
-    secondary: stone[200],
-    disabled: stone[500],
+    primary: '#1B5E20',
+    secondary: '#4E6E4E',
   },
-  divider: stone[700],
-  action: {
-    focus: stone[400],
-    disabled: stone[300],
-  },
-  grey: grey,
+  divider: '#C8E6C9',
 };
-
-export default palette;

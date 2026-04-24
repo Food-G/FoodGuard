@@ -1,7 +1,3 @@
-import { ShapeOptions } from '@mui/material/styles';
-
-const shape: ShapeOptions = {
-  borderRadius: 4,
+export const shape = {
+  borderRadius: 8,
 };
-
-export default shape;
