@@ -190,6 +190,22 @@ CREATE TABLE order_item (
 
 
 -- ============================================================
+-- 10. NOTIFICATION (알림)
+--    - 재고 부족, 발주 승인 등 가맹점 알림
+-- ============================================================
+CREATE TABLE notification (
+                              notification_id BIGINT       NOT NULL AUTO_INCREMENT COMMENT '알림 PK',
+                              store_id        BIGINT       NOT NULL                COMMENT '대상 가맹점 FK',
+                              message         VARCHAR(500) NOT NULL                COMMENT '알림 내용',
+                              type            VARCHAR(50)                          COMMENT '알림 유형 (재고부족/발주승인 등)',
+                              is_read         TINYINT(1)   NOT NULL DEFAULT 0      COMMENT '읽음 여부',
+                              created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                              PRIMARY KEY (notification_id),
+                              FOREIGN KEY (store_id) REFERENCES store(store_id) ON DELETE CASCADE
+) COMMENT '알림 테이블';
+
+
+-- ============================================================
 -- 인덱스 (조회 성능 최적화)
 -- ============================================================
 -- 매출: 가맹점별·날짜 범위 집계 (대시보드 핵심 쿼리)
