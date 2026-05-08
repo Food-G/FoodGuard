@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
@@ -13,6 +14,7 @@ public class OrderRequest {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "order_id")
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -20,14 +22,21 @@ public class OrderRequest {
     private Store store;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "ingredient_id", nullable = false)
-    private Ingredient ingredient;
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
 
     @Column(nullable = false)
-    private Double quantity;             // 발주 수량
-
-    @Column(nullable = false)
-    private String status = "PENDING";  // PENDING / APPROVED / DONE
-
     private LocalDateTime orderedAt = LocalDateTime.now();
+
+    @Column(nullable = false)
+    private String status = "REQUESTED"; // REQUESTED / CONFIRMED / SHIPPED / COMPLETED / CANCELLED
+
+    private BigDecimal totalAmount;
+
+    private String note;
+
+    @Column(updatable = false)
+    private LocalDateTime createdAt = LocalDateTime.now();
+
+    private LocalDateTime updatedAt = LocalDateTime.now();
 }

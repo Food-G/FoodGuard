@@ -4,16 +4,17 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import java.time.LocalDate;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "sales_data")
+@Table(name = "sales")
 @Getter @Setter @NoArgsConstructor
 public class SalesData {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "sales_id")
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -25,15 +26,19 @@ public class SalesData {
     private Menu menu;
 
     @Column(nullable = false)
-    private Integer quantity;            // 판매 수량
+    private LocalDateTime soldAt;
 
     @Column(nullable = false)
-    private Integer totalPrice;          // 총 매출 금액
+    private Integer quantity;
 
-    @Column(nullable = false)
-    private LocalDate saleDate;          // 판매 날짜
+    @Column(name = "unit_price", nullable = false)
+    private BigDecimal unitPrice;
 
-    private Boolean isDeleted = false;   // Soft Delete 지원
+    @Column(name = "total_amount", nullable = false)
+    private BigDecimal totalAmount;
 
-    private LocalDateTime deletedAt;     // 삭제 시각
+    @Column(updatable = false)
+    private LocalDateTime createdAt = LocalDateTime.now();
+
+    private LocalDateTime updatedAt = LocalDateTime.now();
 }

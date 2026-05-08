@@ -4,16 +4,18 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "prediction_result")
+@Table(name = "prediction")
 @Getter @Setter @NoArgsConstructor
 public class PredictionResult {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "prediction_id")
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -25,10 +27,21 @@ public class PredictionResult {
     private Menu menu;
 
     @Column(nullable = false)
-    private Integer predictedQty;        // AI 예측 판매량
+    private LocalDateTime predictedAt;
 
     @Column(nullable = false)
-    private LocalDate predictionDate;    // 예측 날짜
+    private LocalDate targetDate;
 
+    @Column(nullable = false)
+    private Integer predictedQuantity;
+
+    private BigDecimal recommendedOrder;
+
+    @Column(precision = 5, scale = 4)
+    private BigDecimal accuracyScore;
+
+    private String modelVersion;
+
+    @Column(updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 }

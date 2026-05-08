@@ -7,5 +7,6 @@ import lombok.Setter;
 public class SignupRequest {
     private String email;
     private String password;
-    private String role;   // "OWNER" 또는 "HQ"
+    private String name;
+    private String role; // "OWNER" 또는 "ADMIN"
 }

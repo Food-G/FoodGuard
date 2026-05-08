@@ -6,6 +6,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
@@ -18,10 +20,16 @@ public class InventoryController {
 
     @PostMapping
     public ResponseEntity<Inventory> create(@RequestBody Map<String, Object> body) {
+        LocalDate expiryDate = body.get("expiryDate") != null
+                ? LocalDate.parse(body.get("expiryDate").toString()) : null;
         return ResponseEntity.ok(inventoryService.create(
                 Long.parseLong(body.get("storeId").toString()),
-                Long.parseLong(body.get("ingredientId").toString()),
-                Double.parseDouble(body.get("quantity").toString())
+                body.get("ingredientName").toString(),
+                body.get("unit").toString(),
+                new BigDecimal(body.get("currentStock").toString()),
+                body.get("thresholdStock") != null
+                        ? new BigDecimal(body.get("thresholdStock").toString()) : null,
+                expiryDate
         ));
     }
 
@@ -35,7 +43,9 @@ public class InventoryController {
                                             @RequestBody Map<String, Object> body) {
         return ResponseEntity.ok(inventoryService.update(
                 id,
-                Double.parseDouble(body.get("quantity").toString())
+                new BigDecimal(body.get("currentStock").toString()),
+                body.get("wasteQuantity") != null
+                        ? new BigDecimal(body.get("wasteQuantity").toString()) : BigDecimal.ZERO
         ));
     }
 

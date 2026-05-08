@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 
@@ -21,7 +22,7 @@ public class MenuController {
         return ResponseEntity.ok(menuService.create(
                 Long.parseLong(body.get("storeId").toString()),
                 body.get("menuName").toString(),
-                Integer.parseInt(body.get("price").toString()),
+                new BigDecimal(body.get("unitPrice").toString()),
                 body.get("category").toString()
         ));
     }
@@ -37,7 +38,7 @@ public class MenuController {
         return ResponseEntity.ok(menuService.update(
                 id,
                 body.get("menuName").toString(),
-                Integer.parseInt(body.get("price").toString()),
+                new BigDecimal(body.get("unitPrice").toString()),
                 body.get("category").toString()
         ));
     }

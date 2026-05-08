@@ -17,7 +17,6 @@ public class UserService {
     private final BCryptPasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
 
-    // 회원가입
     public String signup(SignupRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
             return "이미 존재하는 이메일입니다.";
@@ -26,26 +25,22 @@ public class UserService {
         User user = new User();
         user.setEmail(request.getEmail());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setName(request.getName());
         user.setRole(request.getRole());
 
         userRepository.save(user);
         return "회원가입 성공";
     }
 
-    // 로그인 → JWT 반환
     public String login(LoginRequest request) {
-        User user = userRepository.findByEmail(request.getEmail())
-                .orElse(null);
+        User user = userRepository.findByEmail(request.getEmail()).orElse(null);
 
-        if (user == null) {
-            return "존재하지 않는 이메일입니다.";
-        }
+        if (user == null) return "존재하지 않는 이메일입니다.";
 
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             return "비밀번호가 틀렸습니다.";
         }
 
-        // 로그인 성공 → JWT 토큰 발급
         return jwtUtil.generateToken(user.getEmail());
     }
 }

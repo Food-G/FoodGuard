@@ -16,39 +16,37 @@ public class StoreService {
     private final StoreRepository storeRepository;
     private final UserRepository userRepository;
 
-    // 가맹점 등록
-    public Store create(Long userId, String storeName, String address, String phone) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("유저를 찾을 수 없습니다."));
+    public Store create(String storeName, String region, String businessType, String address, String contact) {
         Store store = new Store();
-        store.setUser(user);
         store.setStoreName(storeName);
+        store.setRegion(region);
+        store.setBusinessType(businessType);
         store.setAddress(address);
-        store.setPhone(phone);
+        store.setHqManagerContact(contact);
         return storeRepository.save(store);
     }
 
-    // 내 가맹점 목록 조회
     public List<Store> getMyStores(Long userId) {
-        return storeRepository.findByUserId(userId);
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("유저를 찾을 수 없습니다."));
+        if (user.getStoreId() == null) return List.of();
+        return storeRepository.findById(user.getStoreId())
+                .map(List::of).orElse(List.of());
     }
 
-    // 전체 가맹점 조회 (본사용)
     public List<Store> getAll() {
         return storeRepository.findAll();
     }
 
-    // 가맹점 수정
-    public Store update(Long storeId, String storeName, String address, String phone) {
+    public Store update(Long storeId, String storeName, String address, String contact) {
         Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new RuntimeException("가맹점을 찾을 수 없습니다."));
         store.setStoreName(storeName);
         store.setAddress(address);
-        store.setPhone(phone);
+        store.setHqManagerContact(contact);
         return storeRepository.save(store);
     }
 
-    // 가맹점 삭제
     public String delete(Long storeId) {
         storeRepository.deleteById(storeId);
         return "가맹점 삭제 완료";

@@ -19,10 +19,11 @@ public class StoreController {
     @PostMapping
     public ResponseEntity<Store> create(@RequestBody Map<String, Object> body) {
         return ResponseEntity.ok(storeService.create(
-                Long.parseLong(body.get("userId").toString()),
                 body.get("storeName").toString(),
+                body.get("region").toString(),
+                body.get("businessType").toString(),
                 body.get("address").toString(),
-                body.get("phone").toString()
+                body.get("contact").toString()
         ));
     }
 
@@ -43,7 +44,7 @@ public class StoreController {
                 id,
                 body.get("storeName").toString(),
                 body.get("address").toString(),
-                body.get("phone").toString()
+                body.get("contact").toString()
         ));
     }
 

@@ -13,20 +13,29 @@ public class Store {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "store_id")
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;                    // 점주 연결
+    @Column(name = "store_name", nullable = false)
+    private String storeName;
 
     @Column(nullable = false)
-    private String storeName;             // 가맹점 이름
+    private String region;
+
+    private String address;
 
     @Column(nullable = false)
-    private String address;               // 주소
+    private String businessType;
 
-    private String phone;                 // 전화번호
+    private String hqManagerName;
+
+    private String hqManagerContact;
+
+    @Column(nullable = false)
+    private Boolean isActive = true;
 
     @Column(updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
+
+    private LocalDateTime updatedAt = LocalDateTime.now();
 }

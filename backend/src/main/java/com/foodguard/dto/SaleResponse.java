@@ -3,25 +3,27 @@ package com.foodguard.dto;
 import com.foodguard.entity.SalesData;
 import lombok.Getter;
 
-import java.time.LocalDate;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 @Getter
 public class SaleResponse {
 
     private Long id;
-    private String menuName;       // Menu Entity에서 꺼내옴
+    private String menuName;
     private Integer quantity;
-    private Integer totalPrice;
-    private LocalDate saleDate;
-    private String storeName;      // Store Entity에서 꺼내옴
+    private BigDecimal unitPrice;
+    private BigDecimal totalAmount;
+    private LocalDateTime soldAt;
+    private String storeName;
 
-    // SalesData Entity → DTO 변환
     public SaleResponse(SalesData salesData) {
         this.id = salesData.getId();
-        this.menuName = salesData.getMenu().getMenuName();   // Menu Entity 연결
+        this.menuName = salesData.getMenu().getMenuName();
         this.quantity = salesData.getQuantity();
-        this.totalPrice = salesData.getTotalPrice();
-        this.saleDate = salesData.getSaleDate();
-        this.storeName = salesData.getStore().getStoreName(); // Store Entity 연결
+        this.unitPrice = salesData.getUnitPrice();
+        this.totalAmount = salesData.getTotalAmount();
+        this.soldAt = salesData.getSoldAt();
+        this.storeName = salesData.getStore().getStoreName();
     }
 }

@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 
@@ -20,8 +21,10 @@ public class OrderRequestController {
     public ResponseEntity<OrderRequest> create(@RequestBody Map<String, Object> body) {
         return ResponseEntity.ok(orderRequestService.create(
                 Long.parseLong(body.get("storeId").toString()),
-                Long.parseLong(body.get("ingredientId").toString()),
-                Double.parseDouble(body.get("quantity").toString())
+                Long.parseLong(body.get("userId").toString()),
+                body.get("totalAmount") != null
+                        ? new BigDecimal(body.get("totalAmount").toString()) : null,
+                body.get("note") != null ? body.get("note").toString() : null
         ));
     }
 
