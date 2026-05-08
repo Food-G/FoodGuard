@@ -62,36 +62,6 @@ public class SalesDataService {
                 .findByStoreIdAndSaleDateBetweenAndIsDeletedFalse(storeId, start, end);
     }
 
-<<<<<<< HEAD
-    public Map<String, Object> getTodaySummary(Long storeId) {
-        LocalDate today = LocalDate.now();
-        long revenue = salesDataRepository.sumRevenueByDate(storeId, today);
-        long qty = salesDataRepository.sumQtyByDate(storeId, today);
-        long yesterdayRevenue = salesDataRepository.sumRevenueByDate(storeId, today.minusDays(1));
-        String trend = revenue >= yesterdayRevenue ? "up" : "down";
-        double changeRate = yesterdayRevenue > 0 ? Math.round((revenue - yesterdayRevenue) * 1000.0 / yesterdayRevenue) / 10.0 : 0;
-        return Map.of("revenue", revenue, "qty", qty, "trend", trend, "changeRate", changeRate);
-    }
-
-    public Map<String, Object> getWeeklySummary(Long storeId) {
-        LocalDate today = LocalDate.now();
-        long thisWeek = salesDataRepository.sumRevenueBetween(storeId, today.minusDays(6), today);
-        long prevWeek = salesDataRepository.sumRevenueBetween(storeId, today.minusDays(13), today.minusDays(7));
-        return Map.of("thisWeekRevenue", thisWeek, "prevWeekRevenue", prevWeek);
-    }
-
-    public Map<Long, Long> getAllStoreWeeklySummary() {
-        LocalDate today = LocalDate.now();
-        List<Object[]> rows = salesDataRepository.sumRevenueAllStoresBetween(today.minusDays(6), today);
-        Map<Long, Long> result = new java.util.LinkedHashMap<>();
-        for (Object[] row : rows) {
-            result.put(((Number) row[0]).longValue(), ((Number) row[1]).longValue());
-        }
-        return result;
-    }
-
-    // Soft Delete (실제 삭제 X, 삭제 표시만)
-=======
     // 매출 수정
     @Transactional
     public SalesData update(Long id, Integer quantity, Integer totalPrice, LocalDate saleDate) {
@@ -107,9 +77,7 @@ public class SalesDataService {
     }
 
     // Soft Delete
-    @Transactional
->>>>>>> 233f87c (feat: CRUD 완성 및 FoodGuard UI 전면 개선)
-    public String delete(Long id) {
+    @Transactional    public String delete(Long id) {
         SalesData sales = salesDataRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("매출 데이터를 찾을 수 없습니다."));
         sales.setIsDeleted(true);

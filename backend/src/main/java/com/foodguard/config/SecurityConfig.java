@@ -11,16 +11,11 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-<<<<<<< HEAD
-import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
-=======
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.List;
->>>>>>> 233f87c (feat: CRUD 완성 및 FoodGuard UI 전면 개선)
-
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
@@ -55,26 +50,13 @@ public class SecurityConfig {
         http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
-<<<<<<< HEAD
-                .cors(cors -> cors.configure(http))
-=======
                 .formLogin(form -> form.disable())
-                .httpBasic(basic -> basic.disable())
->>>>>>> 233f87c (feat: CRUD 완성 및 FoodGuard UI 전면 개선)
-                .sessionManagement(session -> session
+                .httpBasic(basic -> basic.disable())                .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
                 .authorizeHttpRequests(auth -> auth
-<<<<<<< HEAD
-                        .requestMatchers(new AntPathRequestMatcher("/api/auth/**")).permitAll()
-                        .requestMatchers(new AntPathRequestMatcher("/api/delivery/**")).permitAll()
-                        .requestMatchers(new AntPathRequestMatcher("/ws/**")).permitAll()
-                        .requestMatchers(new AntPathRequestMatcher("/error")).permitAll()
-=======
                         .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers("/error").permitAll()
->>>>>>> 233f87c (feat: CRUD 완성 및 FoodGuard UI 전면 개선)
-                        .anyRequest().authenticated()
+                        .requestMatchers("/error").permitAll()                        .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 

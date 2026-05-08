@@ -27,12 +27,7 @@ const DataGrid: DataGridComponents<Omit<Theme, 'components'>>['MuiDataGrid'] = {
     cell: ({ theme }) => ({
       display: 'flex',
       alignItems: 'center',
-<<<<<<< HEAD
-      color: theme.palette.common.black,
-=======
-      color: theme.palette.text.primary,          // ← 흰색 → 테마 텍스트 색상
->>>>>>> 233f87c (feat: CRUD 완성 및 FoodGuard UI 전면 개선)
-      fontSize: theme.typography.body2.fontSize,
+      color: theme.palette.text.primary,          // ← 흰색 → 테마 텍스트 색상      fontSize: theme.typography.body2.fontSize,
       fontWeight: theme.typography.body2.fontWeight,
       '&:focus': { outline: 'none !important' },
       '&:focus-within': { outline: 'none !important' },

@@ -51,22 +51,12 @@ public class IngredientService {
         return ingredientRepository.save(ingredient);
     }
 
-<<<<<<< HEAD
-    // 식자재 삭제 (연결 레코드 전부 먼저 삭제: 발주→메뉴구성→재고→식자재)
-    @Transactional
-    public String delete(Long id) {
-        orderRequestRepository.deleteByIngredientId(id);
-        menuIngredientRepository.deleteByIngredientId(id);
-        inventoryRepository.deleteByIngredientId(id);
-=======
     // 식자재 삭제
     @Transactional
     public String delete(Long id) {
         if (!ingredientRepository.existsById(id)) {
             throw new RuntimeException("식자재를 찾을 수 없습니다.");
-        }
->>>>>>> 233f87c (feat: CRUD 완성 및 FoodGuard UI 전면 개선)
-        ingredientRepository.deleteById(id);
+        }        ingredientRepository.deleteById(id);
         return "식자재 삭제 완료";
     }
 }

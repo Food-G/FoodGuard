@@ -13,16 +13,18 @@ interface MainLayoutProps {
   onLogout: () => void;
 }
 
+const TRANSITION = 'width 0.25s cubic-bezier(0.4,0,0.2,1)';
+
 const MainLayout = ({ children, role, onLogout }: MainLayoutProps): ReactElement => {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [open, setOpen] = useState<boolean>(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
     <>
       <Box sx={{ display: 'flex', minHeight: '100vh' }}>
-        <Topbar onLogout={onLogout} />
+        <Topbar open={open} onLogout={onLogout} />
 
-        {/* Mobile Drawer */}
+        {/* 모바일 Drawer (터치로 열기) */}
         <Drawer
           variant="temporary"
           open={mobileOpen}
@@ -36,36 +38,40 @@ const MainLayout = ({ children, role, onLogout }: MainLayoutProps): ReactElement
           <Sidebar open={true} role={role} setMobileOpen={setMobileOpen} />
         </Drawer>
 
-        {/* Desktop Drawer — always takes drawerCloseWidth space, paper overlays when hovered */}
-        <Drawer
-          variant="permanent"
-          component="aside"
+        {/* 데스크톱 Drawer — 호버로 열림/닫힘 */}
+        <Box
+          onMouseEnter={() => setOpen(true)}
+          onMouseLeave={() => setOpen(false)}
           sx={{
             display: { xs: 'none', sm: 'block' },
-            width: drawerCloseWidth,
             flexShrink: 0,
-            '& .MuiDrawer-paper': {
-              width: sidebarOpen ? drawerOpenWidth : drawerCloseWidth,
-              transition: 'width 0.22s cubic-bezier(0.4, 0, 0.2, 1)',
-              overflowX: 'hidden',
-              boxShadow: sidebarOpen ? '4px 0 24px rgba(0,0,0,0.08)' : 'none',
-              zIndex: sidebarOpen ? 1300 : 1200,
-            },
+            width: open ? drawerOpenWidth : drawerCloseWidth,
+            transition: TRANSITION,
           }}
         >
-          <Sidebar
-            open={sidebarOpen}
-            role={role}
-            onMouseEnter={() => setSidebarOpen(true)}
-            onMouseLeave={() => setSidebarOpen(false)}
-          />
-        </Drawer>
+          <Drawer
+            variant="permanent"
+            component="aside"
+            open={open}
+            sx={{
+              width: open ? drawerOpenWidth : drawerCloseWidth,
+              transition: TRANSITION,
+              '& .MuiDrawer-paper': {
+                width: open ? drawerOpenWidth : drawerCloseWidth,
+                transition: TRANSITION,
+                overflow: 'hidden',
+              },
+            }}
+          >
+            <Sidebar open={open} role={role} />
+          </Drawer>
+        </Box>
 
         <Box
           component="main"
           sx={{
-            width: 1,
             flexGrow: 1,
+            width: 1,
             pt: 5,
             pr: { xs: 3, sm: 5.175 },
             pb: 6.25,

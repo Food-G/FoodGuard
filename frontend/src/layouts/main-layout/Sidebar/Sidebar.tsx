@@ -1,13 +1,8 @@
 import { ReactElement } from 'react';
 import { Link, List, Toolbar, Box, Typography, Stack } from '@mui/material';
-<<<<<<< HEAD
-import NavItem from './NavItem';
-import { drawerOpenWidth } from '..';
-=======
 import SimpleBar from 'simplebar-react';
 import NavItem from './NavItem';
-import { drawerCloseWidth, drawerOpenWidth } from '..';
->>>>>>> 233f87c (feat: CRUD 완성 및 FoodGuard UI 전면 개선)
+import { drawerOpenWidth } from '..';
 import IconifyIcon from 'components/base/IconifyIcon';
 
 interface SidebarProps {
@@ -18,17 +13,9 @@ interface SidebarProps {
   onMouseLeave?: () => void;
 }
 
-<<<<<<< HEAD
-const Sidebar = ({ open, role, setMobileOpen, onMouseEnter, onMouseLeave }: SidebarProps): ReactElement => {
-  const menuItems = role === 'HQ_ADMIN' ? [
-    { title: '통합 관리 센터', icon: 'mingcute:home-5-line', path: '/admin' },
-    { title: '가맹점 네트워크', icon: 'mingcute:grid-fill', path: '/admin/stores' },
-    { title: '발주 관리', icon: 'mingcute:list-check-fill', path: '/admin/orders' },
-=======
 const FoodGuardLogo = ({ open }: { open: boolean }) => (
   <Link href="/" underline="none">
     <Stack direction="row" alignItems="center" gap={1} sx={{ overflow: 'hidden' }}>
-      {/* 아이콘 */}
       <Box
         sx={{
           width: 38,
@@ -44,8 +31,6 @@ const FoodGuardLogo = ({ open }: { open: boolean }) => (
       >
         <IconifyIcon icon="mingcute:leaf-fill" color="white" width={22} height={22} />
       </Box>
-
-      {/* 텍스트 (사이드바 열렸을 때만) */}
       {open && (
         <Box>
           <Typography
@@ -78,13 +63,12 @@ const FoodGuardLogo = ({ open }: { open: boolean }) => (
   </Link>
 );
 
-const Sidebar = ({ open, role, setMobileOpen }: SidebarProps): ReactElement => {
-  const menuItems = role === 'HQ' ? [
-    { title: '대시보드', icon: 'mingcute:home-5-line', path: '/', active: true },
-    { title: '전 가맹점 현황', icon: 'mingcute:grid-fill', path: '/admin/stores', active: true },
-    { title: '폐기율 통계', icon: 'mingcute:chart-bar-fill', path: '/admin/stats', active: true },
-    { title: '발주 승인/관리', icon: 'mingcute:list-check-fill', path: '/admin/orders', active: true },
->>>>>>> 233f87c (feat: CRUD 완성 및 FoodGuard UI 전면 개선)
+const Sidebar = ({ open, role, setMobileOpen, onMouseEnter, onMouseLeave }: SidebarProps): ReactElement => {
+  const menuItems = role === 'HQ_ADMIN' ? [
+    { title: '통합 관리 센터', icon: 'mingcute:home-5-line', path: '/admin' },
+    { title: '가맹점 네트워크', icon: 'mingcute:grid-fill', path: '/admin/stores' },
+    { title: '환경 통계 분석', icon: 'mingcute:chart-bar-fill', path: '/admin/stats' },
+    { title: '발주 관리', icon: 'mingcute:list-check-fill', path: '/admin/orders' },
   ] : [
     { title: '에코 대시보드', icon: 'mingcute:leaf-line', path: '/' },
     { title: '가게 등록', icon: 'mingcute:store-2-line', path: '/store' },
@@ -112,43 +96,17 @@ const Sidebar = ({ open, role, setMobileOpen }: SidebarProps): ReactElement => {
           minWidth: open ? drawerOpenWidth - 1 : undefined,
         }}
       >
-<<<<<<< HEAD
-        <Link href="/" sx={{ mt: 3 }}>
-          <Stack direction="row" alignItems="center" gap={1} sx={{ textDecoration: 'none', px: 1 }}>
-            <IconifyIcon icon="mingcute:leaf-fill" color="primary.main" width={32} height={32} />
-            {open && (
-              <Typography fontWeight={900} color="primary.main" sx={{ fontSize: 20, letterSpacing: '-0.05em', whiteSpace: 'nowrap' }}>
-                FoodGuard
-              </Typography>
-            )}
-          </Stack>
-        </Link>
-=======
         <Box sx={{ mt: 1 }}>
           <FoodGuardLogo open={open} />
         </Box>
->>>>>>> 233f87c (feat: CRUD 완성 및 FoodGuard UI 전면 개선)
       </Toolbar>
 
-      {/* Nav list — scrollbar hidden */}
-      <Box
-        sx={{
-          flex: 1,
-          overflowY: 'auto',
-          overflowX: 'hidden',
-          '&::-webkit-scrollbar': { display: 'none' },
-          scrollbarWidth: 'none',
-        }}
-      >
-        <List component="nav" sx={{ mt: 2, py: 2 }}>
+      <Box component={SimpleBar} style={{ maxHeight: '100vh' }}>
+        <List component="nav" sx={{ mt: 2, py: 1 }}>
           {menuItems.map((navItem) => (
             <NavItem
               key={navItem.title}
-<<<<<<< HEAD
-              navItem={{ ...navItem, active: true }}
-=======
               navItem={navItem}
->>>>>>> 233f87c (feat: CRUD 완성 및 FoodGuard UI 전면 개선)
               open={open}
               onClick={() => setMobileOpen && setMobileOpen(false)}
             />

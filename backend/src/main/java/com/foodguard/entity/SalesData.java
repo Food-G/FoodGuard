@@ -1,11 +1,6 @@
 package com.foodguard.entity;
 
-<<<<<<< HEAD
-import com.fasterxml.jackson.annotation.JsonIgnore;
-=======
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
->>>>>>> 233f87c (feat: CRUD 완성 및 FoodGuard UI 전면 개선)
-import jakarta.persistence.*;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;

@@ -28,7 +28,10 @@
       "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\aaa\\\\IdeaProjects\\\\Test-Repository\" -Recurse -Directory)",
       "Bash(./gradlew build *)",
       "PowerShell(Get-NetTCPConnection *)",
-      "PowerShell(Stop-Process *)"
+      "PowerShell(Stop-Process *)",
+      "Bash(git add *)",
+      "Bash(git rebase *)",
+      "Bash(python *)"
     ]
   }
 }

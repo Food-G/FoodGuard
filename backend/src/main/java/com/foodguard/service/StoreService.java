@@ -18,26 +18,16 @@ public class StoreService {
     private final UserRepository userRepository;
 
     // 가맹점 등록
-<<<<<<< HEAD
-    public Store create(Long userId, String storeName, String address, String phone, String region) {
-=======
     @Transactional
-    public Store create(Long userId, String storeName, String address, String phone) {
->>>>>>> 233f87c (feat: CRUD 완성 및 FoodGuard UI 전면 개선)
-        User user = userRepository.findById(userId)
+    public Store create(Long userId, String storeName, String address, String phone) {        User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("유저를 찾을 수 없습니다."));
         Store store = new Store();
         store.setUser(user);
         store.setStoreName(storeName);
         store.setAddress(address);
         store.setPhone(phone);
-<<<<<<< HEAD
-        store.setRegion(region != null ? region : "기타");
-=======
         store.setRegion("미지정");
-        store.setOpenedAt(java.time.LocalDate.now());
->>>>>>> 233f87c (feat: CRUD 완성 및 FoodGuard UI 전면 개선)
-        return storeRepository.save(store);
+        store.setOpenedAt(java.time.LocalDate.now());        return storeRepository.save(store);
     }
 
     // 단건 조회
@@ -67,15 +57,6 @@ public class StoreService {
     }
 
     // 가맹점 수정
-<<<<<<< HEAD
-    public Store update(Long storeId, String storeName, String address, String phone, String region) {
-        Store store = storeRepository.findById(storeId)
-                .orElseThrow(() -> new RuntimeException("가맹점을 찾을 수 없습니다."));
-        store.setStoreName(storeName);
-        store.setAddress(address);
-        store.setPhone(phone);
-        if (region != null) store.setRegion(region);
-=======
     @Transactional
     public Store update(Long storeId, String storeName, String address, String phone) {
         Store store = getById(storeId);
@@ -89,9 +70,7 @@ public class StoreService {
     @Transactional
     public Store toggleActive(Long storeId) {
         Store store = getById(storeId);
-        store.setActive(!store.isActive());
->>>>>>> 233f87c (feat: CRUD 완성 및 FoodGuard UI 전면 개선)
-        return storeRepository.save(store);
+        store.setActive(!store.isActive());        return storeRepository.save(store);
     }
 
     // 가맹점 삭제

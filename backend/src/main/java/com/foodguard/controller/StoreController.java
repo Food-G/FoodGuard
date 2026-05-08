@@ -18,17 +18,6 @@ public class StoreController {
 
     // 가맹점 등록
     @PostMapping
-<<<<<<< HEAD
-    public ResponseEntity<Store> create(@RequestBody Map<String, Object> body) {
-        String region = body.containsKey("region") ? body.get("region").toString() : null;
-        return ResponseEntity.ok(storeService.create(
-                Long.parseLong(body.get("userId").toString()),
-                body.get("storeName").toString(),
-                body.get("address").toString(),
-                body.get("phone").toString(),
-                region
-        ));
-=======
     public ResponseEntity<?> create(@RequestBody Map<String, Object> body) {
         try {
             return ResponseEntity.ok(storeService.create(
@@ -39,9 +28,7 @@ public class StoreController {
             ));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
->>>>>>> 233f87c (feat: CRUD 완성 및 FoodGuard UI 전면 개선)
-    }
+        }    }
 
     // 단건 조회
     @GetMapping("/{id}")
@@ -65,25 +52,10 @@ public class StoreController {
         return ResponseEntity.ok(storeService.getAll());
     }
 
-<<<<<<< HEAD
-    @PutMapping("/{id}")
-    public ResponseEntity<Store> update(@PathVariable Long id,
-                                        @RequestBody Map<String, Object> body) {
-        String region = body.containsKey("region") ? body.get("region").toString() : null;
-        return ResponseEntity.ok(storeService.update(
-                id,
-                body.get("storeName").toString(),
-                body.get("address").toString(),
-                body.get("phone").toString(),
-                region
-        ));
-=======
     // 지역별 조회
     @GetMapping("/region/{region}")
     public ResponseEntity<List<Store>> getByRegion(@PathVariable String region) {
-        return ResponseEntity.ok(storeService.getByRegion(region));
->>>>>>> 233f87c (feat: CRUD 완성 및 FoodGuard UI 전면 개선)
-    }
+        return ResponseEntity.ok(storeService.getByRegion(region));    }
 
     // 활성 가맹점만 조회
     @GetMapping("/active")

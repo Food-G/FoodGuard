@@ -38,7 +38,6 @@ public class OrderRequestService {
     private final MenuIngredientRepository menuIngredientRepository;
     private final InventoryRepository inventoryRepository;
 
-    // 발주 요청 생성
     @Transactional
     public OrderRequest create(Long storeId, Long ingredientId, Double quantity) {
         Store store = storeRepository.findById(storeId)
@@ -49,33 +48,28 @@ public class OrderRequestService {
         OrderRequest order = new OrderRequest();
         order.setStore(store);
         order.setIngredient(ingredient);
-        order.setQuantity(quantity);
+        order.setOrderedQty(BigDecimal.valueOf(quantity));
         order.setStatus("REQUESTED");
-<<<<<<< HEAD
-        order.setOrderedAt(LocalDateTime.now());
-=======
->>>>>>> 233f87c (feat: CRUD 완성 및 FoodGuard UI 전면 개선)
         return orderRequestRepository.save(order);
     }
 
-    // 단건 조회
     public OrderRequest getById(Long id) {
         return orderRequestRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("발주 요청을 찾을 수 없습니다."));
     }
 
-    // 가맹점 발주 내역 조회
     public List<OrderRequest> getByStore(Long storeId) {
         return orderRequestRepository.findByStoreId(storeId);
     }
 
-<<<<<<< HEAD
-    // 전체 발주 내역 조회 (관리자용)
+    public List<OrderRequest> getByStatus(Long storeId, String status) {
+        return orderRequestRepository.findByStoreIdAndStatus(storeId, status);
+    }
+
     public List<OrderRequest> getAll() {
         return orderRequestRepository.findAll();
     }
 
-    // 발주 수량 기반 재고 초기화 — 취소 제외한 모든 발주의 합을 현재 재고로 설정
     @Transactional
     public List<Inventory> initInventoryFromOrders(Long storeId) {
         Store store = storeRepository.findById(storeId)
@@ -85,7 +79,6 @@ public class OrderRequestService {
                 .filter(o -> !o.getStatus().equals("CANCELLED"))
                 .collect(Collectors.toList());
 
-        // 식자재별 발주량 합산
         Map<Long, Double> totalQty = new LinkedHashMap<>();
         Map<Long, Ingredient> ingredientMap = new LinkedHashMap<>();
         for (OrderRequest o : orders) {
@@ -100,13 +93,12 @@ public class OrderRequestService {
             Ingredient ingredient = ingredientMap.get(ingId);
             double qty = round1(entry.getValue());
 
-            Optional<Inventory> existing = inventoryRepository
-                    .findByStoreIdAndIngredientId(storeId, ingId);
+            Optional<Inventory> existing = inventoryRepository.findByStoreIdAndIngredientId(storeId, ingId);
             Inventory inv = existing.orElse(new Inventory());
             double currentQty = existing.map(i -> i.getCurrentQty().doubleValue()).orElse(0.0);
             inv.setStore(store);
             inv.setIngredient(ingredient);
-            inv.setQuantity(round1(currentQty + qty));
+            inv.setCurrentQty(BigDecimal.valueOf(round1(currentQty + qty)));
             inv.setMinThreshold(inv.getMinThreshold() != null ? inv.getMinThreshold() : BigDecimal.ZERO);
             inv.setUnit(ingredient.getUnit());
             result.add(inventoryRepository.save(inv));
@@ -114,140 +106,55 @@ public class OrderRequestService {
         return result;
     }
 
-    // 발주 상태 변경 — DONE 전환 시 재고 자동 반영
-    @Transactional
-    public OrderRequest updateStatus(Long id, String status) {
-        OrderRequest order = orderRequestRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("발주 요청을 찾을 수 없습니다."));
-        String prev = order.getStatus();
-=======
-    // 상태별 발주 조회
-    public List<OrderRequest> getByStatus(Long storeId, String status) {
-        return orderRequestRepository.findByStoreIdAndStatus(storeId, status);
-    }
-
-    // 전체 발주 조회 (본사용)
-    public List<OrderRequest> getAllOrders() {
-        return orderRequestRepository.findAll();
-    }
-
-    // 발주 상태 변경 (본사가 승인/완료 처리)
     @Transactional
     public OrderRequest updateStatus(Long id, String status) {
         OrderRequest order = getById(id);
->>>>>>> 233f87c (feat: CRUD 완성 및 FoodGuard UI 전면 개선)
+        String prev = order.getStatus();
         order.setStatus(status);
-        orderRequestRepository.save(order);
 
         if ("APPROVED".equals(status) && !"APPROVED".equals(prev)) {
             order.setApprovedAt(LocalDateTime.now());
             order.setDeliveryToken(UUID.randomUUID().toString().replace("-", ""));
-            orderRequestRepository.save(order);
         }
 
         if ("DONE".equals(status) && !"DONE".equals(prev)) {
             applyInventory(order);
         }
 
-        return order;
+        return orderRequestRepository.save(order);
     }
 
-<<<<<<< HEAD
-    // 가맹점 전체 발주 일괄 승인 — 그룹 토큰 공유
-    @Transactional
-    public String approveAllForStore(Long storeId) {
-        List<OrderRequest> requested = orderRequestRepository.findByStoreIdAndStatus(storeId, "REQUESTED");
-        if (requested.isEmpty()) return null;
-
-        String groupToken = UUID.randomUUID().toString().replace("-", "");
-        LocalDateTime now = LocalDateTime.now();
-        for (OrderRequest order : requested) {
-            order.setStatus("APPROVED");
-            order.setApprovedAt(now);
-            order.setDeliveryToken(UUID.randomUUID().toString().replace("-", ""));
-            order.setDeliveryGroupToken(groupToken);
-        }
-        orderRequestRepository.saveAll(requested);
-        return groupToken;
-    }
-
-    // 그룹 배송 시작 (APPROVED → IN_DELIVERY)
-    @Transactional
-    public List<OrderRequest> startGroupDelivery(String groupToken) {
-        List<OrderRequest> orders = orderRequestRepository.findByDeliveryGroupToken(groupToken);
-        orders.forEach(o -> o.setStatus("IN_DELIVERY"));
-        return orderRequestRepository.saveAll(orders);
-    }
-
-    // 그룹 배달 완료 (IN_DELIVERY → DELIVERED)
-    @Transactional
-    public List<OrderRequest> completeGroupDelivery(String groupToken) {
-        List<OrderRequest> orders = orderRequestRepository.findByDeliveryGroupToken(groupToken);
-        orders.forEach(o -> o.setStatus("DELIVERED"));
-        return orderRequestRepository.saveAll(orders);
-    }
-
-    // 가맹점주 검수 확인 (DELIVERED → INSPECTED) — 재고 반영
-    @Transactional
-    public List<OrderRequest> inspectGroupDelivery(String groupToken) {
-        List<OrderRequest> orders = orderRequestRepository.findByDeliveryGroupToken(groupToken);
-        for (OrderRequest order : orders) {
-            order.setStatus("INSPECTED");
-            applyInventory(order);
-        }
-        return orderRequestRepository.saveAll(orders);
-    }
-
-    private void applyInventory(OrderRequest order) {
-        Long storeId = order.getStore().getId();
-        Long ingredientId = order.getIngredient().getId();
-        double qty = order.getOrderedQty().doubleValue();
-
-        Optional<Inventory> invOpt = inventoryRepository.findByStoreIdAndIngredientId(storeId, ingredientId);
-        if (invOpt.isPresent()) {
-            Inventory inv = invOpt.get();
-            inv.setQuantity(inv.getCurrentQty().doubleValue() + qty);
-            inv.setUpdatedAt(LocalDateTime.now());
-            inventoryRepository.save(inv);
-        } else {
-            Inventory inv = new Inventory();
-            inv.setStore(order.getStore());
-            inv.setIngredient(order.getIngredient());
-            inv.setQuantity(qty);
-            inv.setMinThreshold(BigDecimal.ZERO);
-            inv.setUnit(order.getIngredient().getUnit());
-            inv.setUpdatedAt(LocalDateTime.now());
-            inventoryRepository.save(inv);
-        }
-    }
-
-    // 발주 취소 (삭제 대신 CANCELLED 상태로 변경 — recommend 중복 방지 및 이력 보존)
-    public String cancel(Long id) {
-        OrderRequest order = orderRequestRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("발주 요청을 찾을 수 없습니다."));
-        if (!order.getStatus().equals("REQUESTED")) {
-            return "승인된 발주는 취소할 수 없습니다.";
-=======
-    // 발주 취소 (REQUESTED 상태만 가능)
     @Transactional
     public String cancel(Long id) {
         OrderRequest order = getById(id);
         if (!"REQUESTED".equals(order.getStatus())) {
             throw new RuntimeException("승인/처리된 발주는 취소할 수 없습니다. 현재 상태: " + order.getStatus());
->>>>>>> 233f87c (feat: CRUD 완성 및 FoodGuard UI 전면 개선)
         }
         order.setStatus("CANCELLED");
         orderRequestRepository.save(order);
         return "발주 취소 완료";
     }
-<<<<<<< HEAD
 
-    // ── AI 예측 기반 발주 추천 미리보기 ────────────────────────────────────
+    private void applyInventory(OrderRequest order) {
+        Long storeId = order.getStore().getId();
+        Long ingId = order.getIngredient().getId();
+        double qty = order.getOrderedQty().doubleValue();
+
+        Optional<Inventory> existing = inventoryRepository.findByStoreIdAndIngredientId(storeId, ingId);
+        Inventory inv = existing.orElse(new Inventory());
+        double current = existing.map(i -> i.getCurrentQty().doubleValue()).orElse(0.0);
+        inv.setStore(order.getStore());
+        inv.setIngredient(order.getIngredient());
+        inv.setCurrentQty(BigDecimal.valueOf(round1(current + qty)));
+        inv.setMinThreshold(inv.getMinThreshold() != null ? inv.getMinThreshold() : BigDecimal.ZERO);
+        inv.setUnit(order.getIngredient().getUnit());
+        inventoryRepository.save(inv);
+    }
+
     @Transactional(readOnly = true)
     public List<Map<String, Object>> recommend(Long storeId) {
         LocalDate today = LocalDate.now();
 
-        // 오늘 이후 예측 데이터 가져오기
         List<PredictionResult> predictions = predictionResultRepository
                 .findByStore_IdAndPredictionDateGreaterThanEqualOrderByPredictionDateAsc(storeId, today);
 
@@ -255,13 +162,11 @@ public class OrderRequestService {
             return List.of();
         }
 
-        // 메뉴별 7일 예측량 합산
         Map<Long, Integer> menuTotal = new LinkedHashMap<>();
         for (PredictionResult p : predictions) {
             menuTotal.merge(p.getMenu().getId(), p.getPredictedQty(), Integer::sum);
         }
 
-        // 식자재별 총 필요량 계산 (레시피 소단위 → 발주 기준 단위로 변환)
         Map<Long, Double> required = new LinkedHashMap<>();
         Map<Long, String> ingName = new LinkedHashMap<>();
         Map<Long, String> ingUnit = new LinkedHashMap<>();
@@ -269,8 +174,8 @@ public class OrderRequestService {
         for (Map.Entry<Long, Integer> entry : menuTotal.entrySet()) {
             for (MenuIngredient mi : menuIngredientRepository.findByMenuId(entry.getKey())) {
                 Long ingId = mi.getIngredient().getId();
-                String baseUnit = mi.getIngredient().getUnit(); // kg, L, 개
-                String recipeUnit = mi.getUnit();               // g, ml, 개
+                String baseUnit = mi.getIngredient().getUnit();
+                String recipeUnit = mi.getUnit();
                 double rawQty = mi.getQtyPerUnit().doubleValue() * entry.getValue();
                 double qty = convertToBaseUnit(rawQty, recipeUnit, baseUnit);
                 required.merge(ingId, qty, Double::sum);
@@ -279,19 +184,16 @@ public class OrderRequestService {
             }
         }
 
-        // 현재 재고 맵
         Map<Long, Double> stock = new LinkedHashMap<>();
         for (Inventory inv : inventoryRepository.findByStoreId(storeId)) {
             stock.put(inv.getIngredient().getId(), inv.getCurrentQty().doubleValue());
         }
 
-        // 이미 진행 중인 발주량 (REQUESTED + APPROVED) — 중복 발주 방지
         Map<Long, Double> pending = new LinkedHashMap<>();
-        for (OrderRequest o : orderRequestRepository.findByStoreIdAndStatusIn(storeId, List.of("REQUESTED", "APPROVED", "IN_DELIVERY", "DELIVERED"))) {
+        for (OrderRequest o : orderRequestRepository.findByStoreIdAndStatusIn(storeId, List.of("REQUESTED", "APPROVED"))) {
             pending.merge(o.getIngredient().getId(), o.getOrderedQty().doubleValue(), Double::sum);
         }
 
-        // 발주 추천 목록 생성 (필요량 > 현재고 + 대기발주량인 식자재만)
         List<Map<String, Object>> result = new ArrayList<>();
         for (Map.Entry<Long, Double> entry : required.entrySet()) {
             Long ingId = entry.getKey();
@@ -314,7 +216,6 @@ public class OrderRequestService {
         return result;
     }
 
-    // ── AI 예측 기반 발주 자동 등록 ────────────────────────────────────────
     @Transactional
     public List<OrderRequest> autoOrder(Long storeId) {
         List<Map<String, Object>> recs = recommend(storeId);
@@ -322,14 +223,11 @@ public class OrderRequestService {
         for (Map<String, Object> rec : recs) {
             Long ingId = ((Number) rec.get("ingredientId")).longValue();
             Double qty = ((Number) rec.get("orderQty")).doubleValue();
-            // 재발주 시 같은 식자재의 취소 이력 정리
-            orderRequestRepository.deleteByStoreIdAndIngredientIdAndStatus(storeId, ingId, "CANCELLED");
             orders.add(create(storeId, ingId, qty));
         }
         return orders;
     }
 
-    // 레시피 소단위 → 발주 기준 단위 변환 (g→kg, ml→L)
     private double convertToBaseUnit(double qty, String recipeUnit, String baseUnit) {
         if ("g".equals(recipeUnit) && "kg".equals(baseUnit)) return qty / 1000.0;
         if ("ml".equals(recipeUnit) && "L".equals(baseUnit)) return qty / 1000.0;
@@ -339,6 +237,4 @@ public class OrderRequestService {
     private double round1(double v) {
         return Math.round(v * 10.0) / 10.0;
     }
-=======
->>>>>>> 233f87c (feat: CRUD 완성 및 FoodGuard UI 전면 개선)
 }

@@ -62,10 +62,6 @@ public class UserService {
             throw new RuntimeException("비밀번호가 틀렸습니다.");
         }
 
-<<<<<<< HEAD
-        // 로그인 성공 → JWT 토큰 발급
-        return jwtUtil.generateToken(user.getEmail(), user.getRole(), user.getId());
-=======
         String token = jwtUtil.generateToken(user.getEmail(), user.getRole(), user.getId());
 
         return Map.of(
@@ -74,9 +70,7 @@ public class UserService {
                 "email", user.getEmail(),
                 "userName", user.getUserName() != null ? user.getUserName() : "",
                 "role", user.getRole()
-        );
->>>>>>> 233f87c (feat: CRUD 완성 및 FoodGuard UI 전면 개선)
-    }
+        );    }
 
     // 이메일로 유저 조회 (JWT 인증용)
     public User getByEmail(String email) {

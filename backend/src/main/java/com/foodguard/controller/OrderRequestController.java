@@ -60,38 +60,6 @@ public class OrderRequestController {
         return ResponseEntity.ok(orderRequestService.getAllOrders());
     }
 
-<<<<<<< HEAD
-    @PostMapping("/init-inventory/{storeId}")
-    public ResponseEntity<List<Inventory>> initInventory(@PathVariable Long storeId) {
-        return ResponseEntity.ok(orderRequestService.initInventoryFromOrders(storeId));
-    }
-
-    @GetMapping("/admin/all")
-    public ResponseEntity<List<OrderRequest>> getAll() {
-        return ResponseEntity.ok(orderRequestService.getAll());
-    }
-
-    @GetMapping("/recommend/{storeId}")
-    public ResponseEntity<List<Map<String, Object>>> recommend(@PathVariable Long storeId) {
-        return ResponseEntity.ok(orderRequestService.recommend(storeId));
-    }
-
-    @PostMapping("/auto/{storeId}")
-    public ResponseEntity<List<OrderRequest>> autoOrder(@PathVariable Long storeId) {
-        return ResponseEntity.ok(orderRequestService.autoOrder(storeId));
-    }
-
-    // 가맹점 전체 발주 일괄 승인 — 그룹 토큰 반환
-    @PostMapping("/approve-all/{storeId}")
-    public ResponseEntity<Map<String, Object>> approveAll(@PathVariable Long storeId) {
-        String groupToken = orderRequestService.approveAllForStore(storeId);
-        if (groupToken == null) {
-            return ResponseEntity.badRequest().body(Map.of("error", "승인할 발주가 없습니다."));
-        }
-        return ResponseEntity.ok(Map.of("groupToken", groupToken));
-    }
-}
-=======
     // 발주 상태 변경
     @PutMapping("/{id}/status")
     public ResponseEntity<?> updateStatus(@PathVariable Long id,
@@ -115,4 +83,3 @@ public class OrderRequestController {
         }
     }
 }
->>>>>>> 233f87c (feat: CRUD 완성 및 FoodGuard UI 전면 개선)

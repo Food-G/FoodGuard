@@ -18,14 +18,6 @@ public class IngredientController {
 
     // 식자재 등록
     @PostMapping
-<<<<<<< HEAD
-    public ResponseEntity<Ingredient> create(@RequestBody Map<String, Object> body) {
-        return ResponseEntity.ok(ingredientService.create(
-                body.get("name").toString(),
-                body.getOrDefault("category", "").toString(),
-                body.get("unit").toString()
-        ));
-=======
     public ResponseEntity<?> create(@RequestBody Map<String, Object> body) {
         try {
             return ResponseEntity.ok(ingredientService.create(
@@ -35,9 +27,7 @@ public class IngredientController {
             ));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
->>>>>>> 233f87c (feat: CRUD 완성 및 FoodGuard UI 전면 개선)
-    }
+        }    }
 
     // 단건 조회
     @GetMapping("/{id}")
@@ -57,16 +47,6 @@ public class IngredientController {
 
     // 수정
     @PutMapping("/{id}")
-<<<<<<< HEAD
-    public ResponseEntity<Ingredient> update(@PathVariable Long id,
-                                             @RequestBody Map<String, Object> body) {
-        return ResponseEntity.ok(ingredientService.update(
-                id,
-                body.get("name").toString(),
-                body.getOrDefault("category", "").toString(),
-                body.get("unit").toString()
-        ));
-=======
     public ResponseEntity<?> update(@PathVariable Long id,
                                     @RequestBody Map<String, Object> body) {
         try {
@@ -78,9 +58,7 @@ public class IngredientController {
             ));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
->>>>>>> 233f87c (feat: CRUD 완성 및 FoodGuard UI 전면 개선)
-    }
+        }    }
 
     // 삭제
     @DeleteMapping("/{id}")

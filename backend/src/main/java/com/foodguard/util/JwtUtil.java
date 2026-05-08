@@ -20,21 +20,11 @@ public class JwtUtil {
         this.expiration = expiration;
     }
 
-<<<<<<< HEAD
-    // 토큰 생성
-=======
-    // role·userId 포함 토큰 생성
->>>>>>> 233f87c (feat: CRUD 완성 및 FoodGuard UI 전면 개선)
-    public String generateToken(String email, String role, Long userId) {
+    // role·userId 포함 토큰 생성    public String generateToken(String email, String role, Long userId) {
         return Jwts.builder()
                 .setSubject(email)
                 .claim("role", role)
-<<<<<<< HEAD
-                .claim("id", userId)
-=======
-                .claim("userId", userId)
->>>>>>> 233f87c (feat: CRUD 완성 및 FoodGuard UI 전면 개선)
-                .setIssuedAt(new Date())
+                .claim("userId", userId)                .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + expiration))
                 .signWith(key, SignatureAlgorithm.HS256)
                 .compact();

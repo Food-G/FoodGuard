@@ -70,23 +70,6 @@ public class SalesDataController {
         }
     }
 
-<<<<<<< HEAD
-    @GetMapping("/{storeId}/today-summary")
-    public ResponseEntity<Map<String, Object>> getTodaySummary(@PathVariable Long storeId) {
-        return ResponseEntity.ok(salesDataService.getTodaySummary(storeId));
-    }
-
-    @GetMapping("/{storeId}/weekly-summary")
-    public ResponseEntity<Map<String, Object>> getWeeklySummary(@PathVariable Long storeId) {
-        return ResponseEntity.ok(salesDataService.getWeeklySummary(storeId));
-    }
-
-    @GetMapping("/all-stores/weekly-summary")
-    public ResponseEntity<Map<Long, Long>> getAllStoreWeeklySummary() {
-        return ResponseEntity.ok(salesDataService.getAllStoreWeeklySummary());
-    }
-}
-=======
     // 매출 삭제 (Soft Delete)
     @DeleteMapping("/{id}")
     public ResponseEntity<?> delete(@PathVariable Long id) {
@@ -97,4 +80,3 @@ public class SalesDataController {
         }
     }
 }
->>>>>>> 233f87c (feat: CRUD 완성 및 FoodGuard UI 전면 개선)

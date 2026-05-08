@@ -79,13 +79,6 @@ public class InventoryController {
         }
     }
 
-<<<<<<< HEAD
-    @DeleteMapping("/store/{storeId}")
-    public ResponseEntity<String> deleteAll(@PathVariable Long storeId) {
-        return ResponseEntity.ok(inventoryService.deleteAll(storeId));
-    }
-}
-=======
     // 최소 임계값 수정
     @PatchMapping("/{id}/threshold")
     public ResponseEntity<?> updateThreshold(@PathVariable Long id,
@@ -110,4 +103,3 @@ public class InventoryController {
         }
     }
 }
->>>>>>> 233f87c (feat: CRUD 완성 및 FoodGuard UI 전면 개선)

@@ -44,6 +44,7 @@ const NavItem = ({ navItem, open, onClick }: NavItemProps) => {
         href={navItem.path}
         onClick={onClick}
         sx={{
+          py: 1.2,                  /* 세로 패딩 축소 */
           opacity: navItem.active ? 1 : 0.5,
           bgcolor: isActive && !navItem.blackIcon ? (open ? 'primary.main' : '') : 'background.default',
           '&:hover': {

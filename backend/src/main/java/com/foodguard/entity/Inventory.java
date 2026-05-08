@@ -1,11 +1,6 @@
 package com.foodguard.entity;
 
-<<<<<<< HEAD
-import com.fasterxml.jackson.annotation.JsonIgnore;
-=======
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
->>>>>>> 233f87c (feat: CRUD 완성 및 FoodGuard UI 전면 개선)
-import jakarta.persistence.*;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -46,9 +41,6 @@ public class Inventory {
     @Column(nullable = false, length = 20)
     private String unit;
 
-<<<<<<< HEAD
-    @Column(name = "updated_at")
-=======
     // 재고 단가 (원)
     @Column(precision = 12, scale = 2)
     private BigDecimal price;
@@ -61,9 +53,7 @@ public class Inventory {
     @Column(name = "registered_at")
     private LocalDateTime registeredAt;
 
-    @Column(name = "updated_at", insertable = false, updatable = false)
->>>>>>> 233f87c (feat: CRUD 완성 및 FoodGuard UI 전면 개선)
-    private LocalDateTime updatedAt;
+    @Column(name = "updated_at", insertable = false, updatable = false)    private LocalDateTime updatedAt;
 
     public void setQuantity(Double quantity) {
         this.quantity = quantity;

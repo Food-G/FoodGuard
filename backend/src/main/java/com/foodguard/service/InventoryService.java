@@ -13,53 +13,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-<<<<<<< HEAD
-=======
-import java.time.LocalDate;
->>>>>>> 233f87c (feat: CRUD 완성 및 FoodGuard UI 전면 개선)
-import java.time.LocalDateTime;
-import java.util.List;
-
-@Service
-@RequiredArgsConstructor
-public class InventoryService {
-
-    private final InventoryRepository inventoryRepository;
-    private final StoreRepository storeRepository;
-    private final IngredientRepository ingredientRepository;
-    private final MenuIngredientRepository menuIngredientRepository;
-    private final NotificationService notificationService;
-
-    // 재고 등록
-    @Transactional
-    public Inventory create(Long storeId, Long ingredientId, Double quantity) {
-        return create(storeId, ingredientId, quantity, quantity * 0.2, null);
-    }
-
-    // 재고 등록 (임계값 포함)
-    @Transactional
-    public Inventory create(Long storeId, Long ingredientId, Double quantity,
-                            Double minThreshold, String unit) {
-        Store store = storeRepository.findById(storeId)
-                .orElseThrow(() -> new RuntimeException("가맹점을 찾을 수 없습니다."));
-        Ingredient ingredient = ingredientRepository.findById(ingredientId)
-                .orElseThrow(() -> new RuntimeException("식자재를 찾을 수 없습니다."));
-
-        Inventory inventory = inventoryRepository
-                .findByStoreIdAndIngredientId(storeId, ingredientId)
-                .orElse(new Inventory());
-        inventory.setStore(store);
-        inventory.setIngredient(ingredient);
-<<<<<<< HEAD
-        inventory.setQuantity(quantity);
-        inventory.setMinThreshold(BigDecimal.ZERO);
-        inventory.setUnit(ingredient.getUnit());
-=======
         inventory.setCurrentQty(BigDecimal.valueOf(quantity));
         inventory.setMinThreshold(BigDecimal.valueOf(minThreshold != null ? minThreshold : quantity * 0.2));
-        inventory.setUnit(unit != null ? unit : ingredient.getUnit());
->>>>>>> 233f87c (feat: CRUD 완성 및 FoodGuard UI 전면 개선)
-        return inventoryRepository.save(inventory);
+        inventory.setUnit(unit != null ? unit : ingredient.getUnit());        return inventoryRepository.save(inventory);
     }
 
     // 가맹점 재고 조회
@@ -179,15 +135,4 @@ public class InventoryService {
         inventoryRepository.deleteById(id);
         return "재고 삭제 완료";
     }
-<<<<<<< HEAD
-
-    // 가맹점 전체 재고 초기화
-    @org.springframework.transaction.annotation.Transactional
-    public String deleteAll(Long storeId) {
-        inventoryRepository.deleteByStoreId(storeId);
-        return "전체 재고 초기화 완료";
-    }
 }
-=======
-}
->>>>>>> 233f87c (feat: CRUD 완성 및 FoodGuard UI 전면 개선)
