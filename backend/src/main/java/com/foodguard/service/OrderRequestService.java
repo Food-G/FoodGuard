@@ -38,7 +38,8 @@ public class OrderRequestService {
     private final MenuIngredientRepository menuIngredientRepository;
     private final InventoryRepository inventoryRepository;
 
-    // 발주 요청
+    // 발주 요청 생성
+    @Transactional
     public OrderRequest create(Long storeId, Long ingredientId, Double quantity) {
         Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new RuntimeException("가맹점을 찾을 수 없습니다."));
@@ -50,8 +51,17 @@ public class OrderRequestService {
         order.setIngredient(ingredient);
         order.setQuantity(quantity);
         order.setStatus("REQUESTED");
+<<<<<<< HEAD
         order.setOrderedAt(LocalDateTime.now());
+=======
+>>>>>>> 233f87c (feat: CRUD 완성 및 FoodGuard UI 전면 개선)
         return orderRequestRepository.save(order);
+    }
+
+    // 단건 조회
+    public OrderRequest getById(Long id) {
+        return orderRequestRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("발주 요청을 찾을 수 없습니다."));
     }
 
     // 가맹점 발주 내역 조회
@@ -59,6 +69,7 @@ public class OrderRequestService {
         return orderRequestRepository.findByStoreId(storeId);
     }
 
+<<<<<<< HEAD
     // 전체 발주 내역 조회 (관리자용)
     public List<OrderRequest> getAll() {
         return orderRequestRepository.findAll();
@@ -109,6 +120,22 @@ public class OrderRequestService {
         OrderRequest order = orderRequestRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("발주 요청을 찾을 수 없습니다."));
         String prev = order.getStatus();
+=======
+    // 상태별 발주 조회
+    public List<OrderRequest> getByStatus(Long storeId, String status) {
+        return orderRequestRepository.findByStoreIdAndStatus(storeId, status);
+    }
+
+    // 전체 발주 조회 (본사용)
+    public List<OrderRequest> getAllOrders() {
+        return orderRequestRepository.findAll();
+    }
+
+    // 발주 상태 변경 (본사가 승인/완료 처리)
+    @Transactional
+    public OrderRequest updateStatus(Long id, String status) {
+        OrderRequest order = getById(id);
+>>>>>>> 233f87c (feat: CRUD 완성 및 FoodGuard UI 전면 개선)
         order.setStatus(status);
         orderRequestRepository.save(order);
 
@@ -125,6 +152,7 @@ public class OrderRequestService {
         return order;
     }
 
+<<<<<<< HEAD
     // 가맹점 전체 발주 일괄 승인 — 그룹 토큰 공유
     @Transactional
     public String approveAllForStore(Long storeId) {
@@ -199,11 +227,20 @@ public class OrderRequestService {
                 .orElseThrow(() -> new RuntimeException("발주 요청을 찾을 수 없습니다."));
         if (!order.getStatus().equals("REQUESTED")) {
             return "승인된 발주는 취소할 수 없습니다.";
+=======
+    // 발주 취소 (REQUESTED 상태만 가능)
+    @Transactional
+    public String cancel(Long id) {
+        OrderRequest order = getById(id);
+        if (!"REQUESTED".equals(order.getStatus())) {
+            throw new RuntimeException("승인/처리된 발주는 취소할 수 없습니다. 현재 상태: " + order.getStatus());
+>>>>>>> 233f87c (feat: CRUD 완성 및 FoodGuard UI 전면 개선)
         }
         order.setStatus("CANCELLED");
         orderRequestRepository.save(order);
         return "발주 취소 완료";
     }
+<<<<<<< HEAD
 
     // ── AI 예측 기반 발주 추천 미리보기 ────────────────────────────────────
     @Transactional(readOnly = true)
@@ -302,4 +339,6 @@ public class OrderRequestService {
     private double round1(double v) {
         return Math.round(v * 10.0) / 10.0;
     }
+=======
+>>>>>>> 233f87c (feat: CRUD 완성 및 FoodGuard UI 전면 개선)
 }

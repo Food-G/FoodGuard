@@ -1,6 +1,10 @@
 package com.foodguard.entity;
 
+<<<<<<< HEAD
 import com.fasterxml.jackson.annotation.JsonIgnore;
+=======
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+>>>>>>> 233f87c (feat: CRUD 완성 및 FoodGuard UI 전면 개선)
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -21,10 +25,12 @@ public class SalesData {
     @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "store_id", nullable = false)
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "user"})
     private Store store;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "menu_id", nullable = false)
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "store"})
     private Menu menu;
 
     @Column(name = "sales_date", nullable = false)
@@ -41,13 +47,12 @@ public class SalesData {
 
     @Column(name = "updated_at", insertable = false, updatable = false)
     private LocalDateTime updatedAt;
-    
+
     @Transient
     private Integer totalPrice;
-    @Transient
+
+    @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
-    public void setIsDeleted(boolean isDeleted) {
-        this.isDeleted = isDeleted;
-    }
+    public void setIsDeleted(boolean isDeleted) { this.isDeleted = isDeleted; }
 }

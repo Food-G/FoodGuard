@@ -1,6 +1,10 @@
 package com.foodguard.entity;
 
+<<<<<<< HEAD
 import com.fasterxml.jackson.annotation.JsonIgnore;
+=======
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+>>>>>>> 233f87c (feat: CRUD 완성 및 FoodGuard UI 전면 개선)
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -38,6 +42,7 @@ public class Store {
     @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "hq_user_id")
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "password", "storeId"})
     private User user;
 
     @Column(name = "created_at", insertable = false, updatable = false)

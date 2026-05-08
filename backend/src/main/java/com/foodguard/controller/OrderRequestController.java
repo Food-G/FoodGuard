@@ -17,33 +17,50 @@ public class OrderRequestController {
 
     private final OrderRequestService orderRequestService;
 
+    // 발주 요청 생성
     @PostMapping
-    public ResponseEntity<OrderRequest> create(@RequestBody Map<String, Object> body) {
-        return ResponseEntity.ok(orderRequestService.create(
-                Long.parseLong(body.get("storeId").toString()),
-                Long.parseLong(body.get("ingredientId").toString()),
-                Double.parseDouble(body.get("quantity").toString())
-        ));
+    public ResponseEntity<?> create(@RequestBody Map<String, Object> body) {
+        try {
+            return ResponseEntity.ok(orderRequestService.create(
+                    Long.parseLong(body.get("storeId").toString()),
+                    Long.parseLong(body.get("ingredientId").toString()),
+                    Double.parseDouble(body.get("quantity").toString())
+            ));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
     }
 
+    // 단건 조회
+    @GetMapping("/detail/{id}")
+    public ResponseEntity<?> getById(@PathVariable Long id) {
+        try {
+            return ResponseEntity.ok(orderRequestService.getById(id));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    // 가맹점 발주 전체 조회
     @GetMapping("/{storeId}")
     public ResponseEntity<List<OrderRequest>> getByStore(@PathVariable Long storeId) {
         return ResponseEntity.ok(orderRequestService.getByStore(storeId));
     }
 
-    @PutMapping("/{id}/status")
-    public ResponseEntity<OrderRequest> updateStatus(@PathVariable Long id,
-                                                     @RequestBody Map<String, Object> body) {
-        return ResponseEntity.ok(orderRequestService.updateStatus(
-                id, body.get("status").toString()
-        ));
+    // 상태별 발주 조회
+    @GetMapping("/{storeId}/status/{status}")
+    public ResponseEntity<List<OrderRequest>> getByStatus(@PathVariable Long storeId,
+                                                          @PathVariable String status) {
+        return ResponseEntity.ok(orderRequestService.getByStatus(storeId, status));
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<String> cancel(@PathVariable Long id) {
-        return ResponseEntity.ok(orderRequestService.cancel(id));
+    // 전체 발주 조회 (본사용)
+    @GetMapping
+    public ResponseEntity<List<OrderRequest>> getAllOrders() {
+        return ResponseEntity.ok(orderRequestService.getAllOrders());
     }
 
+<<<<<<< HEAD
     @PostMapping("/init-inventory/{storeId}")
     public ResponseEntity<List<Inventory>> initInventory(@PathVariable Long storeId) {
         return ResponseEntity.ok(orderRequestService.initInventoryFromOrders(storeId));
@@ -74,3 +91,28 @@ public class OrderRequestController {
         return ResponseEntity.ok(Map.of("groupToken", groupToken));
     }
 }
+=======
+    // 발주 상태 변경
+    @PutMapping("/{id}/status")
+    public ResponseEntity<?> updateStatus(@PathVariable Long id,
+                                          @RequestBody Map<String, Object> body) {
+        try {
+            return ResponseEntity.ok(orderRequestService.updateStatus(
+                    id, body.get("status").toString()
+            ));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    // 발주 취소
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> cancel(@PathVariable Long id) {
+        try {
+            return ResponseEntity.ok(Map.of("message", orderRequestService.cancel(id)));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+}
+>>>>>>> 233f87c (feat: CRUD 완성 및 FoodGuard UI 전면 개선)
