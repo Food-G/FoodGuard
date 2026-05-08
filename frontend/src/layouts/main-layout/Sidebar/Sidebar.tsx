@@ -22,6 +22,8 @@ const Sidebar = ({ open, role, setMobileOpen }: SidebarProps): ReactElement => {
     { title: '자원 순환 관리', icon: 'mingcute:list-check-fill', path: '/admin/orders', active: true },
   ] : [
     { title: '에코 대시보드', icon: 'mingcute:leaf-line', path: '/', active: true },
+    { title: '가게 등록', icon: 'mingcute:store-2-line', path: '/store', active: true },
+    { title: '메뉴 관리', icon: 'mingcute:fork-spoon-line', path: '/menus', active: true },
     { title: '판매 실적 입력', icon: 'mingcute:edit-fill', path: '/sales', active: true },
     { title: 'AI 수요 예측', icon: 'mingcute:brain-fill', path: '/predictions', active: true },
     { title: '식자재 발주', icon: 'mingcute:refresh-2-line', path: '/orders', active: true },

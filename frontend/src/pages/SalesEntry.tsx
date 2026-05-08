@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Typography, Box, Paper, Button, Grid, TextField, MenuItem, CircularProgress, Alert, Stack, useTheme } from '@mui/material';
-import { DataGrid, GridColDef } from '@mui/x-data-grid';
+import {
+  Typography, Box, Paper, Button, Grid, TextField, MenuItem,
+  CircularProgress, Alert, Stack, useTheme,
+  Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip,
+} from '@mui/material';
 import { salesService } from '../services/salesService';
 import { menuService } from '../services/menuService';
 import { storeService } from '../services/storeService';
@@ -14,29 +17,41 @@ const SalesEntry = ({ user }: any) => {
   const [storeId, setStoreId] = useState<number | null>(null);
   const [formData, setFormData] = useState({ menuId: '', quantity: 1, saleDate: new Date().toISOString().split('T')[0] });
   const [success, setSuccess] = useState('');
+  const [error, setError] = useState('');
+
+  const loadSales = async (sid: number) => {
+    try {
+      const sales = await salesService.getByStore(sid);
+      setRows(sales.map((item: any) => ({
+        id: item.id,
+        menuName: item.menu?.menuName ?? '-',
+        quantity: item.quantity,
+        totalPrice: item.menu ? item.menu.price * item.quantity : 0,
+        saleDate: item.saleDate,
+      })));
+    } catch (err) {
+      console.error('Failed to load sales:', err);
+      setError('판매 내역을 불러오지 못했습니다.');
+    }
+  };
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        if (user?.id) {
-          const stores = await storeService.getMyStores(user.id);
-          if (stores && stores.length > 0) {
-            const firstStoreId = stores[0].id;
-            setStoreId(firstStoreId);
-            const sales = await salesService.getByStore(firstStoreId);
-            setRows(sales.map((item: any) => ({
-              id: item.id,
-              menuName: item.menu.menuName,
-              quantity: item.quantity,
-              totalPrice: item.totalPrice,
-              saleDate: item.saleDate,
-            })));
-            const storeMenus = await menuService.getByStore(firstStoreId);
-            setMenus(storeMenus);
-          }
+        if (!user?.id) return;
+        const stores = await storeService.getMyStores(user.id);
+        if (!stores || stores.length === 0) {
+          setError('등록된 가게가 없습니다. 가게를 먼저 등록해주세요.');
+          return;
         }
-      } catch (error) {
-        console.error('Failed to fetch sales data:', error);
+        const firstStoreId = stores[0].id;
+        setStoreId(firstStoreId);
+        const storeMenus = await menuService.getByStore(firstStoreId);
+        setMenus(storeMenus);
+        await loadSales(firstStoreId);
+      } catch (err) {
+        console.error('Failed to fetch data:', err);
+        setError('데이터를 불러오지 못했습니다.');
       } finally {
         setLoading(false);
       }
@@ -49,10 +64,10 @@ const SalesEntry = ({ user }: any) => {
     if (!storeId || !formData.menuId) return;
 
     try {
-      const selectedMenu: any = menus.find((m: any) => m.id === formData.menuId);
-      const totalPrice = selectedMenu.price * formData.quantity;
-      
-      const newSale = await salesService.create({
+      const selectedMenu: any = menus.find((m: any) => m.id === Number(formData.menuId));
+      const totalPrice = selectedMenu ? selectedMenu.price * formData.quantity : 0;
+
+      await salesService.create({
         storeId,
         menuId: formData.menuId,
         quantity: formData.quantity,
@@ -60,16 +75,7 @@ const SalesEntry = ({ user }: any) => {
         saleDate: formData.saleDate,
       });
 
-      setRows([
-        {
-          id: newSale.id,
-          menuName: selectedMenu.menuName,
-          quantity: newSale.quantity,
-          totalPrice: newSale.totalPrice,
-          saleDate: newSale.saleDate,
-        },
-        ...rows,
-      ]);
+      await loadSales(storeId);
       setSuccess('매출 기록이 성공적으로 등록되었습니다.');
       setTimeout(() => setSuccess(''), 3000);
     } catch (error) {
@@ -77,12 +83,6 @@ const SalesEntry = ({ user }: any) => {
     }
   };
 
-  const columns: GridColDef[] = [
-    { field: 'saleDate', headerName: '판매 일자', width: 150 },
-    { field: 'menuName', headerName: '메뉴명', flex: 1, minWidth: 200 },
-    { field: 'quantity', headerName: '수량', width: 100, type: 'number', align: 'right', headerAlign: 'right' },
-    { field: 'totalPrice', headerName: '총 금액', width: 150, type: 'number', align: 'right', headerAlign: 'right', valueFormatter: (params: any) => `₩${params.toLocaleString()}` },
-  ];
 
   return (
     <Stack gap={4} sx={{ bgcolor: 'background.default' }}>
@@ -98,6 +98,7 @@ const SalesEntry = ({ user }: any) => {
               <IconifyIcon icon="mingcute:save-fill" color={theme.palette.primary.main} />
               매출 등록
             </Typography>
+            {error && <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }} onClose={() => setError('')}>{error}</Alert>}
             {success && <Alert severity="success" sx={{ mb: 3, borderRadius: 2 }}>{success}</Alert>}
             <Stack component="form" onSubmit={handleSubmit} gap={3}>
               <TextField
@@ -140,28 +141,44 @@ const SalesEntry = ({ user }: any) => {
         </Grid>
         
         <Grid item xs={12} md={8}>
-          <Paper sx={{ height: 650, width: '100%', p: 3, border: `1px solid ${theme.palette.divider}`, borderRadius: 5 }}>
+          <Paper sx={{ width: '100%', p: 3, border: `1px solid ${theme.palette.divider}`, borderRadius: 5 }}>
+            <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
+              <Typography variant="h6" fontWeight={700} color="text.primary">판매 내역</Typography>
+              <Chip label={`총 ${rows.length}건`} size="small" color="primary" variant="outlined" />
+            </Stack>
             {loading ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
                 <CircularProgress color="primary" />
               </Box>
+            ) : rows.length === 0 ? (
+              <Box sx={{ textAlign: 'center', py: 6 }}>
+                <Typography color="text.secondary">등록된 판매 내역이 없습니다.</Typography>
+              </Box>
             ) : (
-              <DataGrid
-                rows={rows}
-                columns={columns}
-                initialState={{
-                  pagination: { paginationModel: { pageSize: 10 } },
-                }}
-                pageSizeOptions={[10, 20]}
-                sx={{ 
-                  border: 'none',
-                  '& .MuiDataGrid-columnHeaders': {
-                    bgcolor: 'primary.light',
-                    color: 'primary.dark',
-                    fontWeight: 700
-                  }
-                }}
-              />
+              <TableContainer sx={{ maxHeight: 560 }}>
+                <Table size="small" stickyHeader>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell sx={{ fontWeight: 700, bgcolor: 'grey.100', color: 'text.primary' }}>판매 일자</TableCell>
+                      <TableCell sx={{ fontWeight: 700, bgcolor: 'grey.100', color: 'text.primary' }}>메뉴명</TableCell>
+                      <TableCell align="center" sx={{ fontWeight: 700, bgcolor: 'grey.100', color: 'text.primary' }}>수량</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 700, bgcolor: 'grey.100', color: 'text.primary' }}>총 금액</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {rows.map((row) => (
+                      <TableRow key={row.id} hover>
+                        <TableCell sx={{ color: 'text.primary' }}>{row.saleDate}</TableCell>
+                        <TableCell sx={{ color: 'text.primary', fontWeight: 600 }}>{row.menuName}</TableCell>
+                        <TableCell align="center" sx={{ color: 'text.primary' }}>{row.quantity}</TableCell>
+                        <TableCell align="right" sx={{ color: 'primary.main', fontWeight: 700 }}>
+                          ₩{row.totalPrice?.toLocaleString() ?? 0}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
             )}
           </Paper>
         </Grid>

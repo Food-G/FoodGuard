@@ -58,6 +58,6 @@ public class UserService {
         }
 
         // 로그인 성공 → JWT 토큰 발급
-        return jwtUtil.generateToken(user.getEmail(), user.getRole());
+        return jwtUtil.generateToken(user.getEmail(), user.getRole(), user.getId());
     }
 }

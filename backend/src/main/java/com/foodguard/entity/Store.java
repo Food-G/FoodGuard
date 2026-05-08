@@ -1,5 +1,6 @@
 package com.foodguard.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -34,6 +35,7 @@ public class Store {
     @Column(name = "opened_at", nullable = false)
     private java.time.LocalDate openedAt;
 
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "hq_user_id")
     private User user;
