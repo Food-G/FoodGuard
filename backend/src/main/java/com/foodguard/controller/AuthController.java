@@ -20,8 +20,9 @@ public class AuthController {
         try {
             String result = userService.signup(request);
             return ResponseEntity.ok(result);
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            String errorMessage = e.getMessage() != null ? e.getMessage() : e.toString();
+            return ResponseEntity.badRequest().body(errorMessage);
         }
     }
 
@@ -31,8 +32,9 @@ public class AuthController {
         try {
             String token = userService.login(request);
             return ResponseEntity.ok(token);
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(401).body(e.getMessage());
+        } catch (Exception e) {
+            String errorMessage = e.getMessage() != null ? e.getMessage() : e.toString();
+            return ResponseEntity.status(401).body(errorMessage);
         }
     }
 }

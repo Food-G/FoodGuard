@@ -81,19 +81,19 @@ function App() {
 
             {/* HQ Admin Routes */}
             <Route path="/admin/stores" element={
-              <ProtectedRoute role="HQ">
+              <ProtectedRoute role="HQ_ADMIN">
                 <StoreManagement />
               </ProtectedRoute>
             } />
 
             <Route path="/admin/stats" element={
-              <ProtectedRoute role="HQ">
+              <ProtectedRoute role="HQ_ADMIN">
                 <Stats />
               </ProtectedRoute>
             } />
 
             <Route path="/admin/orders" element={
-              <ProtectedRoute role="HQ">
+              <ProtectedRoute role="HQ_ADMIN">
                 <AdminOrders />
               </ProtectedRoute>
             } />

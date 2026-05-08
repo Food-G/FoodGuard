@@ -119,7 +119,7 @@ const Dashboard = ({ user }: any) => {
       </Typography>
       
       <Grid container spacing={3.5} mb={8}>
-        {role !== 'HQ' ? (
+        {role !== 'HQ_ADMIN' ? (
           <>
             <Grid item xs={12} sm={6} lg={3}>
               <StatusCard title="오늘의 매출" value="₩1,240,000" icon="mingcute:bank-card-line" color={theme.palette.primary.main} subtitle="+12.5%" trend="up" />

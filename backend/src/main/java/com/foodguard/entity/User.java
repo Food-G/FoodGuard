@@ -25,7 +25,7 @@ public class User {
     @Column(name = "password_hash", nullable = false)
     private String password;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 20)
     private String role; // OWNER or HQ_ADMIN
 
     @Column(name = "store_id")

@@ -15,7 +15,7 @@ interface SidebarProps {
 }
 
 const Sidebar = ({ open, role, setMobileOpen }: SidebarProps): ReactElement => {
-  const menuItems = role === 'HQ' ? [
+  const menuItems = role === 'HQ_ADMIN' ? [
     { title: '통합 관리 센터', icon: 'mingcute:home-5-line', path: '/', active: true },
     { title: '가맹점 네트워크', icon: 'mingcute:grid-fill', path: '/admin/stores', active: true },
     { title: '환경 통계 분석', icon: 'mingcute:chart-bar-fill', path: '/admin/stats', active: true },

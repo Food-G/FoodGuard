@@ -10,7 +10,8 @@ import {
   Typography,
   InputAdornment,
   Alert,
-  alpha
+  alpha,
+  Divider
 } from '@mui/material';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import IconifyIcon from '../../components/base/IconifyIcon';

@@ -8,7 +8,7 @@ public class SignupRequest {
     private String email;
     private String password;
     private String userName;
-    private String role;   // "OWNER" 또는 "HQ"
+    private String role;   // "OWNER" 또는 "HQ_ADMIN"
     
     // 가맹점 정보 (OWNER일 경우 필요)
     private String storeName;
