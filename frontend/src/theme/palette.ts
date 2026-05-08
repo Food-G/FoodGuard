@@ -1,52 +1,49 @@
-import { PaletteOptions } from '@mui/material';
-import { teal, grey, green, stone, fuchsia, bluishCyan, pinkishRed, yellowOrange } from './colors';
+import { PaletteOptions } from '@mui/material/styles';
+import { grey } from './colors';
 
-const palette: PaletteOptions = {
+export const palette: PaletteOptions = {
+  mode: 'light',
   primary: {
-    light: teal[50],
-    main: teal[100],
-    dark: teal[200],
+    light: '#E8F5F1',
+    main: '#1D9E75', // Emerald Green
+    dark: '#147A5A',
+    contrastText: '#FFFFFF',
   },
   secondary: {
-    light: fuchsia[50],
-    main: fuchsia[100],
-    dark: fuchsia[400],
-  },
-  success: {
-    light: green[200],
-    main: green[600],
-    dark: green[900],
+    light: '#ECF3E7',
+    main: '#3B6D11', // Forest Green
+    dark: '#2A4E0C',
+    contrastText: '#FFFFFF',
   },
   info: {
-    light: bluishCyan[100],
-    main: bluishCyan[500],
-    dark: bluishCyan[900],
+    light: '#E0F2F1',
+    main: '#00897B',
+    dark: '#00695C',
+  },
+  success: {
+    light: '#E8F5E9',
+    main: '#43A047',
+    dark: '#2E7D32',
   },
   warning: {
-    light: yellowOrange[50],
-    main: yellowOrange[300],
-    dark: yellowOrange[700],
+    light: '#FFF8E1',
+    main: '#FFB300',
+    dark: '#FFA000',
   },
   error: {
-    light: pinkishRed[300],
-    main: pinkishRed[600],
-    dark: pinkishRed[900],
+    light: '#FFEBEE',
+    main: '#E53935',
+    dark: '#B71C1C',
   },
   background: {
-    default: stone[900],
-    paper: grey[900],
+    default: '#FFFFFF', // Pure white background
+    paper: '#FFFFFF',
   },
   text: {
-    primary: stone[600],
-    secondary: stone[200],
-    disabled: stone[500],
+    primary: '#1A1C1E', // Very dark grey for readability
+    secondary: '#44474E',
+    disabled: '#8E9199',
   },
-  divider: stone[700],
-  action: {
-    focus: stone[400],
-    disabled: stone[300],
-  },
+  divider: '#C4C7CF',
   grey: grey,
 };
-
-export default palette;

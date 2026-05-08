@@ -11,6 +11,8 @@ import SalesEntry from './pages/SalesEntry';
 import Predictions from './pages/Predictions';
 import Orders from './pages/Orders';
 import StoreManagement from './pages/admin/StoreManagement';
+import Stats from './pages/admin/Stats';
+import AdminOrders from './pages/admin/AdminOrders';
 import Login from './pages/auth/Login';
 import Signup from './pages/auth/Signup';
 import { useAuth } from './hooks/useAuth';
@@ -30,11 +32,12 @@ function App() {
     return <MainLayout role={user?.role || 'OWNER'} onLogout={logout}>{children}</MainLayout>;
   };
 
-  const PublicRoute = ({ children, isAuthPage = true }: { children: React.ReactNode, isAuthPage?: boolean }) => {
-    if (isLoggedIn) {
+  const PublicRoute = ({ children }: { children: React.ReactNode }) => {
+    // 엄격하게 토큰과 유저 정보가 모두 있을 때만 리다이렉트
+    if (isLoggedIn && user) {
       return <Navigate to="/" replace />;
     }
-    return isAuthPage ? <AuthLayout>{children}</AuthLayout> : <>{children}</>;
+    return <AuthLayout>{children}</AuthLayout>;
   };
 
   return (
@@ -78,8 +81,20 @@ function App() {
 
             {/* HQ Admin Routes */}
             <Route path="/admin/stores" element={
-              <ProtectedRoute role="HQ">
+              <ProtectedRoute role="HQ_ADMIN">
                 <StoreManagement />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/admin/stats" element={
+              <ProtectedRoute role="HQ_ADMIN">
+                <Stats />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/admin/orders" element={
+              <ProtectedRoute role="HQ_ADMIN">
+                <AdminOrders />
               </ProtectedRoute>
             } />
 

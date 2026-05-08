@@ -15,17 +15,17 @@ interface SidebarProps {
 }
 
 const Sidebar = ({ open, role, setMobileOpen }: SidebarProps): ReactElement => {
-  const menuItems = role === 'HQ' ? [
-    { title: '대시보드', icon: 'mingcute:home-5-line', path: '/', active: true },
-    { title: '전 가맹점 현황', icon: 'mingcute:grid-fill', path: '/admin/stores', active: true },
-    { title: '폐기율 통계', icon: 'mingcute:chart-bar-fill', path: '/admin/stats', active: true },
-    { title: '발주 승인/관리', icon: 'mingcute:list-check-fill', path: '/admin/orders', active: true },
+  const menuItems = role === 'HQ_ADMIN' ? [
+    { title: '통합 관리 센터', icon: 'mingcute:home-5-line', path: '/', active: true },
+    { title: '가맹점 네트워크', icon: 'mingcute:grid-fill', path: '/admin/stores', active: true },
+    { title: '환경 통계 분석', icon: 'mingcute:chart-bar-fill', path: '/admin/stats', active: true },
+    { title: '자원 순환 관리', icon: 'mingcute:list-check-fill', path: '/admin/orders', active: true },
   ] : [
-    { title: '대시보드', icon: 'mingcute:home-5-line', path: '/', active: true },
-    { title: '매출 입력', icon: 'mingcute:edit-fill', path: '/sales', active: true },
+    { title: '에코 대시보드', icon: 'mingcute:leaf-line', path: '/', active: true },
+    { title: '판매 실적 입력', icon: 'mingcute:edit-fill', path: '/sales', active: true },
     { title: 'AI 수요 예측', icon: 'mingcute:brain-fill', path: '/predictions', active: true },
-    { title: '식자재 발주', icon: 'mingcute:shopping-cart-fill', path: '/orders', active: true },
-    { title: '재고 현황', icon: 'mingcute:inventory-line', path: '/inventory', active: true },
+    { title: '식자재 발주', icon: 'mingcute:refresh-2-line', path: '/orders', active: true },
+    { title: '자원 현황', icon: 'mingcute:inventory-line', path: '/inventory', active: true },
   ];
 
   return (

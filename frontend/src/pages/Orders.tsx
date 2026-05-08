@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Typography, Box, Paper, Button, CircularProgress, Chip, Stack } from '@mui/material';
+import { Typography, Box, Paper, Button, CircularProgress, Chip, Stack, useTheme } from '@mui/material';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { orderService } from '../services/orderService';
 import { storeService } from '../services/storeService';
 import IconifyIcon from '../components/base/IconifyIcon';
 
 const Orders = ({ user }: any) => {
+  const theme = useTheme();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -56,7 +57,7 @@ const Orders = ({ user }: any) => {
         if (params.value === 'PENDING') color = 'warning';
         if (params.value === 'APPROVED') color = 'info';
         if (params.value === 'DONE') color = 'success';
-        return <Chip label={params.value} color={color} size="small" variant="outlined" />;
+        return <Chip label={params.value} color={color} size="small" variant="filled" sx={{ fontWeight: 700 }} />;
       }
     },
     {
@@ -65,7 +66,13 @@ const Orders = ({ user }: any) => {
       width: 100,
       renderCell: (params: any) => (
         params.row.status === 'PENDING' && (
-          <Button color="error" size="small" onClick={() => handleCancel(params.id as number)}>
+          <Button 
+            color="error" 
+            size="small" 
+            variant="outlined"
+            onClick={() => handleCancel(params.id as number)}
+            sx={{ borderRadius: 2 }}
+          >
             취소
           </Button>
         )
@@ -74,28 +81,43 @@ const Orders = ({ user }: any) => {
   ];
 
   return (
-    <Stack gap={4}>
+    <Stack gap={4} sx={{ bgcolor: 'background.default' }}>
       <Stack direction="row" justifyContent="space-between" alignItems="center">
-        <Typography variant="h4" color="common.white">식자재 발주 내역</Typography>
-        <Button variant="contained" startIcon={<IconifyIcon icon="mingcute:shopping-cart-line" />}>
+        <Box>
+          <Typography variant="h2" color="primary.main" fontWeight={800}>FoodGuard</Typography>
+          <Typography variant="h5" color="text.secondary" fontWeight={600}>지속 가능한 식자재 발주 시스템</Typography>
+        </Box>
+        <Button 
+          variant="contained" 
+          startIcon={<IconifyIcon icon="mingcute:refresh-2-line" />}
+          sx={{ px: 4, py: 1.5, borderRadius: 3 }}
+        >
           신규 발주 등록
         </Button>
       </Stack>
       
-      <Paper sx={{ height: 650, width: '100%', p: 2 }}>
+      <Paper sx={{ height: 650, width: '100%', p: 3, border: `1px solid ${theme.palette.divider}`, borderRadius: 5 }}>
         {loading ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-            <CircularProgress />
+            <CircularProgress color="primary" />
           </Box>
         ) : (
           <DataGrid
             rows={rows}
             columns={columns}
+            disableRowSelectionOnClick
             initialState={{
               pagination: { paginationModel: { pageSize: 10 } },
             }}
             pageSizeOptions={[10, 20]}
-            sx={{ border: 'none' }}
+            sx={{ 
+              border: 'none',
+              '& .MuiDataGrid-columnHeaders': {
+                bgcolor: 'secondary.light',
+                color: 'secondary.dark',
+                fontWeight: 700
+              }
+            }}
           />
         )}
       </Paper>

@@ -1,3 +1,1 @@
-const spacing: number = 4;
-
-export default spacing;
+export const spacing = 4;

@@ -1,5 +1,3 @@
-const shape = {
-  borderRadius: 4,
+export const shape = {
+  borderRadius: 8,
 };
-
-export default shape;

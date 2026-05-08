@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Typography, Box, Paper, Button, Grid, TextField, MenuItem, CircularProgress, Alert, Stack } from '@mui/material';
+import { Typography, Box, Paper, Button, Grid, TextField, MenuItem, CircularProgress, Alert, Stack, useTheme } from '@mui/material';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { salesService } from '../services/salesService';
 import { menuService } from '../services/menuService';
@@ -7,6 +7,7 @@ import { storeService } from '../services/storeService';
 import IconifyIcon from '../components/base/IconifyIcon';
 
 const SalesEntry = ({ user }: any) => {
+  const theme = useTheme();
   const [rows, setRows] = useState<any[]>([]);
   const [menus, setMenus] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -80,18 +81,24 @@ const SalesEntry = ({ user }: any) => {
     { field: 'saleDate', headerName: '판매 일자', width: 150 },
     { field: 'menuName', headerName: '메뉴명', flex: 1, minWidth: 200 },
     { field: 'quantity', headerName: '수량', width: 100, type: 'number', align: 'right', headerAlign: 'right' },
-    { field: 'totalPrice', headerName: '총 금액', width: 150, type: 'number', align: 'right', headerAlign: 'right', valueFormatter: (params: any) => `₩${params.value.toLocaleString()}` },
+    { field: 'totalPrice', headerName: '총 금액', width: 150, type: 'number', align: 'right', headerAlign: 'right', valueFormatter: (params: any) => `₩${params.toLocaleString()}` },
   ];
 
   return (
-    <Stack gap={4}>
-      <Typography variant="h4" color="common.white">매출 입력</Typography>
+    <Stack gap={4} sx={{ bgcolor: 'background.default' }}>
+      <Box>
+        <Typography variant="h2" color="primary.main" fontWeight={800}>FoodGuard</Typography>
+        <Typography variant="h5" color="text.secondary" fontWeight={600}>판매 실적 및 자원 순환 기록</Typography>
+      </Box>
       
       <Grid container spacing={3.5}>
         <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 4, bgcolor: 'background.paper' }}>
-            <Typography variant="h6" color="common.white" sx={{ mb: 3 }}>매출 등록</Typography>
-            {success && <Alert severity="success" sx={{ mb: 3 }}>{success}</Alert>}
+          <Paper sx={{ p: 4, bgcolor: 'background.paper', border: `1px solid ${theme.palette.divider}`, borderRadius: 5 }}>
+            <Typography variant="h6" color="text.primary" fontWeight={700} sx={{ mb: 3, display: 'flex', alignItems: 'center', gap: 1 }}>
+              <IconifyIcon icon="mingcute:save-fill" color={theme.palette.primary.main} />
+              매출 등록
+            </Typography>
+            {success && <Alert severity="success" sx={{ mb: 3, borderRadius: 2 }}>{success}</Alert>}
             <Stack component="form" onSubmit={handleSubmit} gap={3}>
               <TextField
                 select
@@ -125,7 +132,7 @@ const SalesEntry = ({ user }: any) => {
                 value={formData.saleDate}
                 onChange={(e) => setFormData({ ...formData, saleDate: e.target.value })}
               />
-              <Button type="submit" fullWidth variant="contained" startIcon={<IconifyIcon icon="mingcute:save-line" />}>
+              <Button type="submit" fullWidth variant="contained" size="large" startIcon={<IconifyIcon icon="mingcute:save-line" />} sx={{ borderRadius: 3 }}>
                 매출 기록 저장
               </Button>
             </Stack>
@@ -133,10 +140,10 @@ const SalesEntry = ({ user }: any) => {
         </Grid>
         
         <Grid item xs={12} md={8}>
-          <Paper sx={{ height: 650, width: '100%', p: 2 }}>
+          <Paper sx={{ height: 650, width: '100%', p: 3, border: `1px solid ${theme.palette.divider}`, borderRadius: 5 }}>
             {loading ? (
               <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-                <CircularProgress />
+                <CircularProgress color="primary" />
               </Box>
             ) : (
               <DataGrid
@@ -146,7 +153,14 @@ const SalesEntry = ({ user }: any) => {
                   pagination: { paginationModel: { pageSize: 10 } },
                 }}
                 pageSizeOptions={[10, 20]}
-                sx={{ border: 'none' }}
+                sx={{ 
+                  border: 'none',
+                  '& .MuiDataGrid-columnHeaders': {
+                    bgcolor: 'primary.light',
+                    color: 'primary.dark',
+                    fontWeight: 700
+                  }
+                }}
               />
             )}
           </Paper>

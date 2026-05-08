@@ -54,7 +54,7 @@ const UserDropdown = ({ onLogout }: UserDropdownProps): ReactElement => {
           <Avatar sx={{ width: 44, height: 44, bgcolor: 'primary.main' }}>FG</Avatar>
         </Tooltip>
         <IconifyIcon
-          color="common.white"
+          color="text.primary"
           icon="mingcute:down-fill"
           width={22.5}
           height={22.5}
