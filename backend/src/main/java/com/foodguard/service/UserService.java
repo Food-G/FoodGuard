@@ -41,6 +41,6 @@ public class UserService {
             return "비밀번호가 틀렸습니다.";
         }
 
-        return jwtUtil.generateToken(user.getEmail());
+        return jwtUtil.generateToken(user.getEmail(), user.getRole());
     }
 }

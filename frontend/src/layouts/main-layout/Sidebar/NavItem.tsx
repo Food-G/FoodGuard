@@ -1,6 +1,6 @@
-import { Link, ListItem, ListItemButton, ListItemIcon, ListItemText } from '@mui/material';
+import { ListItem, ListItemButton, ListItemIcon, ListItemText } from '@mui/material';
+import { Link as RouterLink, useLocation } from 'react-router-dom';
 import IconifyIcon from 'components/base/IconifyIcon';
-import { useLocation } from 'react-router-dom';
 
 interface NavItemProps {
   navItem: {
@@ -29,8 +29,8 @@ const NavItem = ({ navItem, open, onClick }: NavItemProps) => {
       })}
     >
       <ListItemButton
-        component={Link}
-        href={navItem.path}
+        component={RouterLink}
+        to={navItem.path}
         onClick={onClick}
         sx={{
           opacity: navItem.active ? 1 : 0.5,
