@@ -30,7 +30,7 @@ public class SecurityConfig {
                 )
                 .authorizeHttpRequests(auth -> auth
                         // 로그인 · 회원가입은 토큰 없이 허용
-                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/auth/**", "/api/health").permitAll()
                         // 나머지는 토큰 필요
                         .anyRequest().authenticated()
                 )
