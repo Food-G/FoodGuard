@@ -72,9 +72,10 @@ const Signup = () => {
       '&:hover': { bgcolor: 'grey.100' },
       '&.Mui-focused': { bgcolor: 'grey.50' },
     },
-    '& .MuiInputLabel-root.Mui-focused': {
-      color: 'primary.main',
-    },
+    '& .MuiFilledInput-input': { color: '#111111' },
+    '& .MuiInputLabel-root': { color: '#555555' },
+    '& .MuiInputLabel-root.Mui-focused': { color: 'primary.main' },
+    '& .MuiSelect-filled': { color: '#111111' },
   };
 
   return (
