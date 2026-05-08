@@ -6,7 +6,7 @@ import { storeService } from '../services/storeService';
 
 const Predictions = ({ user }: any) => {
   const theme = useTheme();
-  const [storeId, setStoreId] = useState<number | null>(null);
+  const [_storeId, setStoreId] = useState<number | null>(null);
 
   useEffect(() => {
     const fetchStore = async () => {

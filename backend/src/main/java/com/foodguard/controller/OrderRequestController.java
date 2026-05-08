@@ -28,6 +28,11 @@ public class OrderRequestController {
         ));
     }
 
+    @GetMapping
+    public ResponseEntity<List<OrderRequest>> getAll() {
+        return ResponseEntity.ok(orderRequestService.getAll());
+    }
+
     @GetMapping("/{storeId}")
     public ResponseEntity<List<OrderRequest>> getByStore(@PathVariable Long storeId) {
         return ResponseEntity.ok(orderRequestService.getByStore(storeId));

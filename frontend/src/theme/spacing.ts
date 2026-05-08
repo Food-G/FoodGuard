@@ -1,5 +1,3 @@
-import { SpacingOptions } from '@mui/material/styles';
-
-const spacing: SpacingOptions = 4;
+const spacing: number = 4;
 
 export default spacing;

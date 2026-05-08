@@ -29,10 +29,16 @@ public class SecurityConfig {
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
                 .authorizeHttpRequests(auth -> auth
-                        // 로그인 · 회원가입은 토큰 없이 허용
+                        // API 인증 없이 허용
                         .requestMatchers("/api/auth/**", "/api/health").permitAll()
-                        // 나머지는 토큰 필요
-                        .anyRequest().authenticated()
+                        // 정적 파일 및 SPA 라우팅 허용
+                        .requestMatchers("/", "/index.html", "/assets/**", "/*.js", "/*.css",
+                                "/*.ico", "/*.png", "/*.svg", "/favicon.*", "/LOGO.png",
+                                "/Logo-with-text.png", "/icons.svg").permitAll()
+                        // API는 토큰 필요
+                        .requestMatchers("/api/**").authenticated()
+                        // 나머지 SPA 경로 허용
+                        .anyRequest().permitAll()
                 )
                 // JwtFilter를 Security 필터 앞에 등록
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);

@@ -14,9 +14,9 @@ const AdminOrders = () => {
         const orders = await orderService.getAll();
         setRows(orders.map((item: any) => ({
           id: item.id,
-          storeName: item.store.storeName,
-          name: item.ingredient.name,
-          quantity: item.quantity,
+          storeName: item.store?.storeName ?? '-',
+          name: item.note ?? '-',
+          quantity: item.totalAmount ?? 0,
           status: item.status,
           orderedAt: new Date(item.orderedAt).toLocaleString(),
         })));

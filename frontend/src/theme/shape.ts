@@ -1,6 +1,4 @@
-import { ShapeOptions } from '@mui/material/styles';
-
-const shape: ShapeOptions = {
+const shape = {
   borderRadius: 4,
 };
 

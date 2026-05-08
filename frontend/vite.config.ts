@@ -13,6 +13,10 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    outDir: '../backend/src/main/resources/static',
+    emptyOutDir: true,
+  },
   resolve: {
     alias: {
       'src': path.resolve(__dirname, './src'),

@@ -34,6 +34,10 @@ public class OrderRequestService {
         return orderRequestRepository.save(order);
     }
 
+    public List<OrderRequest> getAll() {
+        return orderRequestRepository.findAll();
+    }
+
     public List<OrderRequest> getByStore(Long storeId) {
         return orderRequestRepository.findByStoreId(storeId);
     }
