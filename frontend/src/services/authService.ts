@@ -7,7 +7,8 @@ export const authService = {
     return token;
   },
   signup: async (userData: any) => {
-    return api.post('/auth/signup', userData);
+    const payload = { ...userData, name: userData.name ?? userData.userName };
+    return api.post('/auth/signup', payload);
   },
   logout: () => {
     localStorage.removeItem('token');

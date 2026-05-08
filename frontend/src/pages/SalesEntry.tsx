@@ -26,10 +26,10 @@ const SalesEntry = ({ user }: any) => {
             const sales = await salesService.getByStore(firstStoreId);
             setRows(sales.map((item: any) => ({
               id: item.id,
-              menuName: item.menu.menuName,
+              menuName: item.menuName,
               quantity: item.quantity,
-              totalPrice: item.totalPrice,
-              saleDate: item.saleDate,
+              totalAmount: item.totalAmount,
+              soldAt: item.soldAt ? new Date(item.soldAt).toLocaleDateString() : '-',
             })));
             const storeMenus = await menuService.getByStore(firstStoreId);
             setMenus(storeMenus);
@@ -49,24 +49,20 @@ const SalesEntry = ({ user }: any) => {
     if (!storeId || !formData.menuId) return;
 
     try {
-      const selectedMenu: any = menus.find((m: any) => m.id === formData.menuId);
-      const totalPrice = selectedMenu.price * formData.quantity;
-      
       const newSale = await salesService.create({
         storeId,
         menuId: formData.menuId,
         quantity: formData.quantity,
-        totalPrice,
         saleDate: formData.saleDate,
       });
 
       setRows([
         {
           id: newSale.id,
-          menuName: selectedMenu.menuName,
+          menuName: newSale.menuName,
           quantity: newSale.quantity,
-          totalPrice: newSale.totalPrice,
-          saleDate: newSale.saleDate,
+          totalAmount: newSale.totalAmount,
+          soldAt: newSale.soldAt ? new Date(newSale.soldAt).toLocaleDateString() : '-',
         },
         ...rows,
       ]);
@@ -78,10 +74,10 @@ const SalesEntry = ({ user }: any) => {
   };
 
   const columns: GridColDef[] = [
-    { field: 'saleDate', headerName: '판매 일자', width: 150 },
+    { field: 'soldAt', headerName: '판매 일자', width: 150 },
     { field: 'menuName', headerName: '메뉴명', flex: 1, minWidth: 200 },
     { field: 'quantity', headerName: '수량', width: 100, type: 'number', align: 'right', headerAlign: 'right' },
-    { field: 'totalPrice', headerName: '총 금액', width: 150, type: 'number', align: 'right', headerAlign: 'right', valueFormatter: (params: any) => `₩${params.toLocaleString()}` },
+    { field: 'totalAmount', headerName: '총 금액', width: 150, type: 'number', align: 'right', headerAlign: 'right', valueFormatter: (params: any) => `₩${Number(params).toLocaleString()}` },
   ];
 
   return (
@@ -110,7 +106,7 @@ const SalesEntry = ({ user }: any) => {
                 onChange={(e) => setFormData({ ...formData, menuId: e.target.value })}
               >
                 {menus.map((menu: any) => (
-                  <MenuItem key={menu.id} value={menu.id}>{menu.menuName} (₩{menu.price})</MenuItem>
+                  <MenuItem key={menu.id} value={menu.id}>{menu.menuName} (₩{menu.unitPrice})</MenuItem>
                 ))}
               </TextField>
               <TextField

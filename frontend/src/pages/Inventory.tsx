@@ -9,9 +9,9 @@ import { storeService } from '../services/storeService';
 import IconifyIcon from '../components/base/IconifyIcon';
 
 const emptyForm = {
-  ingredientId: '',
-  quantity: '',
-  minThreshold: '',
+  ingredientName: '',
+  currentStock: '',
+  thresholdStock: '',
   unit: '',
 };
 
@@ -46,13 +46,13 @@ const Inventory = ({ user }: any) => {
           setRows(
               inventory.map((item: any) => ({
                 id: item.id,
-                name: item.ingredient?.ingredientName ?? '-',
-                category: item.ingredient?.category ?? '-',
-                quantity: item.currentQty,
-                minThreshold: item.minThreshold,
+                name: item.ingredientName ?? '-',
+                category: '-',
+                quantity: item.currentStock,
+                thresholdStock: item.thresholdStock,
                 unit: item.unit,
-                updatedAt: new Date(item.updatedAt).toLocaleString(),
-                isLow: Number(item.currentQty) <= Number(item.minThreshold),
+                updatedAt: item.updatedAt ? new Date(item.updatedAt).toLocaleString() : '-',
+                isLow: item.thresholdStock != null && Number(item.currentStock) <= Number(item.thresholdStock),
               }))
           );
         }
@@ -74,9 +74,9 @@ const Inventory = ({ user }: any) => {
     try {
       await inventoryService.create({
         storeId,
-        ingredientId: Number(createForm.ingredientId),
-        quantity: Number(createForm.quantity),
-        minThreshold: Number(createForm.minThreshold),
+        ingredientName: createForm.ingredientName,
+        currentStock: Number(createForm.currentStock),
+        thresholdStock: createForm.thresholdStock ? Number(createForm.thresholdStock) : null,
         unit: createForm.unit,
       });
       setOpenCreate(false);
@@ -99,7 +99,7 @@ const Inventory = ({ user }: any) => {
   const handleUpdate = async () => {
     if (selectedId === null) return;
     try {
-      await inventoryService.update(selectedId, { quantity: Number(updateQuantity) });
+      await inventoryService.update(selectedId, { currentStock: Number(updateQuantity), wasteQuantity: 0 });
       setOpenUpdate(false);
       setSelectedId(null);
       setLoading(true);
@@ -237,24 +237,23 @@ const Inventory = ({ user }: any) => {
           <DialogContent>
             <Stack gap={2} mt={1}>
               <TextField
-                  label="식자재 ID"
-                  type="number"
-                  value={createForm.ingredientId}
-                  onChange={(e) => setCreateForm({ ...createForm, ingredientId: e.target.value })}
+                  label="식자재명 (예: 돼지고기)"
+                  value={createForm.ingredientName}
+                  onChange={(e) => setCreateForm({ ...createForm, ingredientName: e.target.value })}
                   fullWidth
               />
               <TextField
-                  label="수량"
+                  label="현재 재고"
                   type="number"
-                  value={createForm.quantity}
-                  onChange={(e) => setCreateForm({ ...createForm, quantity: e.target.value })}
+                  value={createForm.currentStock}
+                  onChange={(e) => setCreateForm({ ...createForm, currentStock: e.target.value })}
                   fullWidth
               />
               <TextField
-                  label="최소 임계값"
+                  label="발주 기준 재고 (선택)"
                   type="number"
-                  value={createForm.minThreshold}
-                  onChange={(e) => setCreateForm({ ...createForm, minThreshold: e.target.value })}
+                  value={createForm.thresholdStock}
+                  onChange={(e) => setCreateForm({ ...createForm, thresholdStock: e.target.value })}
                   fullWidth
               />
               <TextField
