@@ -21,7 +21,7 @@ const OutlinedInput: Components<Omit<Theme, 'components'>>['MuiOutlinedInput'] =
     }),
     input: ({ theme }) => ({
       marginLeft: theme.spacing(3),
-      color: theme.palette.text.secondary,
+      color: '#111111',
       '&::placeholder': {
         opacity: 1,
         color: theme.palette.text.primary,
