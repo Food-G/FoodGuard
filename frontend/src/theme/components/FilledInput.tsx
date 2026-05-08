@@ -10,8 +10,11 @@ const FilledInput: Components<Omit<Theme, 'components'>>['MuiFilledInput'] = {
       borderRadius: theme.shape.borderRadius * 2,
       backgroundColor: theme.palette.background.paper,
       padding: 0,
-      '&:hover, &.Mui-focused': {
-        backgroundColor: theme.palette.grey[800],
+      '&:hover': {
+        backgroundColor: theme.palette.grey[100],
+      },
+      '&.Mui-focused': {
+        backgroundColor: theme.palette.grey[50],
       },
       '&::before, &::after': {
         borderBottom: 'none',
@@ -22,7 +25,7 @@ const FilledInput: Components<Omit<Theme, 'components'>>['MuiFilledInput'] = {
       '&.Mui-disabled:before': {
         borderBottom: 'none',
       },
-      '&:hover, &.Mui-disabled': {
+      '&.Mui-disabled': {
         backgroundColor: theme.palette.divider,
       },
     }),
