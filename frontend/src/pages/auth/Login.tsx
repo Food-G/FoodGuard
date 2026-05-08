@@ -87,7 +87,9 @@ const Login = ({ onLogin }: { onLogin: (token: string) => void }) => {
                   bgcolor: 'grey.50',
                   borderRadius: 3,
                   '&:before, &:after': { display: 'none' }
-                }
+                },
+                '& .MuiFilledInput-input': { color: '#111111' },
+                '& .MuiInputLabel-root': { color: '#555555' },
               }}
             />
 
@@ -104,7 +106,9 @@ const Login = ({ onLogin }: { onLogin: (token: string) => void }) => {
                   bgcolor: 'grey.50',
                   borderRadius: 3,
                   '&:before, &:after': { display: 'none' }
-                }
+                },
+                '& .MuiFilledInput-input': { color: '#111111' },
+                '& .MuiInputLabel-root': { color: '#555555' },
               }}
               InputProps={{
                 endAdornment: (
