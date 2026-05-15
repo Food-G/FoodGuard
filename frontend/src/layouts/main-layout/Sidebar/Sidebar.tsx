@@ -75,8 +75,7 @@ const Sidebar = ({ open, role, setMobileOpen, onMouseEnter, onMouseLeave }: Side
     { title: 'POS 시스템', icon: 'mingcute:cashier-2-line', path: '/pos', extraIcon: 'ph:cash-register', blackIcon: true },
     { title: 'AI 수요 예측', icon: 'mingcute:brain-fill', path: '/predictions' },
     { title: '식자재 발주', icon: 'mingcute:refresh-2-line', path: '/orders' },
-    { title: '자원 현황', icon: 'mingcute:inventory-line', path: '/inventory' },
-  ];
+    { title: '자원 현황', icon: 'mingcute:inventory-line', path: '/inventory' },  ];
 
   return (
     <Box
@@ -96,19 +95,30 @@ const Sidebar = ({ open, role, setMobileOpen, onMouseEnter, onMouseLeave }: Side
           minWidth: open ? drawerOpenWidth - 1 : undefined,
         }}
       >
-        <Box sx={{ mt: 1 }}>
-          <FoodGuardLogo open={open} />
-        </Box>
+        <Link
+          href="/"
+          sx={{
+            mt: 3,
+          }}
+        >
+          <Stack direction="row" alignItems="center" gap={1} sx={{ textDecoration: 'none' }}>
+            <IconifyIcon icon="mingcute:leaf-fill" color="primary.main" width={32} height={32} />
+            {open && (
+              <Typography fontWeight={900} color="primary.main" sx={{ fontSize: 20, letterSpacing: '-0.05em' }}>
+                FoodGuard
+              </Typography>
+            )}
+          </Stack>
+        </Link>
       </Toolbar>
 
       <Box component={SimpleBar} style={{ maxHeight: '100vh' }}>
-        <List component="nav" sx={{ mt: 2, py: 1 }}>
-          {menuItems.map((navItem) => (
-            <NavItem
-              key={navItem.title}
-              navItem={navItem}
-              open={open}
-              onClick={() => setMobileOpen && setMobileOpen(false)}
+        <List component="nav" sx={{ mt: 2, py: 1 }}>          {menuItems.map((navItem) => (
+            <NavItem 
+              key={navItem.title} 
+              navItem={navItem} 
+              open={open} 
+              onClick={() => setMobileOpen && setMobileOpen(false)} 
             />
           ))}
         </List>

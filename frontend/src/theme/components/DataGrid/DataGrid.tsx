@@ -9,16 +9,28 @@ const DataGrid: DataGridComponents<Omit<Theme, 'components'>>['MuiDataGrid'] = {
       borderRadius: theme.shape.borderRadius * 2.5,
       '--DataGrid-rowBorderColor': theme.palette.divider,
       '&:hover, &:focus': {
-        '*::-webkit-scrollbar, *::-webkit-scrollbar-thumb': { visibility: 'visible' },
-        '*::-webkit-scrollbar-thumb': { background: theme.palette.primary.light },
+        '*::-webkit-scrollbar, *::-webkit-scrollbar-thumb': {
+          visibility: 'visible',
+        },
+        '*::-webkit-scrollbar-thumb': {
+          background: theme.palette.info.main,
+        },
       },
       '& .MuiDataGrid-container--top [role=row]': {
         background: theme.palette.background.paper,
       },
-      '& .MuiDataGrid-scrollbar--vertical': { visibility: 'hidden' },
-      '& .MuiDataGrid-scrollbar--horizontal': { scrollbarWidth: 'thin' },
-      '& .MuiDataGrid-filler': { height: '0 !important' },
-      '& .MuiDataGrid-scrollbarFiller': { minWidth: 0 },
+      '& .MuiDataGrid-scrollbar--vertical': {
+        visibility: 'hidden',
+      },
+      '& .MuiDataGrid-scrollbar--horizontal': {
+        scrollbarWidth: 'thin',
+      },
+      '& .MuiDataGrid-filler': {
+        height: '0 !important',
+      },
+      '& .MuiDataGrid-scrollbarFiller': {
+        minWidth: 0,
+      },
     }),
     main: ({ theme }) => ({
       borderTopLeftRadius: theme.shape.borderRadius * 2.5,
@@ -27,10 +39,14 @@ const DataGrid: DataGridComponents<Omit<Theme, 'components'>>['MuiDataGrid'] = {
     cell: ({ theme }) => ({
       display: 'flex',
       alignItems: 'center',
-      color: theme.palette.text.primary,          // ← 흰색 → 테마 텍스트 색상      fontSize: theme.typography.body2.fontSize,
-      fontWeight: theme.typography.body2.fontWeight,
-      '&:focus': { outline: 'none !important' },
-      '&:focus-within': { outline: 'none !important' },
+      color: theme.palette.common.black,
+      fontSize: theme.typography.body2.fontSize,      fontWeight: theme.typography.body2.fontWeight,
+      '&:focus': {
+        outline: 'none !important',
+      },
+      '&:focus-within': {
+        outline: 'none !important',
+      },
     }),
     overlay: ({ theme }) => ({
       backgroundColor: theme.palette.background.paper,
@@ -43,33 +59,49 @@ const DataGrid: DataGridComponents<Omit<Theme, 'components'>>['MuiDataGrid'] = {
       borderBottomRightRadius: theme.shape.borderRadius * 2.5,
     }),
     columnHeader: () => ({
-      '&:focus': { outline: 'none !important' },
-      '&:focus-within': { outline: 'none !important' },
+      '&:focus': {
+        outline: 'none !important',
+      },
+      '&:focus-within': {
+        outline: 'none !important',
+      },
     }),
     columnHeaderTitle: ({ theme }) => ({
       color: theme.palette.common.black,
       fontSize: theme.typography.subtitle2.fontSize,
       fontWeight: theme.typography.subtitle2.fontWeight,
     }),
-    columnSeparator: () => ({ display: 'none' }),
-    cellEmpty: () => ({ display: 'none' }),
+    columnSeparator: () => ({
+      display: 'none',
+    }),
+    cellEmpty: () => ({
+      display: 'none',
+    }),
     row: ({ theme }) => ({
       backgroundColor: theme.palette.background.paper,
       '&:hover': {
-        backgroundColor: alpha(theme.palette.primary.main, 0.05),
+        backgroundColor: theme.palette.background.paper,
       },
     }),
     withBorderColor: ({ theme }) => ({
       borderColor: theme.palette.divider,
     }),
     scrollbar: () => ({
-      '&.MuiDataGrid-scrollbar--horizontal': { scrollbarWidth: 'none' },
+      '&.MuiDataGrid-scrollbar--horizontal': {
+        scrollbarWidth: 'none',
+      },
     }),
     virtualScroller: ({ theme }) => ({
-      [theme.breakpoints.up('xs')]: { overflowY: 'scroll' },
-      [theme.breakpoints.up('sm')]: { overflowY: 'hidden' },
+      [theme.breakpoints.up('xs')]: {
+        overflowY: 'scroll',
+      },
+      [theme.breakpoints.up('sm')]: {
+        overflowY: 'hidden',
+      },
     }),
-    selectedRowCount: () => ({ display: 'none' }),
+    selectedRowCount: ({}) => ({
+      display: 'none',
+    }),
   },
 };
 

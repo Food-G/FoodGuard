@@ -1,7 +1,7 @@
 package com.foodguard.entity;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;import jakarta.persistence.*;
-import lombok.Getter;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import jakarta.persistence.*;import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import java.math.BigDecimal;
@@ -18,15 +18,14 @@ public class MenuIngredient {
     @Column(name = "menu_ingredient_id")
     private Long id;
 
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "menu_id", nullable = false)
-    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "store"})
     private Menu menu;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "ingredient_id", nullable = false)
-    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})    private Ingredient ingredient;
-
+    private Ingredient ingredient;
     @Column(name = "qty_per_unit", nullable = false, precision = 10, scale = 2)
     private BigDecimal qtyPerUnit;
 

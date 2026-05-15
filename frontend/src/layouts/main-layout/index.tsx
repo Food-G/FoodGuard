@@ -13,40 +13,36 @@ interface MainLayoutProps {
   onLogout: () => void;
 }
 
-const TRANSITION = 'width 0.25s cubic-bezier(0.4,0,0.2,1)';
-
 const MainLayout = ({ children, role, onLogout }: MainLayoutProps): ReactElement => {
   const [open, setOpen] = useState<boolean>(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-
   return (
     <>
       <Box sx={{ display: 'flex', minHeight: '100vh' }}>
-        <Topbar open={open} onLogout={onLogout} />
-
-        {/* 모바일 Drawer (터치로 열기) */}
+        <Topbar open={open} handleDrawerToggle={handleDrawerToggle} onLogout={onLogout} />
+        {/* Mobile Drawer */}
         <Drawer
           variant="temporary"
           open={mobileOpen}
           onClose={() => setMobileOpen(false)}
-          ModalProps={{ keepMounted: true }}
-          sx={{
+          ModalProps={{ keepMounted: true }}          sx={{
             display: { xs: 'block', sm: 'none' },
             '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerOpenWidth },
           }}
         >
           <Sidebar open={true} role={role} setMobileOpen={setMobileOpen} />
         </Drawer>
-
-        {/* 데스크톱 Drawer — 호버로 열림/닫힘 */}
-        <Box
-          onMouseEnter={() => setOpen(true)}
-          onMouseLeave={() => setOpen(false)}
+        {/* Desktop Drawer */}
+        <Drawer
+          variant="permanent"
+          component="aside"
+          open={open}
           sx={{
             display: { xs: 'none', sm: 'block' },
-            flexShrink: 0,
             width: open ? drawerOpenWidth : drawerCloseWidth,
-            transition: TRANSITION,
+            '& .MuiDrawer-paper': {
+              width: open ? drawerOpenWidth : drawerCloseWidth,
+            },
           }}
         >
           <Drawer
@@ -66,12 +62,11 @@ const MainLayout = ({ children, role, onLogout }: MainLayoutProps): ReactElement
             <Sidebar open={open} role={role} />
           </Drawer>
         </Box>
-
         <Box
           component="main"
           sx={{
-            flexGrow: 1,
             width: 1,
+            flexGrow: 1,
             pt: 5,
             pr: { xs: 3, sm: 5.175 },
             pb: 6.25,
@@ -79,7 +74,11 @@ const MainLayout = ({ children, role, onLogout }: MainLayoutProps): ReactElement
             overflow: 'auto',
           }}
         >
-          <Toolbar sx={{ height: 96 }} />
+          <Toolbar
+            sx={{
+              height: 96,
+            }}
+          />
           {children}
         </Box>
       </Box>

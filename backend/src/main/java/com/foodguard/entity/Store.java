@@ -1,7 +1,7 @@
 package com.foodguard.entity;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;import jakarta.persistence.*;
-import lombok.Getter;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import jakarta.persistence.*;import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import java.time.LocalDateTime;
@@ -37,7 +37,6 @@ public class Store {
     @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "hq_user_id")
-    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "password", "storeId"})
     private User user;
 
     @Column(name = "created_at", insertable = false, updatable = false)

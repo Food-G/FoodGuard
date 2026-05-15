@@ -1,7 +1,7 @@
 package com.foodguard.entity;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;import jakarta.persistence.*;
-import lombok.Getter;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import jakarta.persistence.*;import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import java.time.LocalDateTime;
@@ -20,12 +20,10 @@ public class SalesData {
     @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "store_id", nullable = false)
-    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "user"})
     private Store store;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "menu_id", nullable = false)
-    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "store"})
     private Menu menu;
 
     @Column(name = "sales_date", nullable = false)
@@ -42,12 +40,13 @@ public class SalesData {
 
     @Column(name = "updated_at", insertable = false, updatable = false)
     private LocalDateTime updatedAt;
-
+    
     @Transient
     private Integer totalPrice;
-
-    @Column(name = "deleted_at")
+    @Transient
     private LocalDateTime deletedAt;
 
-    public void setIsDeleted(boolean isDeleted) { this.isDeleted = isDeleted; }
+    public void setIsDeleted(boolean isDeleted) {
+        this.isDeleted = isDeleted;
+    }
 }

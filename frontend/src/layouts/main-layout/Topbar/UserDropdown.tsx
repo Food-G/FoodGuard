@@ -1,15 +1,6 @@
-import {
-  Menu, Avatar, Button, Tooltip, MenuItem,
-  ListItemIcon, ListItemText,
-  Dialog, DialogTitle, DialogContent, DialogActions,
-  Stack, Typography, Box, TextField, Divider,
-  Switch, FormControlLabel, Chip, IconButton,
-  CircularProgress, Alert,
-} from '@mui/material';
+import { Menu, Avatar, Button, Tooltip, MenuItem, ListItemIcon, ListItemText } from '@mui/material';
 import IconifyIcon from 'components/base/IconifyIcon';
-import { useState, MouseEvent, useCallback, ReactElement, useEffect } from 'react';
-import { decodeToken } from '../../../utils/jwt';
-import { api } from '../../../services/api';
+import { useState, MouseEvent, useCallback, ReactElement } from 'react';
 
 interface UserDropdownProps {
   onLogout: () => void;
@@ -220,42 +211,31 @@ const SettingsDialog = ({ open, onClose }: { open: boolean; onClose: () => void 
   );
 };
 
-/* ─────────────── UserDropdown ─────────────── */
-const UserDropdown = ({ onLogout }: UserDropdownProps): ReactElement => {
-  const [anchorEl, setAnchorEl]         = useState<null | HTMLElement>(null);
-  const [profileOpen, setProfileOpen]   = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const menuOpen = Boolean(anchorEl);
-
-  const handleUserClick = useCallback((e: MouseEvent<HTMLElement>) => setAnchorEl(e.currentTarget), []);
-  const handleUserClose = useCallback(() => setAnchorEl(null), []);
-  const handleLogout = () => { handleUserClose(); onLogout(); };
-
-  const menuItems = [
-    { id: 1, title: '내 프로필', icon: 'mingcute:user-2-fill', color: 'text.primary', onClick: () => { handleUserClose(); setProfileOpen(true); } },
-    { id: 2, title: '설정', icon: 'material-symbols:settings-account-box-rounded', color: 'text.primary', onClick: () => { handleUserClose(); setSettingsOpen(true); } },
-    { id: 3, title: '로그아웃', icon: 'material-symbols:logout', color: 'error.main', onClick: handleLogout },
+/* ─────────────── UserDropdown ─────────────── */    { id: 3, title: '로그아웃', icon: 'material-symbols:logout', color: 'error.main', onClick: handleLogout },
   ];
 
   return (
     <>
       <Button
-        color="inherit" variant="text"
+        color="inherit"
+        variant="text"
+        id="account-dropdown-menu"
+        aria-controls={menuOpen ? 'account-dropdown-menu' : undefined}
+        aria-haspopup="true"
+        aria-expanded={menuOpen ? 'true' : undefined}
         onClick={handleUserClick}
         disableRipple
-        sx={{ borderRadius: 2, gap: 1.5, px: { xs: 0, sm: 0.625 }, py: 0.625, '&:hover': { bgcolor: 'transparent' } }}
-      >
-        <Tooltip title="계정" arrow placement="bottom">
-          <Avatar sx={{ width: 44, height: 44, background: 'linear-gradient(135deg,#43a047,#1e88e5)', fontWeight: 700 }}>
-            FG
-          </Avatar>
+        sx={{ borderRadius: 2, gap: 1.5, px: { xs: 0, sm: 0.625 }, py: 0.625, '&:hover': { bgcolor: 'transparent' } }}      >
+        <Tooltip title="Account" arrow placement="bottom">
+          <Avatar sx={{ width: 44, height: 44, bgcolor: 'primary.main' }}>FG</Avatar>
         </Tooltip>
         <IconifyIcon
           color="text.primary"
           icon="mingcute:down-fill"
-          width={22.5} height={22.5}
+          width={22.5}
+          height={22.5}
           sx={(theme) => ({
-            transform: menuOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+            transform: menuOpen ? `rotate(180deg)` : `rotate(0deg)`,
             transition: theme.transitions.create('all', {
               easing: theme.transitions.easing.sharp,
               duration: theme.transitions.duration.short,
@@ -263,40 +243,42 @@ const UserDropdown = ({ onLogout }: UserDropdownProps): ReactElement => {
           })}
         />
       </Button>
-
       <Menu
+        id="account-dropdown-menu"
         anchorEl={anchorEl}
         open={menuOpen}
         onClose={handleUserClose}
         transformOrigin={{ horizontal: 'right', vertical: 'top' }}
         anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
-        PaperProps={{ sx: { borderRadius: 3, minWidth: 180, mt: 0.5, boxShadow: '0 8px 24px rgba(0,0,0,.12)' } }}
       >
-        {menuItems.map((item, i) => (
-          <Box key={item.id}>
-            {i === menuItems.length - 1 && <Divider sx={{ my: 0.5 }} />}
-            <MenuItem onClick={item.onClick} sx={{ py: 1.2, px: 2, gap: 1.5 }}>
-              <ListItemIcon sx={{ minWidth: 0, color: item.color }}>
-                <IconifyIcon icon={item.icon} width={18} height={18} sx={{ color: item.color }} />
-              </ListItemIcon>
-              <ListItemText
-                sx={(theme) => ({
-                  color: item.color,
-                  '& .MuiListItemText-primary': {
-                    fontSize: theme.typography.subtitle2.fontSize,
-                    fontWeight: theme.typography.subtitle2.fontWeight,
-                  },
-                })}
-              >
-                {item.title}
-              </ListItemText>
-            </MenuItem>
-          </Box>
+        {userMenuItems.map((item) => (
+          <MenuItem key={item.id} onClick={item.onClick || handleUserClose}>
+            <ListItemIcon
+              sx={{
+                minWidth: `0 !important`,
+                color: item.color,
+                width: 14,
+                height: 10,
+                mb: 1.5,
+                mr: 2
+              }}
+            >
+              <IconifyIcon icon={item.icon} color={item.color} />
+            </ListItemIcon>
+            <ListItemText
+              sx={(theme) => ({
+                color: item.color,
+                '& .MuiListItemText-primary': {
+                  fontSize: theme.typography.subtitle2.fontSize,
+                  fontWeight: theme.typography.subtitle2.fontWeight,
+                },
+              })}
+            >
+              {item.title}
+            </ListItemText>
+          </MenuItem>
         ))}
       </Menu>
-
-      <ProfileDialog  open={profileOpen}  onClose={() => setProfileOpen(false)} />
-      <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </>
   );
 };

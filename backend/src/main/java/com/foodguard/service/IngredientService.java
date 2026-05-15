@@ -21,7 +21,6 @@ public class IngredientService {
     private final OrderRequestRepository orderRequestRepository;
 
     // 식자재 등록
-    @Transactional
     public Ingredient create(String name, String category, String unit) {
         Ingredient ingredient = new Ingredient();
         ingredient.setName(name);
@@ -30,33 +29,27 @@ public class IngredientService {
         return ingredientRepository.save(ingredient);
     }
 
-    // 단건 조회
-    public Ingredient getById(Long id) {
-        return ingredientRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("식자재를 찾을 수 없습니다."));
-    }
-
     // 전체 식자재 조회
     public List<Ingredient> getAll() {
         return ingredientRepository.findAll();
     }
 
     // 식자재 수정
-    @Transactional
     public Ingredient update(Long id, String name, String category, String unit) {
-        Ingredient ingredient = getById(id);
-        if (name != null) ingredient.setName(name);
-        if (category != null) ingredient.setCategory(category);
-        if (unit != null) ingredient.setUnit(unit);
+        Ingredient ingredient = ingredientRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("식자재를 찾을 수 없습니다."));
+        ingredient.setName(name);
+        ingredient.setCategory(category);
+        ingredient.setUnit(unit);
         return ingredientRepository.save(ingredient);
     }
 
-    // 식자재 삭제
+    // 식자재 삭제 (연결 레코드 전부 먼저 삭제: 발주→메뉴구성→재고→식자재)
     @Transactional
     public String delete(Long id) {
-        if (!ingredientRepository.existsById(id)) {
-            throw new RuntimeException("식자재를 찾을 수 없습니다.");
-        }        ingredientRepository.deleteById(id);
-        return "식자재 삭제 완료";
+        orderRequestRepository.deleteByIngredientId(id);
+        menuIngredientRepository.deleteByIngredientId(id);
+        inventoryRepository.deleteByIngredientId(id);
+        ingredientRepository.deleteById(id);        return "식자재 삭제 완료";
     }
 }

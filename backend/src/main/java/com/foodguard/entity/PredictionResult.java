@@ -1,7 +1,7 @@
 package com.foodguard.entity;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;import jakarta.persistence.*;
-import lombok.Getter;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import jakarta.persistence.*;import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import java.math.BigDecimal;
@@ -21,17 +21,15 @@ public class PredictionResult {
     @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "store_id", nullable = false)
-    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "user"})
     private Store store;
 
     @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "menu_id", nullable = false)
-    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "store"})
     private Menu menu;
 
     @Column(name = "target_date", nullable = false)
-    private LocalDate predictionDate;
+    private LocalDate predictionDate; // targetDate에서 복구
 
     @Column(name = "predicted_qty", nullable = false)
     private Integer predictedQty;

@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   Typography, Box, Paper, Button, Grid, TextField, MenuItem,
-  CircularProgress, Alert, Stack, useTheme, IconButton,
-  Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip,
+  CircularProgress, Alert, Stack, useTheme,  Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip,
 } from '@mui/material';
 import { salesService } from '../services/salesService';
 import { menuService } from '../services/menuService';
@@ -175,7 +174,6 @@ const SalesEntry = ({ user }: any) => {
                       <TableCell sx={{ fontWeight: 700, bgcolor: 'grey.100', color: 'text.primary' }}>메뉴명</TableCell>
                       <TableCell align="center" sx={{ fontWeight: 700, bgcolor: 'grey.100', color: 'text.primary' }}>수량</TableCell>
                       <TableCell align="right" sx={{ fontWeight: 700, bgcolor: 'grey.100', color: 'text.primary' }}>총 금액</TableCell>
-                      <TableCell align="center" sx={{ fontWeight: 700, bgcolor: 'grey.100', color: 'text.primary' }}>삭제</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -187,12 +185,6 @@ const SalesEntry = ({ user }: any) => {
                         <TableCell align="right" sx={{ color: 'primary.main', fontWeight: 700 }}>
                           ₩{row.totalPrice?.toLocaleString() ?? 0}
                         </TableCell>
-                        <TableCell align="center">
-                          <IconButton size="small" color="error" onClick={() => handleDelete(row.id)}>
-                            <IconifyIcon icon="mingcute:delete-2-line" width={17} />
-                          </IconButton>
-                        </TableCell>
-                      </TableRow>
                     ))}
                   </TableBody>
                 </Table>

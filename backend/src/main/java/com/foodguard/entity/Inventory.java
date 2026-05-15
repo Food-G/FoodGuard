@@ -1,11 +1,10 @@
 package com.foodguard.entity;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;import jakarta.persistence.*;
-import lombok.Getter;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import jakarta.persistence.*;import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -21,17 +20,16 @@ public class Inventory {
     @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "store_id", nullable = false)
-    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "user"})
     private Store store;
 
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "ingredient_id", nullable = false)
-    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    @JsonIgnore
+    @ManyToOne(fetch = FetchType.LAZY)    @JoinColumn(name = "ingredient_id", nullable = false)
     private Ingredient ingredient;
 
     @Column(name = "current_qty", nullable = false, precision = 10, scale = 2)
     private BigDecimal currentQty;
 
+    // 서비스에서 사용하는 필드명 및 타입 대응
     @Transient
     private Double quantity;
 
@@ -41,21 +39,10 @@ public class Inventory {
     @Column(nullable = false, length = 20)
     private String unit;
 
-    // 재고 단가 (원)
-    @Column(precision = 12, scale = 2)
-    private BigDecimal price;
-
-    // 유통기한
-    @Column(name = "expiry_date")
-    private LocalDate expiryDate;
-
-    // 등록일시 (자동 기록)
-    @Column(name = "registered_at")
-    private LocalDateTime registeredAt;
-
-    @Column(name = "updated_at", insertable = false, updatable = false)    private LocalDateTime updatedAt;
-
-    public void setQuantity(Double quantity) {
+    @Column(name = "updated_at", insertable = false, updatable = false)
+    private LocalDateTime updatedAt;
+    
+    // 호환성을 위한 Getter/Setter 수동 추가 가능 (Lombok이 처리 못하는 경우 대비)    public void setQuantity(Double quantity) {
         this.quantity = quantity;
         this.currentQty = BigDecimal.valueOf(quantity);
     }

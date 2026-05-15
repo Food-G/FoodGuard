@@ -12,8 +12,7 @@ public class CorsConfig implements WebMvcConfigurer {
         registry.addMapping("/api/**")
                 .allowedOrigins(
                         "http://localhost:5173",   // React 개발 서버
-                        "http://localhost:5174",   // 추가 포트
-                        "http://localhost:3000"    // 기타 포트
+                        "http://localhost:3000"    // 혹시 다른 포트 쓸 경우 대비
                 )
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowedHeaders("*")

@@ -16,57 +16,31 @@ public class IngredientController {
 
     private final IngredientService ingredientService;
 
-    // 식자재 등록
     @PostMapping
-    public ResponseEntity<?> create(@RequestBody Map<String, Object> body) {
-        try {
-            return ResponseEntity.ok(ingredientService.create(
-                    body.get("name").toString(),
-                    body.getOrDefault("category", "").toString(),
-                    body.get("unit").toString()
-            ));
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }    }
-
-    // 단건 조회
-    @GetMapping("/{id}")
-    public ResponseEntity<?> getById(@PathVariable Long id) {
-        try {
-            return ResponseEntity.ok(ingredientService.getById(id));
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
+    public ResponseEntity<Ingredient> create(@RequestBody Map<String, Object> body) {
+        return ResponseEntity.ok(ingredientService.create(
+                body.get("name").toString(),
+                body.getOrDefault("category", "").toString(),
+                body.get("unit").toString()
+        ));
     }
-
-    // 전체 조회
     @GetMapping
     public ResponseEntity<List<Ingredient>> getAll() {
         return ResponseEntity.ok(ingredientService.getAll());
     }
 
-    // 수정
     @PutMapping("/{id}")
-    public ResponseEntity<?> update(@PathVariable Long id,
-                                    @RequestBody Map<String, Object> body) {
-        try {
-            return ResponseEntity.ok(ingredientService.update(
-                    id,
-                    body.containsKey("name") ? body.get("name").toString() : null,
-                    body.containsKey("category") ? body.get("category").toString() : null,
-                    body.containsKey("unit") ? body.get("unit").toString() : null
-            ));
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }    }
-
-    // 삭제
+    public ResponseEntity<Ingredient> update(@PathVariable Long id,
+                                             @RequestBody Map<String, Object> body) {
+        return ResponseEntity.ok(ingredientService.update(
+                id,
+                body.get("name").toString(),
+                body.getOrDefault("category", "").toString(),
+                body.get("unit").toString()
+        ));
+    }
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> delete(@PathVariable Long id) {
-        try {
-            return ResponseEntity.ok(Map.of("message", ingredientService.delete(id)));
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
+    public ResponseEntity<String> delete(@PathVariable Long id) {
+        return ResponseEntity.ok(ingredientService.delete(id));
     }
 }

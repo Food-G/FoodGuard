@@ -7,6 +7,7 @@
     <list default="true" id="5cf40e29-3cc9-4695-8ab3-20a40cad9768" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.claude/settings.local.json" beforeDir="false" afterPath="$PROJECT_DIR$/.claude/settings.local.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+<<<<<<< HEAD
       <change beforePath="$PROJECT_DIR$/frontend/src/layouts/main-layout/Sidebar/NavItem.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/layouts/main-layout/Sidebar/NavItem.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/layouts/main-layout/Sidebar/Sidebar.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/layouts/main-layout/Sidebar/Sidebar.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/layouts/main-layout/Topbar/Topbar.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/layouts/main-layout/Topbar/Topbar.tsx" afterDir="false" />
@@ -17,6 +18,18 @@
       <change beforePath="$PROJECT_DIR$/frontend/src/pages/Orders.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/pages/Orders.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/pages/auth/Login.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/pages/auth/Login.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/theme/components/DataGrid/DataGrid.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/theme/components/DataGrid/DataGrid.tsx" afterDir="false" />
+=======
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/controller/IngredientController.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/controller/IngredientController.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/controller/OrderRequestController.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/controller/OrderRequestController.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/entity/OrderRequest.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/entity/OrderRequest.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/repository/InventoryRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/repository/InventoryRepository.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/repository/OrderRequestRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/repository/OrderRequestRepository.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/service/IngredientService.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/service/IngredientService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/service/OrderRequestService.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/service/OrderRequestService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/pages/Inventory.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/pages/Inventory.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/pages/Orders.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/pages/Orders.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/services/orderService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/services/orderService.ts" afterDir="false" />
+>>>>>>> 11e3356 (feat: AI 수요예측 연동, POS 테이블 시스템, 대시보드 개선, UI/UX 전면 리디자인)
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -73,8 +86,13 @@
     "RunOnceActivity.git.unshallow": "true",
     "RunOnceActivity.typescript.service.memoryLimit.init": "true",
     "codeWithMe.voiceChat.enabledByDefault": "false",
+<<<<<<< HEAD
     "com.google.cloudcode.ide_session_index": "20260522_0001",
     "git-widget-placeholder": "Rebasing jihwan",
+=======
+    "com.google.cloudcode.ide_session_index": "20260515_0002",
+    "git-widget-placeholder": "jihwan",
+>>>>>>> 11e3356 (feat: AI 수요예측 연동, POS 테이블 시스템, 대시보드 개선, UI/UX 전면 리디자인)
     "kotlin-language-version-configured": "true",
     "last_opened_file_path": "C:/Test-Repository",
     "node.js.detected.package.eslint": "true",
@@ -82,7 +100,11 @@
     "node.js.selected.package.eslint": "(autodetect)",
     "node.js.selected.package.tslint": "(autodetect)",
     "nodejs_package_manager_path": "npm",
+<<<<<<< HEAD
     "settings.editor.selected.configurable": "project.propCompiler",
+=======
+    "settings.editor.selected.configurable": "reference.settings.ide.settings.web.browsers",
+>>>>>>> 11e3356 (feat: AI 수요예측 연동, POS 테이블 시스템, 대시보드 개선, UI/UX 전면 리디자인)
     "ts.external.directory.path": "C:\\Test-Repository\\frontend\\node_modules\\typescript\\lib",
     "vue.rearranger.settings.migration": "true"
   }
@@ -115,9 +137,12 @@
       <workItem from="1778199613717" duration="9000" />
       <workItem from="1778199642131" duration="3000" />
       <workItem from="1778199653834" duration="3000" />
+<<<<<<< HEAD
       <workItem from="1779427747803" duration="1047000" />
       <workItem from="1779431707833" duration="516000" />
       <workItem from="1779432240451" duration="2075000" />
+=======
+>>>>>>> 11e3356 (feat: AI 수요예측 연동, POS 테이블 시스템, 대시보드 개선, UI/UX 전면 리디자인)
     </task>
     <servers />
   </component>

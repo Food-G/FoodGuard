@@ -22,28 +22,6 @@ import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import IconifyIcon from '../../components/base/IconifyIcon';
 import { authService } from '../../services/authService';
 
-declare global {
-  interface Window {
-    daum: {
-      Postcode: new (config: { oncomplete: (data: any) => void }) => { open: () => void };
-    };
-  }
-}
-
-const SIDO_MAP: Record<string, string> = {
-  '서울특별시': '서울', '부산광역시': '부산', '대구광역시': '대구',
-  '인천광역시': '인천', '광주광역시': '광주', '대전광역시': '대전',
-  '울산광역시': '울산', '세종특별자치시': '세종', '경기도': '경기',
-  '강원도': '강원', '강원특별자치도': '강원', '충청북도': '충북',
-  '충청남도': '충남', '전라북도': '전북', '전북특별자치도': '전북',
-  '전라남도': '전남', '경상북도': '경북', '경상남도': '경남',
-  '제주특별자치도': '제주',
-};
-
-const normalizeRegion = (sido: string) => SIDO_MAP[sido] ?? sido;
-
-const POSTCODE_SCRIPT_URL = 'https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js';
-
 const Signup = () => {
   const [formData, setFormData] = useState({
     email: '',
@@ -57,8 +35,6 @@ const Signup = () => {
     phone: '',
   });
 
-  const [detailAddress, setDetailAddress] = useState('');
-  const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -286,63 +262,39 @@ const Signup = () => {
                   가맹점 정보
                 </Typography>
 
-                <TextField
-                  fullWidth
-                  variant="filled"
-                  label="매장명"
-                  name="storeName"
-                  required
-                  value={formData.storeName}
-                  onChange={handleChange}
-                  sx={textFieldStyle}
-                />
-
-                <Stack gap={1}>
+                <Stack direction={{ xs: 'column', sm: 'row' }} gap={2}>
                   <TextField
                     fullWidth
                     variant="filled"
-                    label="기본 주소"
-                    value={formData.address}
-                    placeholder="버튼을 클릭해 주소를 검색하세요"
+                    label="매장명"
+                    name="storeName"
                     required
+                    value={formData.storeName}
+                    onChange={handleChange}
                     sx={textFieldStyle}
-                    InputProps={{
-                      readOnly: true,
-                      endAdornment: (
-                        <InputAdornment position="end">
-                          <Button
-                            variant="contained"
-                            size="small"
-                            onClick={openPostcode}
-                            sx={{ borderRadius: 1.5, px: 1.5, mr: 0.5, whiteSpace: 'nowrap' }}
-                            startIcon={<IconifyIcon icon="mingcute:search-2-line" width={15} />}
-                          >
-                            주소 검색
-                          </Button>
-                        </InputAdornment>
-                      ),
-                    }}
                   />
-                  {formData.address && (
-                    <TextField
-                      fullWidth
-                      variant="filled"
-                      label="상세 주소"
-                      value={detailAddress}
-                      onChange={(e) => setDetailAddress(e.target.value)}
-                      placeholder="동/호수, 건물명 등 (선택)"
-                      sx={textFieldStyle}
-                    />
-                  )}
-                  {formData.region && (
-                    <Stack direction="row" gap={1} alignItems="center" sx={{ pl: 0.5 }}>
-                      <IconifyIcon icon="mingcute:location-fill" width={14} color="primary.main" />
-                      <Typography variant="caption" color="primary.main" fontWeight={700}>
-                        지역: {formData.region}
-                      </Typography>
-                    </Stack>
-                  )}
+                  <TextField
+                    fullWidth
+                    variant="filled"
+                    label="지역 (예: 서울 강남구)"
+                    name="region"
+                    required
+                    value={formData.region}
+                    onChange={handleChange}
+                    sx={textFieldStyle}
+                  />
                 </Stack>
+
+                <TextField
+                  fullWidth
+                  variant="filled"
+                  label="상세 주소"
+                  name="address"
+                  required
+                  value={formData.address}
+                  onChange={handleChange}
+                  sx={textFieldStyle}
+                />
 
                 <TextField
                   fullWidth
@@ -388,8 +340,7 @@ const Signup = () => {
           <Typography variant="caption" color="text.secondary">
             © 2026 FoodGuard Team. All rights reserved.
           </Typography>
-        </Box>
-      </Stack>
+        </Box>      </Stack>
     </Box>
   );
 };

@@ -1,23 +1,4 @@
 {
-  "permissions": {
-    "allow": [
-      "PowerShell(Get-ChildItem *)",
-      "PowerShell(Get-Content *)",
-      "PowerShell(Get-Service *)",
-      "PowerShell(Get-Process *)",
-      "PowerShell(git log *)",
-      "PowerShell(git status *)",
-      "PowerShell(git diff *)",
-      "PowerShell(git branch *)",
-      "PowerShell(node --version *)",
-      "PowerShell(npm --version *)",
-      "PowerShell(java --version *)",
-      "PowerShell(java -version *)",
-      "PowerShell(python --version *)",
-      "PowerShell(Write-Host *)",
-      "PowerShell([Console]::OutputEncoding *)",
-      "WebFetch(domain:github.com)",
-      "WebFetch(domain:raw.githubusercontent.com)"
-    ]
-  }
+  "enabledPlugins": {
+    "serena@claude-plugins-official": true  }
 }

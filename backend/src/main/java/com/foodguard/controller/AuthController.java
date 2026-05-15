@@ -7,8 +7,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Map;
-
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
@@ -16,21 +14,25 @@ public class AuthController {
 
     private final UserService userService;
 
+    // 회원가입 API
     @PostMapping("/signup")
-    public ResponseEntity<?> signup(@RequestBody SignupRequest request) {
+    public ResponseEntity<String> signup(@RequestBody SignupRequest request) {
         try {
             String result = userService.signup(request);
-            return ResponseEntity.ok(Map.of("message", result));
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));        }
-    }
-
-    @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody LoginRequest request) {
-        try {
-            Map<String, Object> result = userService.login(request);
             return ResponseEntity.ok(result);
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(401).body(Map.of("error", e.getMessage()));        }
-    }
+        } catch (Exception e) {
+            String errorMessage = e.getMessage() != null ? e.getMessage() : e.toString();
+            return ResponseEntity.badRequest().body(errorMessage);
+        }    }
+
+    // 로그인 API
+    @PostMapping("/login")
+    public ResponseEntity<String> login(@RequestBody LoginRequest request) {
+        try {
+            String token = userService.login(request);
+            return ResponseEntity.ok(token);
+        } catch (Exception e) {
+            String errorMessage = e.getMessage() != null ? e.getMessage() : e.toString();
+            return ResponseEntity.status(401).body(errorMessage);
+        }    }
 }

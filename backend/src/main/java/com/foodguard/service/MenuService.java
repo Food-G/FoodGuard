@@ -6,7 +6,6 @@ import com.foodguard.repository.MenuRepository;
 import com.foodguard.repository.StoreRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -18,7 +17,6 @@ public class MenuService {
     private final StoreRepository storeRepository;
 
     // 메뉴 등록
-    @Transactional
     public Menu create(Long storeId, String menuName, Integer price, String category) {
         Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new RuntimeException("가맹점을 찾을 수 없습니다."));
@@ -30,45 +28,25 @@ public class MenuService {
         return menuRepository.save(menu);
     }
 
-    // 단건 조회
-    public Menu getById(Long id) {
-        return menuRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("메뉴를 찾을 수 없습니다."));
-    }
-
-    // 가맹점 메뉴 전체 조회 (비활성 포함)
-    public List<Menu> getAllMenus(Long storeId) {
-        return menuRepository.findByStoreId(storeId);
-    }
-
     // 가맹점 메뉴 조회 (활성 메뉴만)
     public List<Menu> getActiveMenus(Long storeId) {
         return menuRepository.findByStoreIdAndIsActiveTrue(storeId);
     }
 
     // 메뉴 수정
-    @Transactional
     public Menu update(Long menuId, String menuName, Integer price, String category) {
-        Menu menu = getById(menuId);
-        if (menuName != null) menu.setMenuName(menuName);
-        if (price != null) menu.setPrice(price);
-        if (category != null) menu.setCategory(category);
+        Menu menu = menuRepository.findById(menuId)
+                .orElseThrow(() -> new RuntimeException("메뉴를 찾을 수 없습니다."));
+        menu.setMenuName(menuName);
+        menu.setPrice(price);
+        menu.setCategory(category);
         return menuRepository.save(menu);
     }
 
-    // 메뉴 활성화
-    @Transactional
-    public String activate(Long menuId) {
-        Menu menu = getById(menuId);
-        menu.setIsActive(true);
-        menuRepository.save(menu);
-        return "메뉴 활성화 완료";
-    }
-
-    // 메뉴 비활성화
-    @Transactional
+    // 메뉴 비활성화 (삭제 대신)
     public String deactivate(Long menuId) {
-        Menu menu = getById(menuId);
+        Menu menu = menuRepository.findById(menuId)
+                .orElseThrow(() -> new RuntimeException("메뉴를 찾을 수 없습니다."));
         menu.setIsActive(false);
         menuRepository.save(menu);
         return "메뉴 비활성화 완료";
