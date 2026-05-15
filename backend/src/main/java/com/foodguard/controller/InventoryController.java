@@ -43,4 +43,9 @@ public class InventoryController {
     public ResponseEntity<String> delete(@PathVariable Long id) {
         return ResponseEntity.ok(inventoryService.delete(id));
     }
+
+    @DeleteMapping("/store/{storeId}")
+    public ResponseEntity<String> deleteAll(@PathVariable Long storeId) {
+        return ResponseEntity.ok(inventoryService.deleteAll(storeId));
+    }
 }

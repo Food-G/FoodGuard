@@ -46,7 +46,7 @@ const Orders = ({ user }: any) => {
       const all = orders ?? [];
       setCancelledCount(all.filter((o: any) => o.status === 'CANCELLED').length);
       setRows(all
-        .filter((item: any) => item.status !== 'CANCELLED')
+        .filter((item: any) => item.status !== 'CANCELLED' && item.status !== 'DONE')
         .map((item: any) => ({
           id: item.id,
           name: item.ingredient?.name ?? '-',
@@ -75,6 +75,27 @@ const Orders = ({ user }: any) => {
       }
     }).catch(() => setLoading(false));
   }, [user]);
+
+  const handleUpdateStatus = async (id: number, status: string) => {
+    try {
+      await orderService.updateStatus(id, status);
+    } catch {
+      setError('상태 변경에 실패했습니다.');
+    }
+  };
+
+  const handleBulkStatus = async (targetStatus: string, fromStatus: string) => {
+    const targets = rows.filter((r) => r.status === fromStatus);
+    if (!targets.length || !storeId) return;
+    try {
+      await Promise.all(targets.map((r) => orderService.updateStatus(r.id, targetStatus)));
+      setSuccess(`${targets.length}건 ${targetStatus === 'APPROVED' ? '승인' : '배달 완료'} 처리되었습니다.`);
+    } catch {
+      setError('처리에 실패했습니다.');
+    } finally {
+      await loadOrders(storeId);
+    }
+  };
 
   const handleCancel = async (id: number) => {
     if (!window.confirm('발주를 취소하시겠습니까?')) return;
@@ -185,6 +206,7 @@ const Orders = ({ user }: any) => {
     },
     {
       field: 'actions', headerName: '관리', width: 90,
+      sortable: false, disableColumnMenu: true,
       renderCell: (params) =>
         params.row.status === 'REQUESTED' ? (
           <Button color="error" size="small" variant="outlined"
@@ -204,17 +226,35 @@ const Orders = ({ user }: any) => {
           <Typography variant="h2" color="primary.main" fontWeight={800}>FoodGuard</Typography>
           <Typography variant="h5" color="text.secondary" fontWeight={600}>지속 가능한 식자재 발주 시스템</Typography>
         </Box>
-        <Button
-          variant="contained"
-          startIcon={previewing
-            ? <CircularProgress size={16} color="inherit" />
-            : <IconifyIcon icon="mingcute:sparkles-line" />}
-          onClick={handleOpenPreview}
-          disabled={previewing}
-          sx={{ px: 3, py: 1.5, borderRadius: 3 }}
-        >
-          {previewing ? '분석 중...' : 'AI 예측 기반 자동 발주'}
-        </Button>
+        <Stack direction="row" gap={1}>
+          <Button
+            variant="outlined" color="info"
+            onClick={() => handleBulkStatus('APPROVED', 'REQUESTED')}
+            disabled={!rows.some((r) => r.status === 'REQUESTED')}
+            sx={{ borderRadius: 3 }}
+          >
+            전체 승인
+          </Button>
+          <Button
+            variant="outlined" color="success"
+            onClick={() => handleBulkStatus('DONE', 'APPROVED')}
+            disabled={!rows.some((r) => r.status === 'APPROVED')}
+            sx={{ borderRadius: 3 }}
+          >
+            전체 배달 완료
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={previewing
+              ? <CircularProgress size={16} color="inherit" />
+              : <IconifyIcon icon="mingcute:sparkles-line" />}
+            onClick={handleOpenPreview}
+            disabled={previewing}
+            sx={{ px: 3, py: 1.5, borderRadius: 3 }}
+          >
+            {previewing ? '분석 중...' : 'AI 예측 기반 자동 발주'}
+          </Button>
+        </Stack>
       </Stack>
 
       {error && <Alert severity="error" onClose={() => setError('')}>{error}</Alert>}

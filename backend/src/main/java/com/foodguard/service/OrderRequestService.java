@@ -6,6 +6,7 @@ import com.foodguard.entity.MenuIngredient;
 import com.foodguard.entity.OrderRequest;
 import com.foodguard.entity.PredictionResult;
 import com.foodguard.entity.Store;
+import java.util.stream.Collectors;
 import com.foodguard.repository.IngredientRepository;
 import com.foodguard.repository.InventoryRepository;
 import com.foodguard.repository.MenuIngredientRepository;
@@ -16,12 +17,14 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -55,12 +58,83 @@ public class OrderRequestService {
         return orderRequestRepository.findByStoreId(storeId);
     }
 
-    // 발주 상태 변경
+    // 전체 발주 내역 조회 (관리자용)
+    public List<OrderRequest> getAll() {
+        return orderRequestRepository.findAll();
+    }
+
+    // 발주 수량 기반 재고 초기화 — 취소 제외한 모든 발주의 합을 현재 재고로 설정
+    @Transactional
+    public List<Inventory> initInventoryFromOrders(Long storeId) {
+        Store store = storeRepository.findById(storeId)
+                .orElseThrow(() -> new RuntimeException("가맹점을 찾을 수 없습니다."));
+
+        List<OrderRequest> orders = orderRequestRepository.findByStoreId(storeId).stream()
+                .filter(o -> !o.getStatus().equals("CANCELLED"))
+                .collect(Collectors.toList());
+
+        // 식자재별 발주량 합산
+        Map<Long, Double> totalQty = new LinkedHashMap<>();
+        Map<Long, Ingredient> ingredientMap = new LinkedHashMap<>();
+        for (OrderRequest o : orders) {
+            Long ingId = o.getIngredient().getId();
+            totalQty.merge(ingId, o.getOrderedQty().doubleValue(), Double::sum);
+            ingredientMap.putIfAbsent(ingId, o.getIngredient());
+        }
+
+        List<Inventory> result = new ArrayList<>();
+        for (Map.Entry<Long, Double> entry : totalQty.entrySet()) {
+            Long ingId = entry.getKey();
+            Ingredient ingredient = ingredientMap.get(ingId);
+            double qty = round1(entry.getValue());
+
+            Optional<Inventory> existing = inventoryRepository
+                    .findByStoreIdAndIngredientId(storeId, ingId);
+            Inventory inv = existing.orElse(new Inventory());
+            double currentQty = existing.map(i -> i.getCurrentQty().doubleValue()).orElse(0.0);
+            inv.setStore(store);
+            inv.setIngredient(ingredient);
+            inv.setQuantity(round1(currentQty + qty));
+            inv.setMinThreshold(inv.getMinThreshold() != null ? inv.getMinThreshold() : BigDecimal.ZERO);
+            inv.setUnit(ingredient.getUnit());
+            result.add(inventoryRepository.save(inv));
+        }
+        return result;
+    }
+
+    // 발주 상태 변경 — DONE 전환 시 재고 자동 반영
+    @Transactional
     public OrderRequest updateStatus(Long id, String status) {
         OrderRequest order = orderRequestRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("발주 요청을 찾을 수 없습니다."));
+        String prev = order.getStatus();
         order.setStatus(status);
-        return orderRequestRepository.save(order);
+        orderRequestRepository.save(order);
+
+        if ("DONE".equals(status) && !"DONE".equals(prev)) {
+            Long storeId = order.getStore().getId();
+            Long ingredientId = order.getIngredient().getId();
+            double qty = order.getOrderedQty().doubleValue();
+
+            Optional<Inventory> invOpt = inventoryRepository.findByStoreIdAndIngredientId(storeId, ingredientId);
+            if (invOpt.isPresent()) {
+                Inventory inv = invOpt.get();
+                inv.setQuantity(inv.getCurrentQty().doubleValue() + qty);
+                inv.setUpdatedAt(LocalDateTime.now());
+                inventoryRepository.save(inv);
+            } else {
+                Inventory inv = new Inventory();
+                inv.setStore(order.getStore());
+                inv.setIngredient(order.getIngredient());
+                inv.setQuantity(qty);
+                inv.setMinThreshold(BigDecimal.ZERO);
+                inv.setUnit(order.getIngredient().getUnit());
+                inv.setUpdatedAt(LocalDateTime.now());
+                inventoryRepository.save(inv);
+            }
+        }
+
+        return order;
     }
 
     // 발주 취소 (삭제 대신 CANCELLED 상태로 변경 — recommend 중복 방지 및 이력 보존)
@@ -118,9 +192,9 @@ public class OrderRequestService {
             stock.put(inv.getIngredient().getId(), inv.getCurrentQty().doubleValue());
         }
 
-        // 이미 대기 중인 발주량 (REQUESTED) — 중복 발주 방지
+        // 이미 진행 중인 발주량 (REQUESTED + APPROVED) — 중복 발주 방지
         Map<Long, Double> pending = new LinkedHashMap<>();
-        for (OrderRequest o : orderRequestRepository.findByStoreIdAndStatus(storeId, "REQUESTED")) {
+        for (OrderRequest o : orderRequestRepository.findByStoreIdAndStatusIn(storeId, List.of("REQUESTED", "APPROVED"))) {
             pending.merge(o.getIngredient().getId(), o.getOrderedQty().doubleValue(), Double::sum);
         }
 

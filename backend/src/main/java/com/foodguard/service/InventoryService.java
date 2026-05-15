@@ -9,6 +9,7 @@ import com.foodguard.repository.StoreRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -27,10 +28,14 @@ public class InventoryService {
         Ingredient ingredient = ingredientRepository.findById(ingredientId)
                 .orElseThrow(() -> new RuntimeException("식자재를 찾을 수 없습니다."));
 
-        Inventory inventory = new Inventory();
+        Inventory inventory = inventoryRepository
+                .findByStoreIdAndIngredientId(storeId, ingredientId)
+                .orElse(new Inventory());
         inventory.setStore(store);
         inventory.setIngredient(ingredient);
         inventory.setQuantity(quantity);
+        inventory.setMinThreshold(BigDecimal.ZERO);
+        inventory.setUnit(ingredient.getUnit());
         return inventoryRepository.save(inventory);
     }
 
@@ -52,5 +57,12 @@ public class InventoryService {
     public String delete(Long id) {
         inventoryRepository.deleteById(id);
         return "재고 삭제 완료";
+    }
+
+    // 가맹점 전체 재고 초기화
+    @org.springframework.transaction.annotation.Transactional
+    public String deleteAll(Long storeId) {
+        inventoryRepository.deleteByStoreId(storeId);
+        return "전체 재고 초기화 완료";
     }
 }

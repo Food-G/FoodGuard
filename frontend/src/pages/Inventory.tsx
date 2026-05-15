@@ -3,7 +3,7 @@ import {
   Typography, Box, Paper, Button, CircularProgress, Stack,
   useTheme, Chip, TextField, MenuItem, IconButton, Alert,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  Divider, Popover,
+  Divider, Popover, Dialog, DialogTitle, DialogContent, DialogActions,
 } from '@mui/material';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { inventoryService } from '../services/inventoryService';
@@ -19,6 +19,7 @@ const Inventory = ({ user }: any) => {
   // 재고 현황
   const [rows, setRows] = useState<any[]>([]);
   const [loadingInventory, setLoadingInventory] = useState(true);
+  const [storeId, setStoreId] = useState<number | null>(null);
 
   // 메뉴 식자재 구성
   const [menus, setMenus] = useState<any[]>([]);
@@ -45,11 +46,18 @@ const Inventory = ({ user }: any) => {
   const [ingUnitAnchor, setIngUnitAnchor] = useState<HTMLElement | null>(null);
   const [editUnitAnchor, setEditUnitAnchor] = useState<HTMLElement | null>(null);
 
+  // 재고 등록 다이얼로그
+  const [stockDialog, setStockDialog] = useState(false);
+  const [stockForm, setStockForm] = useState({ ingredientId: '', quantity: '' });
+  const [stockSubmitting, setStockSubmitting] = useState(false);
+  const [initLoading, setInitLoading] = useState(false);
+
   useEffect(() => {
     if (!user?.id) return;
     storeService.getMyStores(user.id).then((stores: any[]) => {
       if (!stores?.length) return;
       const sid = stores[0].id;
+      setStoreId(sid);
       loadInventory(sid);
       menuService.getByStore(sid).then((m: any[]) => setMenus(m ?? []));
     }).catch(console.error);
@@ -57,18 +65,28 @@ const Inventory = ({ user }: any) => {
     loadAllIngredients();
   }, [user]);
 
+  // 전체 재고 현황 30초마다 자동 동기화
+  useEffect(() => {
+    if (!storeId) return;
+    const interval = setInterval(() => loadInventory(storeId), 30000);
+    return () => clearInterval(interval);
+  }, [storeId]);
+
   const loadInventory = (sid: number) => {
     setLoadingInventory(true);
     inventoryService.getByStore(sid).then((data: any[]) => {
       setRows((data ?? []).map((item: any) => ({
         id: item.id,
-        name: item.ingredient.name,
-        category: item.ingredient.category,
-        quantity: item.currentQty ?? item.quantity,
-        unit: item.ingredient.unit,
-        updatedAt: new Date(item.updatedAt).toLocaleString(),
+        ingredientId: item.ingredient?.id,
+        name: item.ingredient?.name ?? '-',
+        quantity: item.currentQty ?? item.quantity ?? 0,
+        unit: item.ingredient?.unit ?? '',
+        updatedAt: item.updatedAt ? new Date(item.updatedAt).toLocaleString() : '-',
       })));
-    }).catch(console.error).finally(() => setLoadingInventory(false));
+    }).catch((e) => {
+      console.error(e);
+      setError('재고 목록을 불러오지 못했습니다.');
+    }).finally(() => setLoadingInventory(false));
   };
 
   const loadMenuIngredients = useCallback(async (menuId: number) => {
@@ -184,6 +202,58 @@ const Inventory = ({ user }: any) => {
     }
   };
 
+  const handleResetAll = async () => {
+    if (!storeId) return;
+    if (!window.confirm('전체 재고를 모두 삭제합니다. 계속하시겠습니까?')) return;
+    try {
+      await api.delete(`/inventory/store/${storeId}`);
+      setSuccess('전체 재고가 초기화되었습니다.');
+      loadInventory(storeId);
+    } catch {
+      setError('초기화에 실패했습니다.');
+    }
+  };
+
+  const handleInitFromOrders = async () => {
+    if (!storeId) return;
+    if (!window.confirm('취소되지 않은 모든 발주 수량을 기존 재고에 더합니다. 계속하시겠습니까?')) return;
+    setInitLoading(true);
+    try {
+      await api.post(`/orders/init-inventory/${storeId}`, {});
+      setSuccess('발주 수량이 기존 재고에 반영되었습니다.');
+      loadInventory(storeId);
+    } catch {
+      setError('재고 초기화에 실패했습니다.');
+    } finally {
+      setInitLoading(false);
+    }
+  };
+
+  const handleCreateStock = async () => {
+    if (!storeId || !stockForm.ingredientId || !stockForm.quantity) return;
+    setStockSubmitting(true);
+    try {
+      const existing = rows.find((r) => String(r.ingredientId) === stockForm.ingredientId);
+      if (existing) {
+        await inventoryService.update(existing.id, { quantity: Number(stockForm.quantity) });
+      } else {
+        await inventoryService.create({
+          storeId,
+          ingredientId: Number(stockForm.ingredientId),
+          quantity: Number(stockForm.quantity),
+        });
+      }
+      setSuccess('재고가 등록되었습니다.');
+      setStockDialog(false);
+      setStockForm({ ingredientId: '', quantity: '' });
+      loadInventory(storeId);
+    } catch {
+      setError('재고 등록에 실패했습니다.');
+    } finally {
+      setStockSubmitting(false);
+    }
+  };
+
   const handleIngredientSelect = (ingredientId: string) => {
     const ing = allIngredients.find((i) => String(i.id) === ingredientId);
     setForm((prev) => ({ ...prev, ingredientId, unit: toRecipeUnit(ing?.unit ?? '') }));
@@ -192,12 +262,13 @@ const Inventory = ({ user }: any) => {
   const columns: GridColDef[] = [
     { field: 'name', headerName: '식자재명', flex: 1, minWidth: 200 },
     {
-      field: 'category', headerName: '분류', width: 150,
+      field: 'quantity', headerName: '현재고', width: 180, align: 'right', headerAlign: 'right',
       renderCell: (params) => (
-        <Chip label={params.value} size="small" variant="outlined" color="primary" />
+        <Typography fontWeight={600} fontSize={14}>
+          {params.value} <span style={{ color: '#888', fontWeight: 400 }}>{params.row.unit}</span>
+        </Typography>
       ),
     },
-    { field: 'quantity', headerName: '현재고', width: 150, align: 'right', headerAlign: 'right' },
     { field: 'unit', headerName: '단위', width: 100 },
     { field: 'updatedAt', headerName: '최근 업데이트', width: 250 },
   ];
@@ -495,35 +566,90 @@ const Inventory = ({ user }: any) => {
       <Paper sx={{ p: 3, border: `1px solid ${theme.palette.divider}`, borderRadius: 3 }}>
         <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
           <Typography variant="h6" fontWeight={700}>전체 재고 현황</Typography>
+          <Stack direction="row" gap={1}>
+            <Button
+              variant="outlined" color="error"
+              startIcon={<IconifyIcon icon="mingcute:delete-2-line" />}
+              onClick={handleResetAll}
+              sx={{ borderRadius: 2 }}
+            >
+              전체 초기화
+            </Button>
+            <Button
+              variant="outlined" color="secondary"
+              startIcon={initLoading ? <CircularProgress size={14} color="inherit" /> : <IconifyIcon icon="mingcute:refresh-2-line" />}
+              disabled={initLoading}
+              onClick={handleInitFromOrders}
+              sx={{ borderRadius: 2 }}
+            >
+              발주 수량 재고 반영
+            </Button>
+            <Button
+              variant="contained"
+              startIcon={<IconifyIcon icon="mingcute:add-line" />}
+              sx={{ borderRadius: 2 }}
+              onClick={() => setStockDialog(true)}
+            >
+              재고 등록
+            </Button>
+          </Stack>
+        </Stack>
+        {loadingInventory ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
+            <CircularProgress color="primary" />
+          </Box>
+        ) : (
+          <DataGrid
+            rows={rows}
+            columns={columns}
+            disableRowSelectionOnClick
+            hideFooter
+            autoHeight
+            sx={{
+              border: 'none',
+              '& .MuiDataGrid-columnHeaders': { bgcolor: 'primary.light', color: 'primary.dark', fontWeight: 700 },
+              '& .MuiDataGrid-cell:focus': { outline: 'none' },
+            }}
+          />
+        )}
+      </Paper>
+      {/* 재고 등록 다이얼로그 */}
+      <Dialog open={stockDialog} onClose={() => setStockDialog(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>재고 등록</DialogTitle>
+        <DialogContent>
+          <Stack gap={2} mt={1}>
+            <TextField
+              select label="식자재 선택" size="small" fullWidth required
+              value={stockForm.ingredientId}
+              onChange={(e) => setStockForm((p) => ({ ...p, ingredientId: e.target.value }))}
+            >
+              {allIngredients.map((ing) => (
+                <MenuItem key={ing.id} value={String(ing.id)}>
+                  {ing.name} ({ing.unit})
+                </MenuItem>
+              ))}
+            </TextField>
+            <TextField
+              label="수량" size="small" type="number" fullWidth required
+              value={stockForm.quantity}
+              onChange={(e) => setStockForm((p) => ({ ...p, quantity: e.target.value }))}
+              inputProps={{ step: '0.01', min: '0' }}
+              helperText="이미 등록된 식자재는 수량이 덮어씌워집니다."
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setStockDialog(false)} disabled={stockSubmitting}>취소</Button>
           <Button
             variant="contained"
-            startIcon={<IconifyIcon icon="mingcute:add-line" />}
-            sx={{ px: 3, borderRadius: 2 }}
+            onClick={handleCreateStock}
+            disabled={stockSubmitting || !stockForm.ingredientId || !stockForm.quantity}
+            startIcon={stockSubmitting ? <CircularProgress size={14} color="inherit" /> : null}
           >
-            재고 등록
+            등록
           </Button>
-        </Stack>
-        <Box sx={{ height: 420 }}>
-          {loadingInventory ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-              <CircularProgress color="primary" />
-            </Box>
-          ) : (
-            <DataGrid
-              rows={rows}
-              columns={columns}
-              disableRowSelectionOnClick
-              initialState={{ pagination: { paginationModel: { pageSize: 10 } } }}
-              pageSizeOptions={[10, 20]}
-              sx={{
-                border: 'none',
-                '& .MuiDataGrid-columnHeaders': { bgcolor: 'primary.light', color: 'primary.dark', fontWeight: 700 },
-                '& .MuiDataGrid-cell:focus': { outline: 'none' },
-              }}
-            />
-          )}
-        </Box>
-      </Paper>
+        </DialogActions>
+      </Dialog>
     </Stack>
   );
 };
