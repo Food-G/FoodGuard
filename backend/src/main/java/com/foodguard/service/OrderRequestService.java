@@ -63,14 +63,15 @@ public class OrderRequestService {
         return orderRequestRepository.save(order);
     }
 
-    // 발주 취소
+    // 발주 취소 (삭제 대신 CANCELLED 상태로 변경 — recommend 중복 방지 및 이력 보존)
     public String cancel(Long id) {
         OrderRequest order = orderRequestRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("발주 요청을 찾을 수 없습니다."));
         if (!order.getStatus().equals("REQUESTED")) {
             return "승인된 발주는 취소할 수 없습니다.";
         }
-        orderRequestRepository.deleteById(id);
+        order.setStatus("CANCELLED");
+        orderRequestRepository.save(order);
         return "발주 취소 완료";
     }
 
@@ -117,13 +118,20 @@ public class OrderRequestService {
             stock.put(inv.getIngredient().getId(), inv.getCurrentQty().doubleValue());
         }
 
-        // 발주 추천 목록 생성 (필요량 > 현재고인 식자재만)
+        // 이미 대기 중인 발주량 (REQUESTED) — 중복 발주 방지
+        Map<Long, Double> pending = new LinkedHashMap<>();
+        for (OrderRequest o : orderRequestRepository.findByStoreIdAndStatus(storeId, "REQUESTED")) {
+            pending.merge(o.getIngredient().getId(), o.getOrderedQty().doubleValue(), Double::sum);
+        }
+
+        // 발주 추천 목록 생성 (필요량 > 현재고 + 대기발주량인 식자재만)
         List<Map<String, Object>> result = new ArrayList<>();
         for (Map.Entry<Long, Double> entry : required.entrySet()) {
             Long ingId = entry.getKey();
             double req = round1(entry.getValue());
             double cur = round1(stock.getOrDefault(ingId, 0.0));
-            double orderQty = round1(Math.max(0, req - cur));
+            double alreadyOrdered = round1(pending.getOrDefault(ingId, 0.0));
+            double orderQty = round1(Math.max(0, req - cur - alreadyOrdered));
             if (orderQty <= 0) continue;
 
             Map<String, Object> item = new LinkedHashMap<>();
@@ -147,6 +155,8 @@ public class OrderRequestService {
         for (Map<String, Object> rec : recs) {
             Long ingId = ((Number) rec.get("ingredientId")).longValue();
             Double qty = ((Number) rec.get("orderQty")).doubleValue();
+            // 재발주 시 같은 식자재의 취소 이력 정리
+            orderRequestRepository.deleteByStoreIdAndIngredientIdAndStatus(storeId, ingId, "CANCELLED");
             orders.add(create(storeId, ingId, qty));
         }
         return orders;

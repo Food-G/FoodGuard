@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import {
   Typography, Box, Paper, Button, CircularProgress, Chip, Stack, useTheme, Alert,
+  Dialog, DialogTitle, DialogContent, DialogActions, Checkbox, Table, TableBody,
+  TableCell, TableContainer, TableHead, TableRow, Divider,
 } from '@mui/material';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { orderService } from '../services/orderService';
@@ -12,34 +14,47 @@ const STATUS_LABEL: Record<string, string> = {
   APPROVED: '승인됨',
   DONE: '완료',
   REJECTED: '거절됨',
+  CANCELLED: '취소됨',
 };
 const STATUS_COLOR: Record<string, any> = {
   REQUESTED: 'warning',
   APPROVED: 'info',
   DONE: 'success',
   REJECTED: 'error',
+  CANCELLED: 'default',
 };
 
 const Orders = ({ user }: any) => {
   const theme = useTheme();
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [ordering, setOrdering] = useState(false);
   const [storeId, setStoreId] = useState<number | null>(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [cancelledCount, setCancelledCount] = useState(0);
+
+  // 발주 추천 미리보기 다이얼로그
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [recommendations, setRecommendations] = useState<any[]>([]);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [previewing, setPreviewing] = useState(false);
+  const [confirming, setConfirming] = useState(false);
 
   const loadOrders = async (sid: number) => {
     try {
       const orders = await orderService.getByStore(sid);
-      setRows((orders ?? []).map((item: any) => ({
-        id: item.id,
-        name: item.ingredient?.name ?? '-',
-        quantity: item.orderedQty ?? item.quantity,
-        unit: item.ingredient?.unit ?? '',
-        status: item.status,
-        orderedAt: item.orderedAt ? new Date(item.orderedAt).toLocaleString() : '-',
-      })));
+      const all = orders ?? [];
+      setCancelledCount(all.filter((o: any) => o.status === 'CANCELLED').length);
+      setRows(all
+        .filter((item: any) => item.status !== 'CANCELLED')
+        .map((item: any) => ({
+          id: item.id,
+          name: item.ingredient?.name ?? '-',
+          quantity: item.orderedQty ?? item.quantity,
+          unit: item.ingredient?.unit ?? '',
+          status: item.status,
+          orderedAt: item.orderedAt ? new Date(item.orderedAt).toLocaleString() : '-',
+        })));
     } catch {
       setError('발주 내역을 불러오지 못했습니다.');
     }
@@ -72,24 +87,78 @@ const Orders = ({ user }: any) => {
     }
   };
 
-  const handleAutoOrder = async () => {
+  const handleCancelAll = async () => {
+    const requestedRows = rows.filter((r) => r.status === 'REQUESTED');
+    if (requestedRows.length === 0) return;
+    if (!window.confirm(`대기중인 발주 ${requestedRows.length}건을 모두 취소하시겠습니까?`)) return;
+    try {
+      await Promise.all(requestedRows.map((r) => orderService.cancel(r.id)));
+      setSuccess(`${requestedRows.length}건 발주가 모두 취소되었습니다.`);
+    } catch {
+      setError('전체 취소 중 오류가 발생했습니다.');
+    } finally {
+      if (storeId) await loadOrders(storeId);
+    }
+  };
+
+  // 1단계: 추천 목록 조회 → 다이얼로그 열기
+  const handleOpenPreview = async () => {
     if (!storeId) return;
-    setOrdering(true);
+    setPreviewing(true);
     setError('');
     setSuccess('');
     try {
-      const result = await orderService.autoOrder(storeId);
-      const count = Array.isArray(result) ? result.length : 0;
-      if (count === 0) {
+      const recs = await orderService.recommend(storeId);
+      const list = Array.isArray(recs) ? recs : [];
+      if (list.length === 0) {
         setError('발주가 필요한 식자재가 없거나 AI 예측 데이터가 없습니다. 예측 페이지에서 먼저 예측을 실행해주세요.');
-      } else {
-        setSuccess(`${count}건 발주가 등록되었습니다.`);
+        return;
       }
-      await loadOrders(storeId);
+      setRecommendations(list);
+      setSelectedIds(new Set(list.map((r: any) => r.ingredientId)));
+      setPreviewOpen(true);
     } catch {
-      setError('자동 발주 등록에 실패했습니다.');
+      setError('추천 목록을 불러오지 못했습니다.');
     } finally {
-      setOrdering(false);
+      setPreviewing(false);
+    }
+  };
+
+  const handleToggleAll = () => {
+    if (selectedIds.size === recommendations.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(recommendations.map((r) => r.ingredientId)));
+    }
+  };
+
+  const handleToggle = (ingId: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(ingId)) next.delete(ingId);
+      else next.add(ingId);
+      return next;
+    });
+  };
+
+  // 2단계: 선택 항목만 발주 등록
+  const handleConfirmOrder = async () => {
+    if (!storeId || selectedIds.size === 0) return;
+    setConfirming(true);
+    try {
+      const selected = recommendations.filter((r) => selectedIds.has(r.ingredientId));
+      await Promise.all(
+        selected.map((r) =>
+          orderService.create({ storeId, ingredientId: r.ingredientId, quantity: r.orderQty })
+        )
+      );
+      setSuccess(`${selected.length}건 발주가 등록되었습니다.`);
+      setPreviewOpen(false);
+    } catch {
+      setError('발주 등록에 실패했습니다.');
+    } finally {
+      setConfirming(false);
+      await loadOrders(storeId);
     }
   };
 
@@ -126,6 +195,8 @@ const Orders = ({ user }: any) => {
     },
   ];
 
+  const allSelected = recommendations.length > 0 && selectedIds.size === recommendations.length;
+
   return (
     <Stack gap={3} sx={{ bgcolor: 'background.default' }}>
       <Stack direction="row" justifyContent="space-between" alignItems="center">
@@ -135,14 +206,14 @@ const Orders = ({ user }: any) => {
         </Box>
         <Button
           variant="contained"
-          startIcon={ordering
+          startIcon={previewing
             ? <CircularProgress size={16} color="inherit" />
             : <IconifyIcon icon="mingcute:sparkles-line" />}
-          onClick={handleAutoOrder}
-          disabled={ordering}
+          onClick={handleOpenPreview}
+          disabled={previewing}
           sx={{ px: 3, py: 1.5, borderRadius: 3 }}
         >
-          {ordering ? '발주 등록 중...' : 'AI 예측 기반 자동 발주'}
+          {previewing ? '분석 중...' : 'AI 예측 기반 자동 발주'}
         </Button>
       </Stack>
 
@@ -150,27 +221,128 @@ const Orders = ({ user }: any) => {
       {success && <Alert severity="success" onClose={() => setSuccess('')}>{success}</Alert>}
 
       <Paper sx={{ p: 3, border: `1px solid ${theme.palette.divider}`, borderRadius: 3 }}>
-        <Typography variant="h6" fontWeight={700} mb={2}>발주 내역</Typography>
-        <Box sx={{ height: 520 }}>
-          {loading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-              <CircularProgress color="primary" />
-            </Box>
-          ) : (
-            <DataGrid
-              rows={rows}
-              columns={columns}
-              disableRowSelectionOnClick
-              initialState={{ pagination: { paginationModel: { pageSize: 10 } } }}
-              pageSizeOptions={[10, 20]}
-              sx={{
-                border: 'none',
-                '& .MuiDataGrid-columnHeaders': { bgcolor: 'secondary.light', color: 'secondary.dark', fontWeight: 700 },
-              }}
-            />
+        <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
+          <Stack direction="row" alignItems="center" gap={1.5}>
+            <Typography variant="h6" fontWeight={700}>발주 내역</Typography>
+            {cancelledCount > 0 && (
+              <Typography variant="caption" color="text.secondary">
+                (취소된 발주 {cancelledCount}건 숨김 — 자동 발주 시 자동 재계산됨)
+              </Typography>
+            )}
+          </Stack>
+          {rows.some((r) => r.status === 'REQUESTED') && (
+            <Button color="error" size="small" variant="outlined" onClick={handleCancelAll} sx={{ borderRadius: 2 }}>
+              전체 취소
+            </Button>
           )}
-        </Box>
+        </Stack>
+        {loading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
+            <CircularProgress color="primary" />
+          </Box>
+        ) : (
+          <DataGrid
+            rows={rows}
+            columns={columns}
+            disableRowSelectionOnClick
+            hideFooter
+            autoHeight
+            sx={{
+              border: 'none',
+              '& .MuiDataGrid-columnHeaders': { bgcolor: 'secondary.light', color: 'secondary.dark', fontWeight: 700 },
+            }}
+          />
+        )}
       </Paper>
+
+      {/* AI 추천 발주 미리보기 다이얼로그 */}
+      <Dialog open={previewOpen} onClose={() => setPreviewOpen(false)} maxWidth="md" fullWidth>
+        <DialogTitle>
+          <Stack direction="row" alignItems="center" gap={1}>
+            <IconifyIcon icon="mingcute:sparkles-line" />
+            <Typography variant="h6" fontWeight={700}>AI 예측 발주 추천</Typography>
+          </Stack>
+          <Typography variant="body2" color="text.secondary" mt={0.5}>
+            발주할 항목을 선택하고 등록하세요. ({recommendations.length}개 추천)
+          </Typography>
+        </DialogTitle>
+
+        <Divider />
+
+        <DialogContent sx={{ p: 0 }}>
+          <TableContainer>
+            <Table size="small">
+              <TableHead>
+                <TableRow sx={{ bgcolor: 'secondary.light' }}>
+                  <TableCell padding="checkbox">
+                    <Checkbox
+                      checked={allSelected}
+                      indeterminate={selectedIds.size > 0 && !allSelected}
+                      onChange={handleToggleAll}
+                    />
+                  </TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>식자재명</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700 }}>현재 재고</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700 }}>7일 필요량</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700, color: 'primary.main' }}>발주 수량</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {recommendations.map((rec) => (
+                  <TableRow
+                    key={rec.ingredientId}
+                    hover
+                    selected={selectedIds.has(rec.ingredientId)}
+                    onClick={() => handleToggle(rec.ingredientId)}
+                    sx={{ cursor: 'pointer' }}
+                  >
+                    <TableCell padding="checkbox">
+                      <Checkbox
+                        checked={selectedIds.has(rec.ingredientId)}
+                        onChange={() => handleToggle(rec.ingredientId)}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    </TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>{rec.ingredientName}</TableCell>
+                    <TableCell align="right">
+                      {rec.currentStock} <span style={{ color: '#888' }}>{rec.unit}</span>
+                    </TableCell>
+                    <TableCell align="right">
+                      {rec.requiredQty} <span style={{ color: '#888' }}>{rec.unit}</span>
+                    </TableCell>
+                    <TableCell align="right">
+                      <Typography fontWeight={700} color="primary.main" fontSize={14}>
+                        {rec.orderQty} <span style={{ fontWeight: 400, color: '#888' }}>{rec.unit}</span>
+                      </Typography>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </DialogContent>
+
+        <Divider />
+
+        <DialogActions sx={{ px: 3, py: 2, justifyContent: 'space-between' }}>
+          <Typography variant="body2" color="text.secondary">
+            {selectedIds.size}개 선택됨
+          </Typography>
+          <Stack direction="row" gap={1}>
+            <Button variant="outlined" onClick={() => setPreviewOpen(false)} disabled={confirming}>
+              취소
+            </Button>
+            <Button
+              variant="contained"
+              onClick={handleConfirmOrder}
+              disabled={confirming || selectedIds.size === 0}
+              startIcon={confirming ? <CircularProgress size={14} color="inherit" /> : null}
+            >
+              {confirming ? '등록 중...' : `${selectedIds.size}건 발주 등록`}
+            </Button>
+          </Stack>
+        </DialogActions>
+      </Dialog>
     </Stack>
   );
 };

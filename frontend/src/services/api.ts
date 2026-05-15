@@ -30,6 +30,7 @@ export const api = {
     const response = await fetch(`${BASE_URL}${url}`, {
       method: 'GET',
       headers: getHeaders(),
+      cache: 'no-store',
     });
     return handleResponse(response);
   },
