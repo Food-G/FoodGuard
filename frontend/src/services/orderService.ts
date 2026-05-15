@@ -19,4 +19,10 @@ export const orderService = {
   getAll: async () => {
     return api.get('/orders');
   },
+  recommend: async (storeId: number) => {
+    return api.get(`/orders/recommend/${storeId}`);
+  },
+  autoOrder: async (storeId: number) => {
+    return api.post(`/orders/auto/${storeId}`, {});
+  },
 };

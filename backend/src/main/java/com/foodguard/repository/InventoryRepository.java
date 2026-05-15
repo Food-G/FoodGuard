@@ -6,4 +6,5 @@ import java.util.List;
 
 public interface InventoryRepository extends JpaRepository<Inventory, Long> {
     List<Inventory> findByStoreId(Long storeId);
+    void deleteByIngredientId(Long ingredientId);
 }

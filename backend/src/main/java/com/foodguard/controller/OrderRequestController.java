@@ -42,4 +42,14 @@ public class OrderRequestController {
     public ResponseEntity<String> cancel(@PathVariable Long id) {
         return ResponseEntity.ok(orderRequestService.cancel(id));
     }
+
+    @GetMapping("/recommend/{storeId}")
+    public ResponseEntity<List<Map<String, Object>>> recommend(@PathVariable Long storeId) {
+        return ResponseEntity.ok(orderRequestService.recommend(storeId));
+    }
+
+    @PostMapping("/auto/{storeId}")
+    public ResponseEntity<List<OrderRequest>> autoOrder(@PathVariable Long storeId) {
+        return ResponseEntity.ok(orderRequestService.autoOrder(storeId));
+    }
 }

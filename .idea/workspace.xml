@@ -7,17 +7,16 @@
     <list default="true" id="5cf40e29-3cc9-4695-8ab3-20a40cad9768" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.claude/settings.local.json" beforeDir="false" afterPath="$PROJECT_DIR$/.claude/settings.local.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/GEMINI.md" beforeDir="false" afterPath="$PROJECT_DIR$/CLAUDE.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ai-service/.env.example" beforeDir="false" afterPath="$PROJECT_DIR$/ai-service/.env.example" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ai-service/config.py" beforeDir="false" afterPath="$PROJECT_DIR$/ai-service/config.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ai-service/ml/demand_predictor.py" beforeDir="false" afterPath="$PROJECT_DIR$/ai-service/ml/demand_predictor.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ai-service/ml/feature_engineering.py" beforeDir="false" afterPath="$PROJECT_DIR$/ai-service/ml/feature_engineering.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ai-service/requirements.txt" beforeDir="false" afterPath="$PROJECT_DIR$/ai-service/requirements.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ai-service/services/data_service.py" beforeDir="false" afterPath="$PROJECT_DIR$/ai-service/services/data_service.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ai-service/services/prediction_service.py" beforeDir="false" afterPath="$PROJECT_DIR$/ai-service/services/prediction_service.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/layouts/main-layout/Sidebar/Sidebar.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/layouts/main-layout/Sidebar/Sidebar.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/pages/MenuManagement.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/pages/MenuManagement.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/pages/Predictions.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/pages/Predictions.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/controller/IngredientController.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/controller/IngredientController.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/controller/OrderRequestController.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/controller/OrderRequestController.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/entity/OrderRequest.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/entity/OrderRequest.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/repository/InventoryRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/repository/InventoryRepository.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/repository/OrderRequestRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/repository/OrderRequestRepository.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/service/IngredientService.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/service/IngredientService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/service/OrderRequestService.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/service/OrderRequestService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/pages/Inventory.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/pages/Inventory.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/pages/Orders.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/pages/Orders.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/services/orderService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/services/orderService.ts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

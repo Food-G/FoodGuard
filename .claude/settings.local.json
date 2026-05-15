@@ -25,7 +25,18 @@
       "PowerShell(Invoke-RestMethod -Uri \"http://localhost:8000/api/predict/store/60006\" -Method Post | ConvertTo-Json -Depth 5)",
       "PowerShell(Invoke-RestMethod -Uri \"http://localhost:8000/api/predict/store/60006/results\" -Method Get | ConvertTo-Json -Depth 5)",
       "PowerShell(Invoke-RestMethod -Uri \"http://localhost:8000/api/predict/store/60006\" -Method Get | ConvertTo-Json -Depth 6)",
-      "PowerShell(Invoke-RestMethod -Uri \"http://localhost:8000/api/predict/store/60006\" -Method Post | ConvertTo-Json)"
+      "PowerShell(Invoke-RestMethod -Uri \"http://localhost:8000/api/predict/store/60006\" -Method Post | ConvertTo-Json)",
+      "PowerShell(pip install *)",
+      "Bash(Select-Object -First 20)",
+      "PowerShell(Get-Process *)",
+      "PowerShell(Start-Sleep -Seconds 20; Invoke-RestMethod -Uri \"http://localhost:8080/api/ingredients\" -Method Get | ConvertTo-Json)",
+      "PowerShell(Start-Sleep -Seconds 15; $login = Invoke-RestMethod -Uri \"http://localhost:8080/api/auth/login\" -Method Post -ContentType \"application/json\" -Body '{\"email\":\"jihwan1@gmail.com\",\"password\":\"1234\"}'; $token = $login.token; Write-Output \"토큰: $\\($token.Substring\\(0,20\\)\\)...\")",
+      "Bash(npx tsc *)",
+      "Bash(curl *)",
+      "Bash(python seed_ingredients.py)",
+      "Bash(python update_ingredient_units.py)",
+      "Bash(python -c \"import sys; t=sys.stdin.read\\(\\).strip\\(\\); print\\('OK' if len\\(t\\)>50 else 'FAIL'\\)\")",
+      "Bash(python -c ' *)"
     ]
   }
 }
