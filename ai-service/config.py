@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     MODEL_DIR: str = "trained_models"
     PREDICTION_DAYS: int = 7
     MIN_DATA_POINTS: int = 7
+    KMA_API_KEY: str = ""  # data.go.kr 기상청 API 키
 
     model_config = {"env_file": ".env"}
 

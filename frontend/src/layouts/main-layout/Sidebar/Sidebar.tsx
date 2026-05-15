@@ -1,12 +1,9 @@
 import { ReactElement } from 'react';
-import { Link, List, Toolbar, Box } from '@mui/material';
+import { Link, List, Toolbar, Box, Typography, Stack } from '@mui/material';
 import SimpleBar from 'simplebar-react';
 import NavItem from './NavItem';
 import { drawerCloseWidth, drawerOpenWidth } from '..';
-import Image from 'components/base/Image';
-
-const logoWithText = '/Logo-with-text.png';
-const logo = '/LOGO.png';
+import IconifyIcon from 'components/base/IconifyIcon';
 
 interface SidebarProps {
   open: boolean;
@@ -49,11 +46,14 @@ const Sidebar = ({ open, role, setMobileOpen }: SidebarProps): ReactElement => {
             mt: 3,
           }}
         >
-          <Image
-            src={open ? logoWithText : logo}
-            alt={open ? 'logo with text' : 'logo'}
-            height={40}
-          />
+          <Stack direction="row" alignItems="center" gap={1} sx={{ textDecoration: 'none' }}>
+            <IconifyIcon icon="mingcute:leaf-fill" color="primary.main" width={32} height={32} />
+            {open && (
+              <Typography fontWeight={900} color="primary.main" sx={{ fontSize: 20, letterSpacing: '-0.05em' }}>
+                FoodGuard
+              </Typography>
+            )}
+          </Stack>
         </Link>
       </Toolbar>
       <Box component={SimpleBar} style={{ maxHeight: '100vh' }}>

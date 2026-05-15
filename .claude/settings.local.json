@@ -5,7 +5,27 @@
       "Bash(Get-ChildItem *)",
       "Bash(python -m venv venv)",
       "Bash(venv\\\\Scripts\\\\pip install *)",
-      "PowerShell(Out-Null *)"
+      "PowerShell(Out-Null *)",
+      "Bash(git push *)",
+      "Bash(git fetch *)",
+      "Bash(Select-Object FullName)",
+      "PowerShell(head *)",
+      "PowerShell(try { $r = Invoke-WebRequest -Uri \"http://localhost:8000/health\" -TimeoutSec 3 -UseBasicParsing; $r.StatusCode } catch { \"not running\" })",
+      "PowerShell(Start-Process \"http://localhost:8000/docs\")",
+      "PowerShell(python -c \"import fastapi, uvicorn, sklearn, pandas; print\\('OK'\\)\" 2>&1)",
+      "PowerShell(try { $r = Invoke-WebRequest -Uri \"http://localhost:8000/health\" -TimeoutSec 3 -UseBasicParsing; \"서버 실행중: $\\($r.StatusCode\\)\" } catch { \"서버 꺼져있음\" })",
+      "PowerShell($resp = Invoke-WebRequest -Uri \"http://localhost:8000/api/predict/store/60004\" -Method POST -TimeoutSec 30 -UseBasicParsing; $resp.StatusCode; $resp.Content)",
+      "Bash(gh repo *)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(start chrome *)",
+      "Bash(start ms-settings:defaultapps *)",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(xargs ls -la)",
+      "Bash(python generate_dummy_data.py --dry-run)",
+      "PowerShell(Invoke-RestMethod -Uri \"http://localhost:8000/api/predict/store/60006\" -Method Post | ConvertTo-Json -Depth 5)",
+      "PowerShell(Invoke-RestMethod -Uri \"http://localhost:8000/api/predict/store/60006/results\" -Method Get | ConvertTo-Json -Depth 5)",
+      "PowerShell(Invoke-RestMethod -Uri \"http://localhost:8000/api/predict/store/60006\" -Method Get | ConvertTo-Json -Depth 6)",
+      "PowerShell(Invoke-RestMethod -Uri \"http://localhost:8000/api/predict/store/60006\" -Method Post | ConvertTo-Json)"
     ]
   }
 }
