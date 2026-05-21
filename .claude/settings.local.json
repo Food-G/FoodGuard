@@ -5,7 +5,15 @@
       "Bash(Get-ChildItem *)",
       "Bash(python -m venv venv)",
       "Bash(venv\\\\Scripts\\\\pip install *)",
-      "PowerShell(Out-Null *)"
+      "PowerShell(Out-Null *)",
+      "PowerShell(python --version)",
+      "PowerShell(New-Item *)",
+      "PowerShell(Invoke-RestMethod -Uri \"http://localhost:8000/health\" -Method GET | ConvertTo-Json)",
+      "PowerShell(Get-Process *)",
+      "PowerShell(Invoke-RestMethod -Uri \"http://localhost:8000/api/train/store/30001\" -Method POST | ConvertTo-Json -Depth 5)",
+      "PowerShell(Invoke-RestMethod -Uri \"http://localhost:8000/api/predict/store/30001\" -Method POST | ConvertTo-Json -Depth 5)",
+      "PowerShell(Invoke-RestMethod -Uri \"http://localhost:8000/api/predict/store/30001\" -Method GET | ConvertTo-Json -Depth 10)",
+      "PowerShell(npm *)"
     ]
   }
 }
