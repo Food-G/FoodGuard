@@ -14,6 +14,7 @@
       "PowerShell(Invoke-RestMethod -Uri \"http://localhost:8000/api/predict/store/30001\" -Method POST | ConvertTo-Json -Depth 5)",
       "PowerShell(Invoke-RestMethod -Uri \"http://localhost:8000/api/predict/store/30001\" -Method GET | ConvertTo-Json -Depth 10)",
       "PowerShell(npm *)",
+<<<<<<< Updated upstream
       "Bash(git push *)",
       "Bash(git fetch *)",
       "Bash(Select-Object FullName)",
@@ -44,6 +45,12 @@
       "Bash(python update_ingredient_units.py)",
       "Bash(python -c \"import sys; t=sys.stdin.read\\(\\).strip\\(\\); print\\('OK' if len\\(t\\)>50 else 'FAIL'\\)\")",
       "Bash(python -c ' *)"
+=======
+      "Bash(gh repo *)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "PowerShell(mysql *)"
+>>>>>>> Stashed changes
     ]
   }
 }
