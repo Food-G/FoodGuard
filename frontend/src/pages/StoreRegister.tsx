@@ -38,6 +38,11 @@ const StoreRegister = ({ user }: any) => {
     storeName: '', address: '', detailAddress: '', phone: '', region: '',
   });
   const scriptLoaded = useRef(false);
+  const [editingStoreId, setEditingStoreId] = useState<number | null>(null);
+  const [editForm, setEditForm] = useState({
+    storeName: '', address: '', detailAddress: '', phone: '', region: '',
+  });
+  const [editSubmitting, setEditSubmitting] = useState(false);
 
   const loadPostcodeScript = () => {
     if (scriptLoaded.current || document.getElementById('daum-postcode-script')) {
@@ -110,6 +115,53 @@ const StoreRegister = ({ user }: any) => {
     }
   };
 
+  const startEdit = (store: any) => {
+    setEditingStoreId(store.id);
+    setEditForm({ storeName: store.storeName, address: store.address ?? '', detailAddress: '', phone: store.phone ?? '', region: store.region ?? '' });
+  };
+
+  const cancelEdit = () => setEditingStoreId(null);
+
+  const handleEditChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setEditForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  const openEditPostcode = () => {
+    if (!window.daum?.Postcode) {
+      setError('주소 검색 서비스를 불러오는 중입니다. 잠시 후 다시 시도해주세요.');
+      return;
+    }
+    new window.daum.Postcode({
+      oncomplete: (data: any) => {
+        const fullAddress = data.roadAddress || data.jibunAddress;
+        const region = normalizeRegion(data.sido);
+        setEditForm((prev) => ({ ...prev, address: fullAddress, region, detailAddress: '' }));
+      },
+    }).open();
+  };
+
+  const handleEditSubmit = async (storeId: number) => {
+    if (!editForm.storeName || !editForm.address || !editForm.phone) {
+      setError('가게 이름, 주소, 전화번호를 모두 입력해주세요.');
+      return;
+    }
+    setEditSubmitting(true);
+    setError('');
+    const fullAddress = editForm.detailAddress
+      ? `${editForm.address} ${editForm.detailAddress}`
+      : editForm.address;
+    try {
+      await storeService.update(storeId, { storeName: editForm.storeName, address: fullAddress, phone: editForm.phone, region: editForm.region });
+      setSuccess('가게 정보가 수정되었습니다!');
+      setEditingStoreId(null);
+      await loadStores();
+    } catch {
+      setError('가게 수정에 실패했습니다.');
+    } finally {
+      setEditSubmitting(false);
+    }
+  };
+
   return (
     <Stack gap={4} maxWidth={600}>
       <Box>
@@ -132,20 +184,72 @@ const StoreRegister = ({ user }: any) => {
         ) : (
           <Stack gap={1.5}>
             {stores.map((store) => (
-              <Stack key={store.id} direction="row" alignItems="center" justifyContent="space-between"
-                sx={{ p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
-                <Stack>
-                  <Typography fontWeight={700}>{store.storeName}</Typography>
-                  <Typography variant="body2" color="text.secondary">{store.address}</Typography>
-                  <Typography variant="body2" color="text.secondary">{store.phone}</Typography>
-                </Stack>
-                <Stack direction="row" gap={1} alignItems="center">
-                  {store.region && (
-                    <Chip label={store.region} size="small" color="primary" variant="outlined" />
-                  )}
-                  <Chip label={`ID: ${store.id}`} size="small" variant="outlined" />
-                </Stack>
-              </Stack>
+              <Box key={store.id}>
+                {editingStoreId === store.id ? (
+                  <Stack sx={{ p: 2, border: '1px solid', borderColor: 'primary.main', borderRadius: 2 }} gap={2}>
+                    <Stack direction="row" alignItems="center" justifyContent="space-between">
+                      <Typography fontWeight={700} color="primary.main">가게 정보 수정</Typography>
+                      <Button size="small" onClick={cancelEdit}>취소</Button>
+                    </Stack>
+                    <TextField label="가게 이름" name="storeName" value={editForm.storeName} onChange={handleEditChange} size="small" fullWidth required />
+                    <Stack gap={1}>
+                      <TextField
+                        label="기본 주소"
+                        value={editForm.address}
+                        size="small"
+                        fullWidth
+                        required
+                        InputProps={{
+                          readOnly: true,
+                          endAdornment: (
+                            <InputAdornment position="end">
+                              <Button variant="contained" size="small" onClick={openEditPostcode}
+                                sx={{ borderRadius: 1.5, px: 1.5, whiteSpace: 'nowrap' }}
+                                startIcon={<IconifyIcon icon="mingcute:search-2-line" width={15} />}>
+                                주소 검색
+                              </Button>
+                            </InputAdornment>
+                          ),
+                        }}
+                      />
+                      {editForm.address && (
+                        <TextField label="상세 주소" name="detailAddress" value={editForm.detailAddress} onChange={handleEditChange} size="small" placeholder="동/호수, 건물명 등 (선택)" fullWidth />
+                      )}
+                      {editForm.region && (
+                        <Stack direction="row" gap={1} alignItems="center">
+                          <IconifyIcon icon="mingcute:location-fill" width={15} color="primary.main" />
+                          <Typography variant="caption" color="primary.main" fontWeight={700}>지역: {editForm.region}</Typography>
+                        </Stack>
+                      )}
+                    </Stack>
+                    <TextField label="전화번호" name="phone" value={editForm.phone} onChange={handleEditChange} size="small" placeholder="010-0000-0000" fullWidth required />
+                    <Button variant="contained" size="small" onClick={() => handleEditSubmit(store.id)}
+                      disabled={editSubmitting}
+                      startIcon={editSubmitting ? <CircularProgress size={14} color="inherit" /> : null}>
+                      {editSubmitting ? '저장 중...' : '저장'}
+                    </Button>
+                  </Stack>
+                ) : (
+                  <Stack direction="row" alignItems="center" justifyContent="space-between"
+                    sx={{ p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
+                    <Stack>
+                      <Typography fontWeight={700}>{store.storeName}</Typography>
+                      <Typography variant="body2" color="text.secondary">{store.address}</Typography>
+                      <Typography variant="body2" color="text.secondary">{store.phone}</Typography>
+                    </Stack>
+                    <Stack direction="row" gap={1} alignItems="center">
+                      {store.region && (
+                        <Chip label={store.region} size="small" color="primary" variant="outlined" />
+                      )}
+                      <Chip label={`ID: ${store.id}`} size="small" variant="outlined" />
+                      <Button size="small" variant="outlined" onClick={() => startEdit(store)}
+                        startIcon={<IconifyIcon icon="mingcute:edit-2-line" width={14} />}>
+                        수정
+                      </Button>
+                    </Stack>
+                  </Stack>
+                )}
+              </Box>
             ))}
           </Stack>
         )}

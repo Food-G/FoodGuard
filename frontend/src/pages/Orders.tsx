@@ -1,13 +1,41 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Typography, Box, Paper, Button, CircularProgress, Chip, Stack, useTheme, Alert,
   Dialog, DialogTitle, DialogContent, DialogActions, Checkbox, Table, TableBody,
-  TableCell, TableContainer, TableHead, TableRow, Divider,
+  TableCell, TableContainer, TableHead, TableRow, Divider, Popover,
 } from '@mui/material';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
+import { Client } from '@stomp/stompjs';
+import SockJS from 'sockjs-client';
+import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import { orderService } from '../services/orderService';
 import { storeService } from '../services/storeService';
 import IconifyIcon from '../components/base/IconifyIcon';
+
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+});
+
+const truckIcon = L.divIcon({
+  className: '',
+  html: `<div style="background:#1976d2;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 2px 8px rgba(0,0,0,0.3)">🚚</div>`,
+  iconSize: [36, 36],
+  iconAnchor: [18, 18],
+});
+
+function MapRecenter({ lat, lng }: { lat: number; lng: number }) {
+  const map = useMap();
+  useEffect(() => { map.setView([lat, lng], map.getZoom()); }, [lat, lng]);
+  return null;
+}
+
+const STAGES = ['승인됨', '픽업 완료', '배송중', '거의 도착'];
+const STAGE_ICONS = ['✅', '🏭', '🚚', '📍'];
 
 const STATUS_LABEL: Record<string, string> = {
   REQUESTED: '대기중',
@@ -33,6 +61,15 @@ const Orders = ({ user }: any) => {
   const [success, setSuccess] = useState('');
   const [cancelledCount, setCancelledCount] = useState(0);
 
+  // 배달 추적
+  const [deliveryMap, setDeliveryMap] = useState<Record<string, { lat: number; lng: number; stage: number }>>({});
+  const stompClients = useRef<Record<string, Client>>({});
+  const [approvedOrders, setApprovedOrders] = useState<any[]>([]);
+
+  // 배달 현황 팝오버 (hover)
+  const [deliveryAnchor, setDeliveryAnchor] = useState<HTMLElement | null>(null);
+  const deliveryCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // 발주 추천 미리보기 다이얼로그
   const [previewOpen, setPreviewOpen] = useState(false);
   const [recommendations, setRecommendations] = useState<any[]>([]);
@@ -40,11 +77,58 @@ const Orders = ({ user }: any) => {
   const [previewing, setPreviewing] = useState(false);
   const [confirming, setConfirming] = useState(false);
 
+  // hover 팝오버 핸들러 (150ms 지연으로 버튼 → 팝오버 이동 시 자연스럽게 유지)
+  const openDelivery = (e: React.MouseEvent<HTMLElement>) => {
+    if (deliveryCloseTimer.current) clearTimeout(deliveryCloseTimer.current);
+    setDeliveryAnchor(e.currentTarget);
+  };
+  const scheduleCloseDelivery = () => {
+    deliveryCloseTimer.current = setTimeout(() => setDeliveryAnchor(null), 150);
+  };
+  const cancelCloseDelivery = () => {
+    if (deliveryCloseTimer.current) clearTimeout(deliveryCloseTimer.current);
+  };
+
+  const subscribeDelivery = (token: string) => {
+    if (stompClients.current[token]) return;
+    const client = new Client({
+      webSocketFactory: () => new SockJS('/ws'),
+      reconnectDelay: 5000,
+      onConnect: () => {
+        client.subscribe(`/topic/delivery/${token}`, (msg) => {
+          const data = JSON.parse(msg.body);
+          if (data.type === 'LOCATION') {
+            setDeliveryMap((prev) => ({
+              ...prev,
+              [token]: { lat: data.lat, lng: data.lng, stage: prev[token]?.stage ?? 0 },
+            }));
+          } else if (data.type === 'DONE') {
+            setDeliveryMap((prev) => {
+              const next = { ...prev };
+              delete next[token];
+              return next;
+            });
+            stompClients.current[token]?.deactivate();
+            delete stompClients.current[token];
+            if (storeId) loadOrders(storeId);
+          }
+        });
+      },
+    });
+    client.activate();
+    stompClients.current[token] = client;
+  };
+
   const loadOrders = async (sid: number) => {
     try {
       const orders = await orderService.getByStore(sid);
       const all = orders ?? [];
       setCancelledCount(all.filter((o: any) => o.status === 'CANCELLED').length);
+
+      const approved = all.filter((o: any) => o.status === 'APPROVED' && o.deliveryToken);
+      setApprovedOrders(approved);
+      approved.forEach((o: any) => subscribeDelivery(o.deliveryToken));
+
       setRows(all
         .filter((item: any) => item.status !== 'CANCELLED' && item.status !== 'DONE')
         .map((item: any) => ({
@@ -54,6 +138,7 @@ const Orders = ({ user }: any) => {
           unit: item.ingredient?.unit ?? '',
           status: item.status,
           orderedAt: item.orderedAt ? new Date(item.orderedAt).toLocaleString() : '-',
+          deliveryToken: item.deliveryToken ?? null,
         })));
     } catch {
       setError('발주 내역을 불러오지 못했습니다.');
@@ -75,19 +160,6 @@ const Orders = ({ user }: any) => {
       }
     }).catch(() => setLoading(false));
   }, [user]);
-
-  const handleBulkStatus = async (targetStatus: string, fromStatus: string) => {
-    const targets = rows.filter((r) => r.status === fromStatus);
-    if (!targets.length || !storeId) return;
-    try {
-      await Promise.all(targets.map((r) => orderService.updateStatus(r.id, targetStatus)));
-      setSuccess(`${targets.length}건 ${targetStatus === 'APPROVED' ? '승인' : '배달 완료'} 처리되었습니다.`);
-    } catch {
-      setError('처리에 실패했습니다.');
-    } finally {
-      await loadOrders(storeId);
-    }
-  };
 
   const handleCancel = async (id: number) => {
     if (!window.confirm('발주를 취소하시겠습니까?')) return;
@@ -114,7 +186,6 @@ const Orders = ({ user }: any) => {
     }
   };
 
-  // 1단계: 추천 목록 조회 → 다이얼로그 열기
   const handleOpenPreview = async () => {
     if (!storeId) return;
     setPreviewing(true);
@@ -154,7 +225,6 @@ const Orders = ({ user }: any) => {
     });
   };
 
-  // 2단계: 선택 항목만 발주 등록
   const handleConfirmOrder = async () => {
     if (!storeId || selectedIds.size === 0) return;
     setConfirming(true);
@@ -210,31 +280,39 @@ const Orders = ({ user }: any) => {
   ];
 
   const allSelected = recommendations.length > 0 && selectedIds.size === recommendations.length;
+  const liveCount = Object.keys(deliveryMap).length;
 
   return (
     <Stack gap={3} sx={{ bgcolor: 'background.default' }}>
+
+      {/* 헤더: 타이틀 | 배달현황 버튼(중앙) | AI 발주 버튼 */}
       <Stack direction="row" justifyContent="space-between" alignItems="center">
         <Box>
           <Typography variant="h2" color="primary.main" fontWeight={800}>FoodGuard</Typography>
           <Typography variant="h5" color="text.secondary" fontWeight={600}>지속 가능한 식자재 발주 시스템</Typography>
         </Box>
-        <Stack direction="row" gap={1}>
-          <Button
-            variant="outlined" color="info"
-            onClick={() => handleBulkStatus('APPROVED', 'REQUESTED')}
-            disabled={!rows.some((r) => r.status === 'REQUESTED')}
-            sx={{ borderRadius: 3 }}
-          >
-            전체 승인
-          </Button>
-          <Button
-            variant="outlined" color="success"
-            onClick={() => handleBulkStatus('DONE', 'APPROVED')}
-            disabled={!rows.some((r) => r.status === 'APPROVED')}
-            sx={{ borderRadius: 3 }}
-          >
-            전체 배달 완료
-          </Button>
+
+        <Stack direction="row" gap={1.5} alignItems="center">
+          {/* 배달 현황 hover 버튼 */}
+          {approvedOrders.length > 0 && (
+            <Button
+              variant="outlined"
+              color={liveCount > 0 ? 'error' : 'info'}
+              onMouseEnter={openDelivery}
+              onMouseLeave={scheduleCloseDelivery}
+              startIcon={<IconifyIcon icon="mingcute:truck-line" width={18} />}
+              sx={{ borderRadius: 3, fontWeight: 700, position: 'relative' }}
+            >
+              배달 현황
+              <Chip
+                label={liveCount > 0 ? `🔴 ${liveCount}` : approvedOrders.length}
+                size="small"
+                color={liveCount > 0 ? 'error' : 'default'}
+                sx={{ ml: 1, height: 20, fontSize: 11, fontWeight: 700, '& .MuiChip-label': { px: 0.75 } }}
+              />
+            </Button>
+          )}
+
           <Button
             variant="contained"
             startIcon={previewing
@@ -252,13 +330,14 @@ const Orders = ({ user }: any) => {
       {error && <Alert severity="error" onClose={() => setError('')}>{error}</Alert>}
       {success && <Alert severity="success" onClose={() => setSuccess('')}>{success}</Alert>}
 
+      {/* 발주 내역 (배달 현황이 위를 차지하지 않으므로 바로 표시) */}
       <Paper sx={{ p: 3, border: `1px solid ${theme.palette.divider}`, borderRadius: 3 }}>
         <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
           <Stack direction="row" alignItems="center" gap={1.5}>
             <Typography variant="h6" fontWeight={700}>발주 내역</Typography>
             {cancelledCount > 0 && (
               <Typography variant="caption" color="text.secondary">
-                (취소된 발주 {cancelledCount}건 숨김 — 자동 발주 시 자동 재계산됨)
+                (취소된 발주 {cancelledCount}건 숨김)
               </Typography>
             )}
           </Stack>
@@ -286,6 +365,114 @@ const Orders = ({ user }: any) => {
           />
         )}
       </Paper>
+
+      {/* 배달 현황 hover 팝오버 */}
+      <Popover
+        open={Boolean(deliveryAnchor)}
+        anchorEl={deliveryAnchor}
+        onClose={() => setDeliveryAnchor(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+        disableRestoreFocus
+        disableScrollLock
+        sx={{ pointerEvents: 'none', mt: 1 }}
+        PaperProps={{
+          onMouseEnter: cancelCloseDelivery,
+          onMouseLeave: scheduleCloseDelivery,
+          sx: {
+            pointerEvents: 'auto',
+            width: 480,
+            maxHeight: 560,
+            overflowY: 'auto',
+            borderRadius: 3,
+            boxShadow: theme.shadows[8],
+            border: `1px solid ${theme.palette.divider}`,
+          },
+        }}
+      >
+        <Box sx={{ p: 2, borderBottom: `1px solid ${theme.palette.divider}` }}>
+          <Stack direction="row" alignItems="center" gap={1}>
+            <IconifyIcon icon="mingcute:truck-line" width={18} color={theme.palette.primary.main} />
+            <Typography variant="subtitle1" fontWeight={700}>배달 현황</Typography>
+            <Typography variant="caption" color="text.secondary">({approvedOrders.length}건)</Typography>
+          </Stack>
+        </Box>
+
+        <Stack gap={0}>
+          {approvedOrders.map((order: any, idx: number) => {
+            const loc = deliveryMap[order.deliveryToken];
+            const stage = loc?.stage ?? 0;
+            return (
+              <Box
+                key={order.id}
+                sx={{
+                  p: 2.5,
+                  borderTop: idx > 0 ? `1px solid ${theme.palette.divider}` : 'none',
+                }}
+              >
+                {/* 발주 헤더 */}
+                <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1.5}>
+                  <Box>
+                    <Typography fontWeight={700} fontSize={14}>{order.ingredient?.name ?? '-'}</Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {order.orderedQty ?? order.quantity} {order.ingredient?.unit}
+                    </Typography>
+                  </Box>
+                  {loc ? (
+                    <Chip label="🔴 실시간 추적중" color="error" size="small" sx={{ fontWeight: 700 }} />
+                  ) : (
+                    <Chip label="배달 준비중" color="default" size="small" />
+                  )}
+                </Stack>
+
+                {/* 단계 스텝퍼 */}
+                <Stack direction="row" justifyContent="space-between" mb={1}>
+                  {STAGES.map((label, i) => (
+                    <Stack key={i} alignItems="center" gap={0.25} sx={{ flex: 1, opacity: i <= stage ? 1 : 0.3 }}>
+                      <Typography fontSize={16}>{STAGE_ICONS[i]}</Typography>
+                      <Typography
+                        variant="caption"
+                        fontWeight={i === stage ? 700 : 400}
+                        color={i === stage ? 'primary.main' : 'text.secondary'}
+                        textAlign="center"
+                        sx={{ fontSize: 10 }}
+                      >
+                        {label}
+                      </Typography>
+                    </Stack>
+                  ))}
+                </Stack>
+                <Box sx={{ height: 5, bgcolor: 'grey.200', borderRadius: 3, overflow: 'hidden', mb: 1.5 }}>
+                  <Box
+                    sx={{
+                      height: '100%', bgcolor: 'primary.main', borderRadius: 3,
+                      width: `${(stage / (STAGES.length - 1)) * 100}%`,
+                      transition: 'width 0.5s',
+                    }}
+                  />
+                </Box>
+
+                {/* 지도 (실시간 위치 수신 시에만 표시) */}
+                {loc ? (
+                  <Box sx={{ borderRadius: 2, overflow: 'hidden', height: 200 }}>
+                    <MapContainer center={[loc.lat, loc.lng]} zoom={15} style={{ height: '100%', width: '100%' }}>
+                      <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                      <Marker position={[loc.lat, loc.lng]} icon={truckIcon} />
+                      <MapRecenter lat={loc.lat} lng={loc.lng} />
+                    </MapContainer>
+                  </Box>
+                ) : (
+                  <Box sx={{ p: 1.5, bgcolor: 'action.hover', borderRadius: 2 }}>
+                    <Typography variant="caption" color="text.secondary">
+                      배달기사가 출발하면 실시간 위치가 여기에 표시됩니다.
+                    </Typography>
+                  </Box>
+                )}
+              </Box>
+            );
+          })}
+        </Stack>
+      </Popover>
 
       {/* AI 추천 발주 미리보기 다이얼로그 */}
       <Dialog open={previewOpen} onClose={() => setPreviewOpen(false)} maxWidth="md" fullWidth>

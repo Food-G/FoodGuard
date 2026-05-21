@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Typography, Box, Paper, Grid, Stack, useTheme, CircularProgress, Chip,
-  Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Button,
+  Typography, Box, Paper, Grid, Stack, useTheme, CircularProgress, Chip, Button,
 } from '@mui/material';
 import ReactEChart from '../../components/base/ReactEChart';
 import * as echarts from 'echarts';
@@ -208,30 +207,48 @@ const AdminDashboard = () => {
                 <IconifyIcon icon="mingcute:check-circle-fill" color={theme.palette.success.main} width={44} />
                 <Typography color="text.secondary" fontWeight={500}>대기 중인 발주가 없습니다.</Typography>
               </Box>
-            ) : (
-              <TableContainer sx={{ maxHeight: 285 }}>
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell sx={{ fontWeight: 700, color: 'text.secondary', fontSize: 12 }}>가맹점</TableCell>
-                      <TableCell sx={{ fontWeight: 700, color: 'text.secondary', fontSize: 12 }}>식자재</TableCell>
-                      <TableCell align="right" sx={{ fontWeight: 700, color: 'text.secondary', fontSize: 12 }}>수량</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {pendingOrders.slice(0, 6).map((o: any) => (
-                      <TableRow key={o.id} hover>
-                        <TableCell sx={{ color: 'text.primary', fontSize: 13 }}>{o.store?.storeName ?? '-'}</TableCell>
-                        <TableCell sx={{ color: 'text.primary', fontWeight: 600, fontSize: 13 }}>{o.ingredient?.name ?? '-'}</TableCell>
-                        <TableCell align="right" sx={{ color: 'text.secondary', fontSize: 13 }}>
-                          {o.orderedQty ?? o.quantity} {o.ingredient?.unit ?? ''}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            )}
+            ) : (() => {
+              const byStore = pendingOrders.reduce<Record<number, { store: any; count: number }>>((acc, o) => {
+                const sid = o.store?.id;
+                if (!sid) return acc;
+                if (!acc[sid]) acc[sid] = { store: o.store, count: 0 };
+                acc[sid].count++;
+                return acc;
+              }, {});
+              const storeList = Object.values(byStore);
+              return (
+                <Box sx={{ overflowY: 'auto', maxHeight: 285 }}>
+                  {storeList.map(({ store, count }, idx) => (
+                    <Box
+                      key={store.id}
+                      onClick={() => navigate(`/admin/orders?storeId=${store.id}`)}
+                      sx={{
+                        px: 1.5, py: 1.5,
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        cursor: 'pointer', borderRadius: 2,
+                        borderTop: idx > 0 ? `1px solid ${theme.palette.divider}` : 'none',
+                        '&:hover': { bgcolor: `${theme.palette.warning.main}10` },
+                      }}
+                    >
+                      <Stack direction="row" gap={1} alignItems="center">
+                        <IconifyIcon icon="mingcute:store-2-line" width={16} color={theme.palette.text.secondary} />
+                        <Typography fontWeight={700} fontSize={14} color="text.primary">
+                          {store.storeName}
+                        </Typography>
+                      </Stack>
+                      <Stack direction="row" gap={1} alignItems="center">
+                        <Chip
+                          label={`대기 ${count}건`}
+                          color="warning" size="small"
+                          sx={{ fontWeight: 700, height: 22 }}
+                        />
+                        <IconifyIcon icon="mingcute:arrow-right-line" width={14} color={theme.palette.text.disabled} />
+                      </Stack>
+                    </Box>
+                  ))}
+                </Box>
+              );
+            })()}
           </Paper>
         </Grid>
       </Grid>

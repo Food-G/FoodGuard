@@ -1,9 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Typography, Box, Paper, Grid, Stack, useTheme,
   TextField, InputAdornment, CircularProgress, Chip, Alert, Button,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Tabs, Tab,
 } from '@mui/material';
+import { Client } from '@stomp/stompjs';
+import SockJS from 'sockjs-client';
 import { orderService } from '../../services/orderService';
 import IconifyIcon from '../../components/base/IconifyIcon';
 
@@ -23,7 +26,6 @@ const STATUS_COLOR: Record<string, any> = {
 };
 
 const ORDER_TABS = [
-  { label: '전체', value: 'ALL' },
   { label: '대기중', value: 'REQUESTED' },
   { label: '승인됨', value: 'APPROVED' },
   { label: '완료', value: 'DONE' },
@@ -32,6 +34,7 @@ const ORDER_TABS = [
 
 const AdminOrders = () => {
   const theme = useTheme();
+  const [searchParams] = useSearchParams();
   const [allOrders, setAllOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -39,12 +42,59 @@ const AdminOrders = () => {
   const [search, setSearch] = useState('');
   const [regionFilter, setRegionFilter] = useState('ALL');
   const [selectedStoreId, setSelectedStoreId] = useState<number | null>(null);
-  const [tab, setTab] = useState('ALL');
+  const [tab, setTab] = useState('REQUESTED');
+
+  const stompClients = useRef<Record<string, Client>>({});
+  // 배달 시작된 orderId → 승인됨 탭에서 빠져 완료 탭으로 이동
+  const [deliveringIds, setDeliveringIds] = useState<Set<number>>(new Set());
+  // 배달 완료된 orderId → 완료 탭에서 자동 제거
+  const loadOrdersFn = useRef<() => Promise<void>>();
+
+  const subscribeDelivery = (orderId: number, token: string, ingredientName: string) => {
+    if (stompClients.current[token]) return;
+    const client = new Client({
+      webSocketFactory: () => new SockJS('/ws'),
+      reconnectDelay: 5000,
+      onConnect: () => {
+        client.subscribe(`/topic/delivery/${token}`, (msg) => {
+          const data = JSON.parse(msg.body);
+
+          if (data.type === 'START') {
+            // 배달 시작 → 승인됨 탭에서 완료 탭으로 이동
+            setDeliveringIds((prev) => new Set([...prev, orderId]));
+          }
+
+          if (data.type === 'DONE') {
+            // 배달 완료 → 완료 탭에서 제거
+            setDeliveringIds((prev) => {
+              const next = new Set(prev);
+              next.delete(orderId);
+              return next;
+            });
+            setSuccess(`'${ingredientName}' 배달이 완료되었습니다. 재고에 자동 반영됩니다.`);
+            setTimeout(() => setSuccess(''), 4000);
+            client.deactivate();
+            delete stompClients.current[token];
+            loadOrdersFn.current?.();
+          }
+        });
+      },
+    });
+    client.activate();
+    stompClients.current[token] = client;
+  };
 
   const loadOrders = async () => {
     try {
       const orders = await orderService.getAll();
-      setAllOrders(Array.isArray(orders) ? orders : []);
+      const list = Array.isArray(orders) ? orders : [];
+      setAllOrders(list);
+      // APPROVED 발주에 WebSocket 구독 (이미 구독된 것은 guard로 스킵)
+      list
+        .filter((o: any) => o.status === 'APPROVED' && o.deliveryToken)
+        .forEach((o: any) =>
+          subscribeDelivery(o.id, o.deliveryToken, o.ingredient?.name ?? '발주')
+        );
     } catch {
       setError('발주 목록을 불러오지 못했습니다.');
     } finally {
@@ -52,13 +102,29 @@ const AdminOrders = () => {
     }
   };
 
+  // loadOrders ref 항상 최신으로 유지
+  useEffect(() => {
+    loadOrdersFn.current = loadOrders;
+  });
+
   useEffect(() => {
     loadOrders();
     const interval = setInterval(loadOrders, 30000);
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      Object.values(stompClients.current).forEach((c) => c.deactivate());
+    };
   }, []);
 
-  // 발주 목록에서 가맹점별로 그룹핑
+  useEffect(() => {
+    const storeIdParam = searchParams.get('storeId');
+    if (storeIdParam) {
+      setSelectedStoreId(Number(storeIdParam));
+      setTab('REQUESTED');
+    }
+  }, [searchParams]);
+
+  // 가맹점별 그룹핑
   const storeMap = new Map<number, { store: any; orders: any[] }>();
   allOrders.forEach((order) => {
     const sid = order.store?.id;
@@ -82,16 +148,33 @@ const AdminOrders = () => {
   const selectedEntry = selectedStoreId != null ? storeMap.get(selectedStoreId) : null;
   const selectedOrders = selectedEntry?.orders ?? [];
 
-  const tabFilteredOrders = tab === 'ALL'
-    ? selectedOrders
-    : tab === 'CANCELLED'
-    ? selectedOrders.filter((o) => o.status === 'CANCELLED' || o.status === 'REJECTED')
+  const tabFilteredOrders =
+    tab === 'CANCELLED'
+      ? selectedOrders.filter((o) => o.status === 'CANCELLED' || o.status === 'REJECTED')
+    : tab === 'APPROVED'
+      // 승인됨: 배달 시작된 항목은 여기서 제외
+      ? selectedOrders.filter((o) => o.status === 'APPROVED' && !deliveringIds.has(o.id))
+    : tab === 'DONE'
+      ? selectedOrders.filter((o) => o.status === 'APPROVED' && deliveringIds.has(o.id))
     : selectedOrders.filter((o) => o.status === tab);
 
-  const handleUpdateStatus = async (id: number, status: string) => {
+  const handleApproveAll = async () => {
+    const requested = tabFilteredOrders.filter((o) => o.status === 'REQUESTED');
+    if (!requested.length) return;
     try {
-      await orderService.updateStatus(id, status);
-      setSuccess(status === 'APPROVED' ? '발주가 승인되었습니다.' : '완료 처리되었습니다. 재고가 자동 반영됩니다.');
+      await Promise.all(requested.map((o) => orderService.updateStatus(o.id, 'APPROVED')));
+      setSuccess(`${requested.length}건 모두 승인되었습니다.`);
+      setTimeout(() => setSuccess(''), 3000);
+      await loadOrders();
+    } catch {
+      setError('승인 처리에 실패했습니다.');
+    }
+  };
+
+  const handleApprove = async (id: number) => {
+    try {
+      await orderService.updateStatus(id, 'APPROVED');
+      setSuccess('발주가 승인되었습니다.');
       setTimeout(() => setSuccess(''), 3000);
       await loadOrders();
     } catch {
@@ -143,10 +226,7 @@ const AdminOrders = () => {
                       key={r}
                       label={r === 'ALL' ? '전체' : r}
                       size="small"
-                      onClick={() => {
-                        setRegionFilter(r);
-                        setSelectedStoreId(null);
-                      }}
+                      onClick={() => { setRegionFilter(r); setSelectedStoreId(null); }}
                       color={regionFilter === r ? 'primary' : 'default'}
                       variant={regionFilter === r ? 'filled' : 'outlined'}
                       sx={{ fontWeight: 600, flexShrink: 0, cursor: 'pointer' }}
@@ -172,10 +252,13 @@ const AdminOrders = () => {
                 {filteredStores.map(({ store, orders }, idx) => {
                   const isSelected = selectedStoreId === store.id;
                   const pending = countByStatus(orders, 'REQUESTED');
+                  const activeDeliveries = orders.filter(
+                    (o: any) => o.status === 'APPROVED' && o.deliveryToken
+                  ).length;
                   return (
                     <Box
                       key={store.id}
-                      onClick={() => { setSelectedStoreId(store.id); setTab('ALL'); }}
+                      onClick={() => { setSelectedStoreId(store.id); setTab('REQUESTED'); }}
                       sx={{
                         px: 2.5, py: 1.75,
                         cursor: 'pointer',
@@ -190,17 +273,26 @@ const AdminOrders = () => {
                         <Typography
                           fontWeight={700} fontSize={14}
                           color={isSelected ? 'primary.main' : 'text.primary'}
-                          noWrap sx={{ maxWidth: 165 }}
+                          noWrap sx={{ maxWidth: 140 }}
                         >
                           {store.storeName}
                         </Typography>
-                        {pending > 0 && (
-                          <Chip
-                            label={`대기 ${pending}`}
-                            color="warning" size="small"
-                            sx={{ height: 20, fontSize: 10, fontWeight: 700, '& .MuiChip-label': { px: 0.75 } }}
-                          />
-                        )}
+                        <Stack direction="row" gap={0.5}>
+                          {pending > 0 && (
+                            <Chip
+                              label={`대기 ${pending}`}
+                              color="warning" size="small"
+                              sx={{ height: 20, fontSize: 10, fontWeight: 700, '& .MuiChip-label': { px: 0.75 } }}
+                            />
+                          )}
+                          {activeDeliveries > 0 && (
+                            <Chip
+                              label={`🚚 ${activeDeliveries}`}
+                              color="info" size="small"
+                              sx={{ height: 20, fontSize: 10, fontWeight: 700, '& .MuiChip-label': { px: 0.75 } }}
+                            />
+                          )}
+                        </Stack>
                       </Stack>
                       <Typography variant="caption" color="text.secondary">
                         총 {orders.length}건
@@ -255,47 +347,70 @@ const AdminOrders = () => {
                 </Stack>
               </Box>
 
-              {/* 상태 필터 탭 */}
-              <Tabs
-                value={tab}
-                onChange={(_, v) => setTab(v)}
-                sx={{ px: 1, borderBottom: `1px solid ${theme.palette.divider}`, minHeight: 44 }}
-                textColor="primary" indicatorColor="primary"
-              >
-                {ORDER_TABS.map((t) => {
-                  const cnt = t.value === 'ALL'
-                    ? selectedOrders.length
-                    : t.value === 'CANCELLED'
-                    ? countByStatus(selectedOrders, 'CANCELLED') + countByStatus(selectedOrders, 'REJECTED')
-                    : countByStatus(selectedOrders, t.value);
-                  return (
-                    <Tab
-                      key={t.value}
-                      value={t.value}
-                      sx={{ fontWeight: 600, minHeight: 44, fontSize: 13 }}
-                      label={
-                        <Stack direction="row" alignItems="center" gap={0.75}>
-                          {t.label}
-                          {cnt > 0 && (
-                            <Chip
-                              label={cnt}
-                              size="small"
-                              color={t.value === 'REQUESTED' ? 'warning' : t.value === 'APPROVED' ? 'info' : t.value === 'DONE' ? 'success' : 'default'}
-                              sx={{ height: 18, fontSize: 11, fontWeight: 700, '& .MuiChip-label': { px: 0.75 } }}
-                            />
-                          )}
-                        </Stack>
-                      }
-                    />
-                  );
-                })}
-              </Tabs>
+              {/* 상태 필터 탭 + 모두 승인 버튼 */}
+              <Stack direction="row" alignItems="center" sx={{ borderBottom: `1px solid ${theme.palette.divider}` }}>
+                <Tabs
+                  value={tab}
+                  onChange={(_, v) => setTab(v)}
+                  sx={{ px: 1, minHeight: 44, flex: 1 }}
+                  textColor="primary" indicatorColor="primary"
+                >
+                  {ORDER_TABS.map((t) => {
+                    const cnt =
+                      t.value === 'CANCELLED'
+                        ? countByStatus(selectedOrders, 'CANCELLED') + countByStatus(selectedOrders, 'REJECTED')
+                      : t.value === 'APPROVED'
+                        ? selectedOrders.filter((o) => o.status === 'APPROVED' && !deliveringIds.has(o.id)).length
+                      : t.value === 'DONE'
+                        ? selectedOrders.filter((o) => o.status === 'APPROVED' && deliveringIds.has(o.id)).length
+                      : countByStatus(selectedOrders, t.value);
+                    return (
+                      <Tab
+                        key={t.value}
+                        value={t.value}
+                        sx={{ fontWeight: 600, minHeight: 44, fontSize: 13 }}
+                        label={
+                          <Stack direction="row" alignItems="center" gap={0.75}>
+                            {t.label}
+                            {cnt > 0 && (
+                              <Chip
+                                label={cnt}
+                                size="small"
+                                color={t.value === 'REQUESTED' ? 'warning' : t.value === 'APPROVED' ? 'info' : t.value === 'DONE' ? 'success' : 'default'}
+                                sx={{ height: 18, fontSize: 11, fontWeight: 700, '& .MuiChip-label': { px: 0.75 } }}
+                              />
+                            )}
+                          </Stack>
+                        }
+                      />
+                    );
+                  })}
+                </Tabs>
+                {tab === 'REQUESTED' && countByStatus(selectedOrders, 'REQUESTED') > 0 && (
+                  <Box sx={{ pr: 1.5 }}>
+                    <Button
+                      variant="contained" color="info" size="small"
+                      onClick={handleApproveAll}
+                      sx={{ borderRadius: 2, fontWeight: 700, whiteSpace: 'nowrap' }}
+                    >
+                      모두 승인 ({countByStatus(selectedOrders, 'REQUESTED')}건)
+                    </Button>
+                  </Box>
+                )}
+              </Stack>
 
               {/* 발주 목록 */}
               <Box sx={{ flex: 1, overflowY: 'auto' }}>
                 {tabFilteredOrders.length === 0 ? (
-                  <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 300 }}>
-                    <Typography color="text.secondary">해당 상태의 발주가 없습니다.</Typography>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: 300, gap: 1.5 }}>
+                    {tab === 'DONE' ? (
+                      <>
+                        <IconifyIcon icon="mingcute:check-circle-fill" width={40} color={theme.palette.success.main} />
+                        <Typography color="text.secondary" fontWeight={600}>모든 배달이 완료되었습니다.</Typography>
+                      </>
+                    ) : (
+                      <Typography color="text.secondary">해당 상태의 발주가 없습니다.</Typography>
+                    )}
                   </Box>
                 ) : (
                   <TableContainer>
@@ -322,31 +437,57 @@ const AdminOrders = () => {
                               </Typography>
                             </TableCell>
                             <TableCell>
-                              <Chip
-                                label={STATUS_LABEL[order.status] ?? order.status}
-                                color={STATUS_COLOR[order.status] ?? 'default'}
-                                size="small" sx={{ fontWeight: 700 }}
-                              />
+                              {tab === 'DONE' && deliveringIds.has(order.id) ? (
+                                <Chip
+                                  label="🚚 배달 중"
+                                  color="info"
+                                  size="small" sx={{ fontWeight: 700 }}
+                                />
+                              ) : (
+                                <Chip
+                                  label={STATUS_LABEL[order.status] ?? order.status}
+                                  color={STATUS_COLOR[order.status] ?? 'default'}
+                                  size="small" sx={{ fontWeight: 700 }}
+                                />
+                              )}
                             </TableCell>
                             <TableCell sx={{ color: 'text.secondary', fontSize: 12 }}>
                               {order.orderedAt ? new Date(order.orderedAt).toLocaleString() : '-'}
                             </TableCell>
                             <TableCell align="center">
+                              {/* 대기중 → 승인 */}
                               {order.status === 'REQUESTED' && (
                                 <Button
-                                  variant="contained" color="info" size="small" sx={{ borderRadius: 2, minWidth: 52 }}
-                                  onClick={() => handleUpdateStatus(order.id, 'APPROVED')}
+                                  variant="contained" color="info" size="small"
+                                  sx={{ borderRadius: 2, minWidth: 52 }}
+                                  onClick={() => handleApprove(order.id)}
                                 >
                                   승인
                                 </Button>
                               )}
-                              {order.status === 'APPROVED' && (
+                              {/* 승인됨 → 배달기사에게 링크 전달 (완료는 배달기사가 처리 → 자동) */}
+                              {order.status === 'APPROVED' && order.deliveryToken && !deliveringIds.has(order.id) && (
                                 <Button
-                                  variant="contained" color="success" size="small" sx={{ borderRadius: 2, minWidth: 52 }}
-                                  onClick={() => handleUpdateStatus(order.id, 'DONE')}
+                                  variant="outlined" color="info" size="small"
+                                  sx={{ borderRadius: 2, fontSize: 11, gap: 0.5 }}
+                                  onClick={() => {
+                                    const url = `${window.location.origin}/driver/${order.deliveryToken}`;
+                                    navigator.clipboard.writeText(url);
+                                    setSuccess('배달 링크가 복사되었습니다. 배달기사에게 전달하세요.');
+                                    setTimeout(() => setSuccess(''), 3000);
+                                  }}
                                 >
-                                  완료
+                                  🔗 링크 복사
                                 </Button>
+                              )}
+                              {/* 완료 — 배달기사가 완료 처리 시 자동 업데이트 */}
+                              {order.status === 'DONE' && (
+                                <Chip
+                                  label="배달 완료"
+                                  color="success" size="small"
+                                  icon={<IconifyIcon icon="mingcute:check-circle-fill" width={14} />}
+                                  sx={{ fontWeight: 700 }}
+                                />
                               )}
                             </TableCell>
                           </TableRow>

@@ -18,6 +18,7 @@ import AdminOrders from './pages/admin/AdminOrders';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import Login from './pages/auth/Login';
 import Signup from './pages/auth/Signup';
+import DeliveryDriver from './pages/DeliveryDriver';
 import { useAuth } from './hooks/useAuth';
 
 function App() {
@@ -51,6 +52,7 @@ function App() {
           <Routes>
             <Route path="/login" element={<PublicRoute><Login onLogin={login} /></PublicRoute>} />
             <Route path="/signup" element={<PublicRoute><Signup /></PublicRoute>} />
+            <Route path="/driver/:token" element={<DeliveryDriver />} />
 
             <Route path="/" element={
               <ProtectedRoute>

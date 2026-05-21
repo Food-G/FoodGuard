@@ -21,6 +21,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.UUID;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -110,6 +111,12 @@ public class OrderRequestService {
         String prev = order.getStatus();
         order.setStatus(status);
         orderRequestRepository.save(order);
+
+        if ("APPROVED".equals(status) && !"APPROVED".equals(prev)) {
+            order.setApprovedAt(LocalDateTime.now());
+            order.setDeliveryToken(UUID.randomUUID().toString().replace("-", ""));
+            orderRequestRepository.save(order);
+        }
 
         if ("DONE".equals(status) && !"DONE".equals(prev)) {
             Long storeId = order.getStore().getId();
