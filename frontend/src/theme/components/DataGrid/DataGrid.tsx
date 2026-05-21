@@ -1,4 +1,4 @@
-import { Theme, alpha } from '@mui/material';
+import { Theme } from '@mui/material';
 import type { DataGridComponents } from '@mui/x-data-grid/themeAugmentation';
 
 const DataGrid: DataGridComponents<Omit<Theme, 'components'>>['MuiDataGrid'] = {

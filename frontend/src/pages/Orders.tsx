@@ -76,14 +76,6 @@ const Orders = ({ user }: any) => {
     }).catch(() => setLoading(false));
   }, [user]);
 
-  const handleUpdateStatus = async (id: number, status: string) => {
-    try {
-      await orderService.updateStatus(id, status);
-    } catch {
-      setError('상태 변경에 실패했습니다.');
-    }
-  };
-
   const handleBulkStatus = async (targetStatus: string, fromStatus: string) => {
     const targets = rows.filter((r) => r.status === fromStatus);
     if (!targets.length || !storeId) return;

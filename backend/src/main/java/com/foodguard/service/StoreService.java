@@ -17,7 +17,7 @@ public class StoreService {
     private final UserRepository userRepository;
 
     // 가맹점 등록
-    public Store create(Long userId, String storeName, String address, String phone) {
+    public Store create(Long userId, String storeName, String address, String phone, String region) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("유저를 찾을 수 없습니다."));
         Store store = new Store();
@@ -25,6 +25,7 @@ public class StoreService {
         store.setStoreName(storeName);
         store.setAddress(address);
         store.setPhone(phone);
+        store.setRegion(region != null ? region : "기타");
         return storeRepository.save(store);
     }
 
@@ -39,12 +40,13 @@ public class StoreService {
     }
 
     // 가맹점 수정
-    public Store update(Long storeId, String storeName, String address, String phone) {
+    public Store update(Long storeId, String storeName, String address, String phone, String region) {
         Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new RuntimeException("가맹점을 찾을 수 없습니다."));
         store.setStoreName(storeName);
         store.setAddress(address);
         store.setPhone(phone);
+        if (region != null) store.setRegion(region);
         return storeRepository.save(store);
     }
 

@@ -61,7 +61,6 @@ const Dashboard = ({ user }: any) => {
   const [todaySummary, setTodaySummary] = useState<any>(null);
   const [tomorrowQty, setTomorrowQty] = useState<number | null>(null);
   const [unreadCount, setUnreadCount] = useState<number | null>(null);
-  const [storeId, setStoreId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -69,7 +68,6 @@ const Dashboard = ({ user }: any) => {
     storeService.getMyStores(user.id).then(async (stores: any[]) => {
       if (!stores?.length) { setLoading(false); return; }
       const sid = stores[0].id;
-      setStoreId(sid);
       try {
         const [summary, preds, notifs] = await Promise.allSettled([
           salesService.getTodaySummary(sid),

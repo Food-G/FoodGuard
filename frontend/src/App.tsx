@@ -15,6 +15,7 @@ import StoreRegister from './pages/StoreRegister';
 import MenuManagement from './pages/MenuManagement';
 import Stats from './pages/admin/Stats';
 import AdminOrders from './pages/admin/AdminOrders';
+import AdminDashboard from './pages/admin/AdminDashboard';
 import Login from './pages/auth/Login';
 import Signup from './pages/auth/Signup';
 import { useAuth } from './hooks/useAuth';
@@ -94,6 +95,12 @@ function App() {
             } />
 
             {/* HQ Admin Routes */}
+            <Route path="/admin" element={
+              <ProtectedRoute role="HQ_ADMIN">
+                <AdminDashboard />
+              </ProtectedRoute>
+            } />
+
             <Route path="/admin/stores" element={
               <ProtectedRoute role="HQ_ADMIN">
                 <StoreManagement />
