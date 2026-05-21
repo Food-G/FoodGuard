@@ -102,6 +102,15 @@ def save_predictions_bulk(
     db.commit()
 
 
+def get_store_region(db: Session, store_id: int) -> str | None:
+    """매장의 지역명 반환 (날씨 API 좌표 조회용)."""
+    row = db.execute(
+        text("SELECT region FROM STORE WHERE store_id = :sid"),
+        {"sid": store_id},
+    ).fetchone()
+    return row[0] if row else None
+
+
 def get_saved_predictions(db: Session, store_id: int) -> list[dict]:
     """저장된 예측 결과 조회 (오늘 이후)."""
     rows = db.execute(

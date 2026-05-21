@@ -18,13 +18,11 @@ public class OrderRequest {
     @Column(name = "order_id")
     private Long id;
 
-    @JsonIgnore
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "store_id", nullable = false)
     private Store store;
 
-    @JsonIgnore
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "ingredient_id", nullable = false)
     private Ingredient ingredient;
 
@@ -32,16 +30,15 @@ public class OrderRequest {
     private Long predictionId;
 
     @Column(nullable = false)
-    private String status; // REQUESTED, APPROVED, REJECTED, DONE
+    private String status;
 
     @Column(name = "ordered_qty", nullable = false, precision = 10, scale = 2)
     private BigDecimal orderedQty;
-    
-    // 서비스 대응용
+
     @Transient
     private Double quantity;
 
-    @Column(name = "ordered_at", insertable = false, updatable = false)
+    @Column(name = "ordered_at")
     private LocalDateTime orderedAt;
 
     @Column(name = "updated_at", insertable = false, updatable = false)

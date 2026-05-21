@@ -20,7 +20,7 @@ public class IngredientController {
     public ResponseEntity<Ingredient> create(@RequestBody Map<String, Object> body) {
         return ResponseEntity.ok(ingredientService.create(
                 body.get("name").toString(),
-                body.get("category").toString(),
+                body.getOrDefault("category", "").toString(),
                 body.get("unit").toString()
         ));
     }
@@ -36,7 +36,7 @@ public class IngredientController {
         return ResponseEntity.ok(ingredientService.update(
                 id,
                 body.get("name").toString(),
-                body.get("category").toString(),
+                body.getOrDefault("category", "").toString(),
                 body.get("unit").toString()
         ));
     }

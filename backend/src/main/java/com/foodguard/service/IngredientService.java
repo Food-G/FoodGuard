@@ -2,8 +2,12 @@ package com.foodguard.service;
 
 import com.foodguard.entity.Ingredient;
 import com.foodguard.repository.IngredientRepository;
+import com.foodguard.repository.InventoryRepository;
+import com.foodguard.repository.MenuIngredientRepository;
+import com.foodguard.repository.OrderRequestRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -12,6 +16,9 @@ import java.util.List;
 public class IngredientService {
 
     private final IngredientRepository ingredientRepository;
+    private final MenuIngredientRepository menuIngredientRepository;
+    private final InventoryRepository inventoryRepository;
+    private final OrderRequestRepository orderRequestRepository;
 
     // 식자재 등록
     public Ingredient create(String name, String category, String unit) {
@@ -37,8 +44,12 @@ public class IngredientService {
         return ingredientRepository.save(ingredient);
     }
 
-    // 식자재 삭제
+    // 식자재 삭제 (연결 레코드 전부 먼저 삭제: 발주→메뉴구성→재고→식자재)
+    @Transactional
     public String delete(Long id) {
+        orderRequestRepository.deleteByIngredientId(id);
+        menuIngredientRepository.deleteByIngredientId(id);
+        inventoryRepository.deleteByIngredientId(id);
         ingredientRepository.deleteById(id);
         return "식자재 삭제 완료";
     }

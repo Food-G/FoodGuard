@@ -1,12 +1,18 @@
 import pandas as pd
 import numpy as np
 from datetime import date, timedelta
+from typing import Optional
 
 try:
     import holidays as holidays_lib
     _KR_HOLIDAYS = holidays_lib.country_holidays("KR", years=range(2023, 2030))
 except Exception:
     _KR_HOLIDAYS = set()
+
+WEATHER_FEATURE_COLS = [
+    "temp_max", "temp_min", "precipitation",
+    "is_rainy", "is_hot", "is_cold",
+]
 
 FULL_FEATURE_COLS = [
     "day_of_week", "day_of_month", "month", "week_of_year",
@@ -57,19 +63,32 @@ def add_rolling_features(df: pd.DataFrame, windows: list[int] = (7, 14)) -> pd.D
     return df
 
 
-def build_features(df: pd.DataFrame) -> pd.DataFrame:
-    """Full pipeline: date + lag + rolling features."""
+def build_features(
+    df: pd.DataFrame,
+    weather_df: Optional[pd.DataFrame] = None,
+) -> pd.DataFrame:
+    """Full pipeline: date + lag + rolling + (optional) weather features."""
     df = add_date_features(df)
     df = add_lag_features(df)
     df = add_rolling_features(df)
+
+    if weather_df is not None and not weather_df.empty:
+        weather_copy = weather_df.copy()
+        weather_copy["ds"] = pd.to_datetime(weather_copy["ds"]).dt.date
+        available_cols = [c for c in WEATHER_FEATURE_COLS if c in weather_copy.columns]
+        df = df.merge(weather_copy[["ds"] + available_cols], on="ds", how="left")
+        for col in available_cols:
+            df[col] = df[col].fillna(0)
+
     return df
 
 
 def make_future_feature_row(
     target_date: date,
     history_df: pd.DataFrame,
+    weather_row: Optional[dict] = None,
 ) -> dict:
-    """Build a single feature dict for a future date using recent history."""
+    """미래 날짜에 대한 피처 딕셔너리 생성."""
     dt = pd.Timestamp(target_date)
 
     row = {
@@ -103,5 +122,12 @@ def make_future_feature_row(
     row["rolling_mean_7"] = float(np.mean(last_7)) if len(last_7) > 0 else 0.0
     row["rolling_mean_14"] = float(np.mean(last_14)) if len(last_14) > 0 else 0.0
     row["rolling_std_7"] = float(np.std(last_7)) if len(last_7) > 1 else 0.0
+
+    if weather_row is not None:
+        for col in WEATHER_FEATURE_COLS:
+            row[col] = float(weather_row.get(col, 0.0))
+    else:
+        for col in WEATHER_FEATURE_COLS:
+            row[col] = 0.0
 
     return row

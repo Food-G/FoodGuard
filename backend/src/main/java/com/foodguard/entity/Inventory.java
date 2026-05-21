@@ -23,8 +23,7 @@ public class Inventory {
     @JoinColumn(name = "store_id", nullable = false)
     private Store store;
 
-    @JsonIgnore
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "ingredient_id", nullable = false)
     private Ingredient ingredient;
 
@@ -41,7 +40,7 @@ public class Inventory {
     @Column(nullable = false, length = 20)
     private String unit;
 
-    @Column(name = "updated_at", insertable = false, updatable = false)
+    @Column(name = "updated_at")
     private LocalDateTime updatedAt;
     
     // 호환성을 위한 Getter/Setter 수동 추가 가능 (Lombok이 처리 못하는 경우 대비)

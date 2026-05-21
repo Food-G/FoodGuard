@@ -17,6 +17,12 @@ export const orderService = {
     return api.delete(`/orders/${id}`);
   },
   getAll: async () => {
-    return api.get('/orders');
+    return api.get('/orders/admin/all');
+  },
+  recommend: async (storeId: number) => {
+    return api.get(`/orders/recommend/${storeId}`);
+  },
+  autoOrder: async (storeId: number) => {
+    return api.post(`/orders/auto/${storeId}`, {});
   },
 };

@@ -1,15 +1,13 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
   Typography, Paper, Stack, Button, TextField,
-  Alert, CircularProgress, Chip, Box, MenuItem,
+  Alert, CircularProgress, Chip, Box,
   Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, IconButton,
 } from '@mui/material';
 import { storeService } from '../services/storeService';
 import { menuService } from '../services/menuService';
 import IconifyIcon from '../components/base/IconifyIcon';
-
-const CATEGORIES = ['한식', '중식', '일식', '양식', '분식', '음료', '디저트', '기타'];
 
 const MenuManagement = ({ user }: any) => {
   const [storeId, setStoreId] = useState<number | null>(null);
@@ -18,7 +16,7 @@ const MenuManagement = ({ user }: any) => {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [form, setForm] = useState({ menuName: '', price: '', category: '한식' });
+  const [form, setForm] = useState({ menuName: '', price: '' });
 
   useEffect(() => {
     if (!user?.id) return;
@@ -62,10 +60,9 @@ const MenuManagement = ({ user }: any) => {
         storeId,
         menuName: form.menuName,
         price: parseInt(form.price),
-        category: form.category,
       });
       setSuccess(`"${form.menuName}" 메뉴가 등록되었습니다.`);
-      setForm({ menuName: '', price: '', category: '한식' });
+      setForm({ menuName: '', price: '' });
       await loadMenus(storeId);
     } catch {
       setError('메뉴 등록에 실패했습니다.');
@@ -127,19 +124,6 @@ const MenuManagement = ({ user }: any) => {
               required
               sx={{ flex: 1 }}
             />
-            <TextField
-              label="카테고리"
-              name="category"
-              value={form.category}
-              onChange={handleChange}
-              select
-              size="small"
-              sx={{ flex: 1 }}
-            >
-              {CATEGORIES.map((c) => (
-                <MenuItem key={c} value={c}>{c}</MenuItem>
-              ))}
-            </TextField>
             <Button
               type="submit"
               variant="contained"
@@ -173,7 +157,6 @@ const MenuManagement = ({ user }: any) => {
                 <TableHead>
                   <TableRow>
                     <TableCell>메뉴명</TableCell>
-                    <TableCell>카테고리</TableCell>
                     <TableCell align="right">가격</TableCell>
                     <TableCell align="center">상태</TableCell>
                     <TableCell align="center">삭제</TableCell>
@@ -184,9 +167,6 @@ const MenuManagement = ({ user }: any) => {
                     <TableRow key={menu.id} hover>
                       <TableCell>
                         <Typography variant="body2" fontWeight={600}>{menu.menuName}</Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Chip label={menu.category} size="small" variant="outlined" />
                       </TableCell>
                       <TableCell align="right">{menu.price?.toLocaleString()}원</TableCell>
                       <TableCell align="center">
