@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   Typography, Box, Paper, Button, Grid, TextField, MenuItem,
-  CircularProgress, Alert, Stack, useTheme,
+  CircularProgress, Alert, Stack, useTheme, IconButton,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip,
 } from '@mui/material';
 import { salesService } from '../services/salesService';
@@ -58,6 +58,18 @@ const SalesEntry = ({ user }: any) => {
     };
     fetchData();
   }, [user]);
+
+  const handleDelete = async (id: number) => {
+    if (!window.confirm('이 판매 기록을 삭제하시겠습니까?')) return;
+    try {
+      await salesService.delete(id);
+      setRows((prev) => prev.filter((r) => r.id !== id));
+      setSuccess('판매 기록이 삭제되었습니다.');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch {
+      setError('삭제에 실패했습니다.');
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -163,6 +175,7 @@ const SalesEntry = ({ user }: any) => {
                       <TableCell sx={{ fontWeight: 700, bgcolor: 'grey.100', color: 'text.primary' }}>메뉴명</TableCell>
                       <TableCell align="center" sx={{ fontWeight: 700, bgcolor: 'grey.100', color: 'text.primary' }}>수량</TableCell>
                       <TableCell align="right" sx={{ fontWeight: 700, bgcolor: 'grey.100', color: 'text.primary' }}>총 금액</TableCell>
+                      <TableCell align="center" sx={{ fontWeight: 700, bgcolor: 'grey.100', color: 'text.primary' }}>삭제</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -173,6 +186,11 @@ const SalesEntry = ({ user }: any) => {
                         <TableCell align="center" sx={{ color: 'text.primary' }}>{row.quantity}</TableCell>
                         <TableCell align="right" sx={{ color: 'primary.main', fontWeight: 700 }}>
                           ₩{row.totalPrice?.toLocaleString() ?? 0}
+                        </TableCell>
+                        <TableCell align="center">
+                          <IconButton size="small" color="error" onClick={() => handleDelete(row.id)}>
+                            <IconifyIcon icon="mingcute:delete-2-line" width={17} />
+                          </IconButton>
                         </TableCell>
                       </TableRow>
                     ))}

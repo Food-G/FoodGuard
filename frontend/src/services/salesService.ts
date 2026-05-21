@@ -13,4 +13,13 @@ export const salesService = {
   delete: async (id: number) => {
     return api.delete(`/sales/${id}`);
   },
+  getTodaySummary: async (storeId: number) => {
+    return api.get(`/sales/${storeId}/today-summary`);
+  },
+  getWeeklySummary: async (storeId: number) => {
+    return api.get(`/sales/${storeId}/weekly-summary`);
+  },
+  getAllStoreWeeklySummary: async () => {
+    return api.get('/sales/all-stores/weekly-summary');
+  },
 };

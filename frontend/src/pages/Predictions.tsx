@@ -13,6 +13,7 @@ import {
   PredictionResult,
   PredictionSummary,
 } from '../services/predictionService';
+import { salesService } from '../services/salesService';
 
 const DAY_LABELS = ['일', '월', '화', '수', '목', '금', '토'];
 
@@ -38,6 +39,9 @@ const Predictions = ({ user }: any) => {
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
+  // 지난 7일 실제 매출 데이터
+  const [pastSales, setPastSales] = useState<any[]>([]);
+
   // 차트 필터
   const [chartMenu, setChartMenu] = useState<string | null>(null);
 
@@ -56,12 +60,19 @@ const Predictions = ({ user }: any) => {
     setLoading(true);
     setError('');
     try {
-      const [preds, sum] = await Promise.all([
+      const today = new Date();
+      const end = today.toISOString().split('T')[0];
+      const start = new Date(today); start.setDate(start.getDate() - 13);
+      const startStr = start.toISOString().split('T')[0];
+
+      const [preds, sum, past] = await Promise.all([
         predictionService.getByStore(sid),
         predictionService.getSummary(sid),
+        salesService.getByDateRange(sid, startStr, end).catch(() => []),
       ]);
       setPredictions(preds);
       setSummary(sum);
+      setPastSales(Array.isArray(past) ? past : []);
       setChartMenu(null);
       setTableDate(preds[0]?.predictionDate ?? null);
       setTableMenu(null);
@@ -383,6 +394,51 @@ const Predictions = ({ user }: any) => {
             </Paper>
           </Grid>
         )}
+
+        {/* 지난 7일 실제 판매 추이 */}
+        {pastSales.length > 0 && (() => {
+          // 날짜별 총 판매수량 집계 (최근 7일)
+          const today = new Date();
+          const last7: Record<string, number> = {};
+          for (let i = 6; i >= 0; i--) {
+            const d = new Date(today); d.setDate(d.getDate() - i);
+            last7[d.toISOString().split('T')[0]] = 0;
+          }
+          pastSales.forEach((s: any) => {
+            const d = s.saleDate ?? s.sale_date;
+            if (d && d in last7) last7[d] = (last7[d] ?? 0) + (s.quantity ?? 0);
+          });
+          const labels = Object.keys(last7).map((d) => {
+            const dt = new Date(d);
+            return `${String(dt.getMonth()+1).padStart(2,'0')}/${String(dt.getDate()).padStart(2,'0')}(${['일','월','화','수','목','금','토'][dt.getDay()]})`;
+          });
+          const values = Object.values(last7);
+          const totalSales = values.reduce((s, v) => s + v, 0);
+
+          const pastChartOption = {
+            color: [theme.palette.secondary.main],
+            tooltip: { trigger: 'axis' },
+            grid: { top: '8%', left: '3%', right: '4%', bottom: '12%', containLabel: true },
+            xAxis: { type: 'category', data: labels, axisLabel: { color: theme.palette.text.secondary, fontSize: 11 }, boundaryGap: false },
+            yAxis: { type: 'value', name: '판매 수량', axisLabel: { color: theme.palette.text.secondary }, splitLine: { lineStyle: { color: theme.palette.divider, type: 'dashed' } } },
+            series: [{ name: '실제 판매', type: 'bar', data: values, itemStyle: { color: theme.palette.secondary.main, borderRadius: [4, 4, 0, 0] }, barMaxWidth: 40 }],
+          };
+
+          return (
+            <Grid item xs={12}>
+              <Paper sx={{ p: 4, border: `1px solid ${theme.palette.divider}` }}>
+                <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2.5}>
+                  <Typography variant="h6" fontWeight={700}>지난 7일 실제 판매 현황</Typography>
+                  <Stack direction="row" gap={1}>
+                    <Chip label={`총 ${totalSales}건 판매`} color="secondary" size="small" />
+                    <Chip label="실제 데이터 기반" variant="outlined" size="small" />
+                  </Stack>
+                </Stack>
+                <ReactEChart option={pastChartOption} echarts={echarts} sx={{ height: 260 }} />
+              </Paper>
+            </Grid>
+          );
+        })()}
 
         {/* AI 분석 카드 */}
         <Grid item xs={12} md={6}>

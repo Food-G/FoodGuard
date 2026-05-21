@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -47,6 +48,33 @@ public class SalesDataService {
     public List<SalesData> getByDateRange(Long storeId, LocalDate start, LocalDate end) {
         return salesDataRepository
                 .findByStoreIdAndSaleDateBetweenAndIsDeletedFalse(storeId, start, end);
+    }
+
+    public Map<String, Object> getTodaySummary(Long storeId) {
+        LocalDate today = LocalDate.now();
+        long revenue = salesDataRepository.sumRevenueByDate(storeId, today);
+        long qty = salesDataRepository.sumQtyByDate(storeId, today);
+        long yesterdayRevenue = salesDataRepository.sumRevenueByDate(storeId, today.minusDays(1));
+        String trend = revenue >= yesterdayRevenue ? "up" : "down";
+        double changeRate = yesterdayRevenue > 0 ? Math.round((revenue - yesterdayRevenue) * 1000.0 / yesterdayRevenue) / 10.0 : 0;
+        return Map.of("revenue", revenue, "qty", qty, "trend", trend, "changeRate", changeRate);
+    }
+
+    public Map<String, Object> getWeeklySummary(Long storeId) {
+        LocalDate today = LocalDate.now();
+        long thisWeek = salesDataRepository.sumRevenueBetween(storeId, today.minusDays(6), today);
+        long prevWeek = salesDataRepository.sumRevenueBetween(storeId, today.minusDays(13), today.minusDays(7));
+        return Map.of("thisWeekRevenue", thisWeek, "prevWeekRevenue", prevWeek);
+    }
+
+    public Map<Long, Long> getAllStoreWeeklySummary() {
+        LocalDate today = LocalDate.now();
+        List<Object[]> rows = salesDataRepository.sumRevenueAllStoresBetween(today.minusDays(6), today);
+        Map<Long, Long> result = new java.util.LinkedHashMap<>();
+        for (Object[] row : rows) {
+            result.put(((Number) row[0]).longValue(), ((Number) row[1]).longValue());
+        }
+        return result;
     }
 
     // Soft Delete (실제 삭제 X, 삭제 표시만)

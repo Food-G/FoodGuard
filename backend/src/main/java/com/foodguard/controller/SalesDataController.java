@@ -49,4 +49,19 @@ public class SalesDataController {
     public ResponseEntity<String> delete(@PathVariable Long id) {
         return ResponseEntity.ok(salesDataService.delete(id));
     }
+
+    @GetMapping("/{storeId}/today-summary")
+    public ResponseEntity<Map<String, Object>> getTodaySummary(@PathVariable Long storeId) {
+        return ResponseEntity.ok(salesDataService.getTodaySummary(storeId));
+    }
+
+    @GetMapping("/{storeId}/weekly-summary")
+    public ResponseEntity<Map<String, Object>> getWeeklySummary(@PathVariable Long storeId) {
+        return ResponseEntity.ok(salesDataService.getWeeklySummary(storeId));
+    }
+
+    @GetMapping("/all-stores/weekly-summary")
+    public ResponseEntity<Map<Long, Long>> getAllStoreWeeklySummary() {
+        return ResponseEntity.ok(salesDataService.getAllStoreWeeklySummary());
+    }
 }
