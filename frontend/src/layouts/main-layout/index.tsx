@@ -14,46 +14,55 @@ interface MainLayoutProps {
 }
 
 const MainLayout = ({ children, role, onLogout }: MainLayoutProps): ReactElement => {
-  const [open, setOpen] = useState<boolean>(false);
-  const handleDrawerToggle = () => setOpen(!open);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
     <>
       <Box sx={{ display: 'flex', minHeight: '100vh' }}>
-        <Topbar open={open} handleDrawerToggle={handleDrawerToggle} onLogout={onLogout} />
+        <Topbar onLogout={onLogout} />
+
         {/* Mobile Drawer */}
         <Drawer
           variant="temporary"
-          open={open}
-          onClose={handleDrawerToggle}
-          ModalProps={{
-            keepMounted: true,
-          }}
+          open={mobileOpen}
+          onClose={() => setMobileOpen(false)}
+          ModalProps={{ keepMounted: true }}
           sx={{
             display: { xs: 'block', sm: 'none' },
             '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerOpenWidth },
           }}
         >
-          <Sidebar open={open} role={role} setMobileOpen={setOpen} />
+          <Sidebar open={true} role={role} setMobileOpen={setMobileOpen} />
         </Drawer>
-        {/* Desktop Drawer */}
+
+        {/* Desktop Drawer — always takes drawerCloseWidth space, paper overlays when hovered */}
         <Drawer
           variant="permanent"
           component="aside"
-          open={open}
           sx={{
             display: { xs: 'none', sm: 'block' },
-            width: open ? drawerOpenWidth : drawerCloseWidth,
+            width: drawerCloseWidth,
+            flexShrink: 0,
             '& .MuiDrawer-paper': {
-              width: open ? drawerOpenWidth : drawerCloseWidth,
+              width: sidebarOpen ? drawerOpenWidth : drawerCloseWidth,
+              transition: 'width 0.22s cubic-bezier(0.4, 0, 0.2, 1)',
+              overflowX: 'hidden',
+              boxShadow: sidebarOpen ? '4px 0 24px rgba(0,0,0,0.08)' : 'none',
+              zIndex: sidebarOpen ? 1300 : 1200,
             },
           }}
         >
-          <Sidebar open={open} role={role} />
+          <Sidebar
+            open={sidebarOpen}
+            role={role}
+            onMouseEnter={() => setSidebarOpen(true)}
+            onMouseLeave={() => setSidebarOpen(false)}
+          />
         </Drawer>
+
         <Box
           component="main"
-          overflow="auto"
           sx={{
             width: 1,
             flexGrow: 1,
@@ -61,17 +70,14 @@ const MainLayout = ({ children, role, onLogout }: MainLayoutProps): ReactElement
             pr: { xs: 3, sm: 5.175 },
             pb: 6.25,
             pl: { xs: 3, sm: 5.25 },
+            overflow: 'auto',
           }}
         >
-          <Toolbar
-            sx={{
-              height: 96,
-            }}
-          />
+          <Toolbar sx={{ height: 96 }} />
           {children}
         </Box>
       </Box>
-      <Footer open={open} />
+      <Footer open={false} />
     </>
   );
 };

@@ -1,14 +1,25 @@
 import { Menu, Avatar, Button, Tooltip, MenuItem, ListItemIcon, ListItemText } from '@mui/material';
 import IconifyIcon from 'components/base/IconifyIcon';
 import { useState, MouseEvent, useCallback, ReactElement } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { authService } from '../../../services/authService';
+import { decodeToken } from '../../../utils/jwt';
+
+const PHOTO_KEY = 'profile_photo';
 
 interface UserDropdownProps {
   onLogout: () => void;
 }
 
 const UserDropdown = ({ onLogout }: UserDropdownProps): ReactElement => {
+  const navigate = useNavigate();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const menuOpen = Boolean(anchorEl);
+  const photo = localStorage.getItem(PHOTO_KEY) ?? '';
+  const token = authService.getToken();
+  const decoded = token ? decodeToken(token) : null;
+  const email: string = decoded?.sub ?? '';
+  const initials = email ? email[0].toUpperCase() : 'U';
 
   const handleUserClick = useCallback((event: MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -24,8 +35,7 @@ const UserDropdown = ({ onLogout }: UserDropdownProps): ReactElement => {
   };
 
   const userMenuItems = [
-    { id: 1, title: '내 프로필', icon: 'mingcute:user-2-fill', color: 'text.primary' },
-    { id: 2, title: '설정', icon: 'material-symbols:settings-account-box-rounded', color: 'text.primary' },
+    { id: 1, title: '내 프로필', icon: 'mingcute:user-2-fill', color: 'text.primary', onClick: () => { handleUserClose(); navigate('/profile'); } },
     { id: 3, title: '로그아웃', icon: 'material-symbols:logout', color: 'error.main', onClick: handleLogout },
   ];
 
@@ -42,16 +52,19 @@ const UserDropdown = ({ onLogout }: UserDropdownProps): ReactElement => {
         disableRipple
         sx={{
           borderRadius: 2,
-          gap: 3.75,
+          gap: 1.5,
           px: { xs: 0, sm: 0.625 },
           py: 0.625,
-          '&:hover': {
-            bgcolor: 'transparent',
-          },
+          '&:hover': { bgcolor: 'transparent' },
         }}
       >
-        <Tooltip title="Account" arrow placement="bottom">
-          <Avatar sx={{ width: 44, height: 44, bgcolor: 'primary.main' }}>FG</Avatar>
+        <Tooltip title="내 프로필" arrow placement="bottom">
+          <Avatar
+            src={photo || undefined}
+            sx={{ width: 44, height: 44, bgcolor: 'primary.main', fontSize: 18, cursor: 'pointer' }}
+          >
+            {!photo && initials}
+          </Avatar>
         </Tooltip>
         <IconifyIcon
           color="text.primary"
