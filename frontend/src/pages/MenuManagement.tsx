@@ -19,7 +19,7 @@ const MenuManagement = ({ user }: any) => {
   const [form, setForm] = useState({ menuName: '', price: '' });
 
   useEffect(() => {
-    if (!user?.id) return;
+    if (!user?.id) { setLoading(false); return; }
     storeService.getMyStores(user.id).then((stores: any[]) => {
       if (stores?.length > 0) setStoreId(stores[0].id);
       else setLoading(false);

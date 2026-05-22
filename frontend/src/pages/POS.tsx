@@ -150,7 +150,7 @@ const POS = ({ user }: { user: any }) => {
 
   /* ── Boot ── */
   useEffect(() => {
-    if (!user?.id) return;
+    if (!user?.id) { setLoading(false); return; }
     storeService.getMyStores(user.id).then((stores: any[]) => {
       if (!stores?.length) { setLoading(false); return; }
       const sid: number = stores[0].id;
@@ -271,10 +271,28 @@ const POS = ({ user }: { user: any }) => {
     setPaying(true);
     setPayMsg('');
     try {
-      const today = new Date().toISOString().split('T')[0];
+      const now   = new Date();
+      const today = now.toISOString().split('T')[0];
+      const timeStr = now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
       for (const item of dialogOrderItems) {
         await salesService.create({ storeId, menuId: item.menuId, quantity: item.qty, totalPrice: item.price * item.qty, saleDate: today });
       }
+
+      /* 테이블 영수증 localStorage 저장 */
+      const rKey = `pos_receipts_${storeId}`;
+      const prev: any[] = JSON.parse(localStorage.getItem(rKey) ?? '[]');
+      const receipt = {
+        id: Date.now(),
+        tableId:   orderDialog.id,
+        tableName: orderDialog.name,
+        date:      today,
+        time:      timeStr,
+        items:     dialogOrderItems.map(i => ({ menuName: i.menuName, qty: i.qty, price: i.price, total: i.price * i.qty })),
+        total:     dialogOrderItems.reduce((s, i) => s + i.price * i.qty, 0),
+      };
+      localStorage.setItem(rKey, JSON.stringify([receipt, ...prev].slice(0, 200)));
+
       setOrders(prev => ({ ...prev, [orderDialog.id]: [] }));
       setPayMsg('결제 완료!');
       setTimeout(closeOrderDialog, 1600);

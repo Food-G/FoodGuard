@@ -146,9 +146,9 @@ const Orders = ({ user }: any) => {
   };
 
   useEffect(() => {
-    if (!user?.id) return;
+    if (!user?.id) { setLoading(false); return; }
     storeService.getMyStores(user.id).then(async (stores: any[]) => {
-      if (!stores?.length) return;
+      if (!stores?.length) { setLoading(false); return; }
       const sid = stores[0].id;
       setStoreId(sid);
       try {

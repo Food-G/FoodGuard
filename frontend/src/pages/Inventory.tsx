@@ -53,9 +53,9 @@ const Inventory = ({ user }: any) => {
   const [initLoading, setInitLoading] = useState(false);
 
   useEffect(() => {
-    if (!user?.id) return;
+    if (!user?.id) { setLoadingInventory(false); return; }
     storeService.getMyStores(user.id).then((stores: any[]) => {
-      if (!stores?.length) return;
+      if (!stores?.length) { setLoadingInventory(false); return; }
       const sid = stores[0].id;
       setStoreId(sid);
       loadInventory(sid);
