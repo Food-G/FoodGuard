@@ -13,24 +13,34 @@ import IconifyIcon from '../../components/base/IconifyIcon';
 const STATUS_LABEL: Record<string, string> = {
   REQUESTED: '대기중',
   APPROVED: '승인됨',
-  DONE: '완료',
+  IN_DELIVERY: '배송중',
+  DELIVERED: '배송완료',
+  INSPECTED: '검수완료',
   REJECTED: '거절됨',
   CANCELLED: '취소됨',
+  DONE: '완료',
 };
 const STATUS_COLOR: Record<string, any> = {
   REQUESTED: 'warning',
   APPROVED: 'info',
-  DONE: 'success',
+  IN_DELIVERY: 'primary',
+  DELIVERED: 'success',
+  INSPECTED: 'success',
   REJECTED: 'error',
   CANCELLED: 'default',
+  DONE: 'success',
 };
 
 const ORDER_TABS = [
   { label: '대기중', value: 'REQUESTED' },
   { label: '승인됨', value: 'APPROVED' },
-  { label: '완료', value: 'DONE' },
+  { label: '배송중', value: 'IN_DELIVERY' },
+  { label: '배송완료', value: 'DELIVERED' },
+  { label: '검수완료', value: 'INSPECTED' },
   { label: '취소·거절', value: 'CANCELLED' },
 ];
+
+const ACTIVE_STATUSES = ['APPROVED', 'IN_DELIVERY', 'DELIVERED'];
 
 const AdminOrders = () => {
   const theme = useTheme();
@@ -45,43 +55,28 @@ const AdminOrders = () => {
   const [tab, setTab] = useState('REQUESTED');
 
   const stompClients = useRef<Record<string, Client>>({});
-  // 배달 시작된 orderId → 승인됨 탭에서 빠져 완료 탭으로 이동
-  const [deliveringIds, setDeliveringIds] = useState<Set<number>>(new Set());
-  // 배달 완료된 orderId → 완료 탭에서 자동 제거
   const loadOrdersFn = useRef<() => Promise<void>>();
 
-  const subscribeDelivery = (orderId: number, token: string, ingredientName: string) => {
-    if (stompClients.current[token]) return;
+  const subscribeGroupDelivery = (groupToken: string) => {
+    if (stompClients.current[groupToken]) return;
     const client = new Client({
       webSocketFactory: () => new SockJS('/ws'),
       reconnectDelay: 5000,
       onConnect: () => {
-        client.subscribe(`/topic/delivery/${token}`, (msg) => {
+        client.subscribe(`/topic/delivery/group/${groupToken}`, (msg) => {
           const data = JSON.parse(msg.body);
-
-          if (data.type === 'START') {
-            // 배달 시작 → 승인됨 탭에서 완료 탭으로 이동
-            setDeliveringIds((prev) => new Set([...prev, orderId]));
-          }
-
-          if (data.type === 'DONE') {
-            // 배달 완료 → 완료 탭에서 제거
-            setDeliveringIds((prev) => {
-              const next = new Set(prev);
-              next.delete(orderId);
-              return next;
-            });
-            setSuccess(`'${ingredientName}' 배달이 완료되었습니다. 재고에 자동 반영됩니다.`);
+          if (data.type === 'INSPECTED') {
+            setSuccess('검수가 완료되었습니다. 재고에 자동 반영됩니다.');
             setTimeout(() => setSuccess(''), 4000);
             client.deactivate();
-            delete stompClients.current[token];
-            loadOrdersFn.current?.();
+            delete stompClients.current[groupToken];
           }
+          loadOrdersFn.current?.();
         });
       },
     });
     client.activate();
-    stompClients.current[token] = client;
+    stompClients.current[groupToken] = client;
   };
 
   const loadOrders = async () => {
@@ -89,12 +84,16 @@ const AdminOrders = () => {
       const orders = await orderService.getAll();
       const list = Array.isArray(orders) ? orders : [];
       setAllOrders(list);
-      // APPROVED 발주에 WebSocket 구독 (이미 구독된 것은 guard로 스킵)
+      // 진행중인 그룹에 WebSocket 구독
+      const seen = new Set<string>();
       list
-        .filter((o: any) => o.status === 'APPROVED' && o.deliveryToken)
-        .forEach((o: any) =>
-          subscribeDelivery(o.id, o.deliveryToken, o.ingredient?.name ?? '발주')
-        );
+        .filter((o: any) => ACTIVE_STATUSES.includes(o.status) && o.deliveryGroupToken)
+        .forEach((o: any) => {
+          if (!seen.has(o.deliveryGroupToken)) {
+            seen.add(o.deliveryGroupToken);
+            subscribeGroupDelivery(o.deliveryGroupToken);
+          }
+        });
     } catch {
       setError('발주 목록을 불러오지 못했습니다.');
     } finally {
@@ -102,7 +101,6 @@ const AdminOrders = () => {
     }
   };
 
-  // loadOrders ref 항상 최신으로 유지
   useEffect(() => {
     loadOrdersFn.current = loadOrders;
   });
@@ -134,7 +132,6 @@ const AdminOrders = () => {
   });
 
   const storeList = Array.from(storeMap.values());
-
   const regions = ['ALL', ...Array.from(
     new Set(storeList.map((s) => s.store?.region).filter(Boolean))
   ) as string[]];
@@ -151,39 +148,36 @@ const AdminOrders = () => {
   const tabFilteredOrders =
     tab === 'CANCELLED'
       ? selectedOrders.filter((o) => o.status === 'CANCELLED' || o.status === 'REJECTED')
-    : tab === 'APPROVED'
-      // 승인됨: 배달 시작된 항목은 여기서 제외
-      ? selectedOrders.filter((o) => o.status === 'APPROVED' && !deliveringIds.has(o.id))
-    : tab === 'DONE'
-      ? selectedOrders.filter((o) => o.status === 'APPROVED' && deliveringIds.has(o.id))
-    : selectedOrders.filter((o) => o.status === tab);
+      : selectedOrders.filter((o) => o.status === tab);
+
+  const countByStatus = (orders: any[], status: string) =>
+    orders.filter((o) => o.status === status).length;
 
   const handleApproveAll = async () => {
-    const requested = tabFilteredOrders.filter((o) => o.status === 'REQUESTED');
-    if (!requested.length) return;
+    if (!selectedStoreId) return;
     try {
-      await Promise.all(requested.map((o) => orderService.updateStatus(o.id, 'APPROVED')));
-      setSuccess(`${requested.length}건 모두 승인되었습니다.`);
-      setTimeout(() => setSuccess(''), 3000);
+      const result = await orderService.approveAll(selectedStoreId);
+      const groupToken = result.groupToken;
+      const url = `${window.location.origin}/driver/group/${groupToken}`;
+      navigator.clipboard.writeText(url);
+      setSuccess(`일괄 승인 완료. 배달 링크가 클립보드에 복사되었습니다.`);
+      setTimeout(() => setSuccess(''), 4000);
       await loadOrders();
+      setTab('APPROVED');
     } catch {
       setError('승인 처리에 실패했습니다.');
     }
   };
 
-  const handleApprove = async (id: number) => {
-    try {
-      await orderService.updateStatus(id, 'APPROVED');
-      setSuccess('발주가 승인되었습니다.');
-      setTimeout(() => setSuccess(''), 3000);
-      await loadOrders();
-    } catch {
-      setError('상태 변경에 실패했습니다.');
-    }
+  const copyGroupLink = (groupToken: string) => {
+    const url = `${window.location.origin}/driver/group/${groupToken}`;
+    navigator.clipboard.writeText(url);
+    setSuccess('배달 링크가 복사되었습니다. 배달기사에게 전달하세요.');
+    setTimeout(() => setSuccess(''), 3000);
   };
 
-  const countByStatus = (orders: any[], status: string) =>
-    orders.filter((o) => o.status === status).length;
+  // APPROVED 탭에서 그룹 토큰 추출 (같은 가맹점이면 동일)
+  const approvedGroupToken = tabFilteredOrders.find((o) => o.deliveryGroupToken)?.deliveryGroupToken ?? null;
 
   return (
     <Stack gap={3.5} sx={{ bgcolor: 'background.default' }}>
@@ -252,9 +246,11 @@ const AdminOrders = () => {
                 {filteredStores.map(({ store, orders }, idx) => {
                   const isSelected = selectedStoreId === store.id;
                   const pending = countByStatus(orders, 'REQUESTED');
-                  const activeDeliveries = orders.filter(
-                    (o: any) => o.status === 'APPROVED' && o.deliveryToken
-                  ).length;
+                  const activeGroups = new Set(
+                    orders
+                      .filter((o: any) => ACTIVE_STATUSES.includes(o.status) && o.deliveryGroupToken)
+                      .map((o: any) => o.deliveryGroupToken)
+                  ).size;
                   return (
                     <Box
                       key={store.id}
@@ -285,9 +281,9 @@ const AdminOrders = () => {
                               sx={{ height: 20, fontSize: 10, fontWeight: 700, '& .MuiChip-label': { px: 0.75 } }}
                             />
                           )}
-                          {activeDeliveries > 0 && (
+                          {activeGroups > 0 && (
                             <Chip
-                              label={`🚚 ${activeDeliveries}`}
+                              label={`🚚 ${activeGroups}`}
                               color="info" size="small"
                               sx={{ height: 20, fontSize: 10, fontWeight: 700, '& .MuiChip-label': { px: 0.75 } }}
                             />
@@ -296,7 +292,7 @@ const AdminOrders = () => {
                       </Stack>
                       <Typography variant="caption" color="text.secondary">
                         총 {orders.length}건
-                        {countByStatus(orders, 'DONE') > 0 && ` · 완료 ${countByStatus(orders, 'DONE')}건`}
+                        {countByStatus(orders, 'INSPECTED') > 0 && ` · 검수완료 ${countByStatus(orders, 'INSPECTED')}건`}
                       </Typography>
                     </Box>
                   );
@@ -327,43 +323,32 @@ const AdminOrders = () => {
               {/* 헤더 */}
               <Box sx={{ px: 3, py: 2, borderBottom: `1px solid ${theme.palette.divider}` }}>
                 <Stack direction="row" justifyContent="space-between" alignItems="center">
-                  <Typography variant="h6" fontWeight={700} color="text.primary">
-                    {selectedEntry.store.storeName}
-                  </Typography>
+                  <Typography variant="h6" fontWeight={700}>{selectedEntry.store.storeName}</Typography>
                   <Stack direction="row" gap={0.75}>
-                    {(['REQUESTED', 'APPROVED', 'DONE'] as const).map((s) => {
+                    {(['REQUESTED', 'APPROVED', 'IN_DELIVERY', 'DELIVERED', 'INSPECTED'] as const).map((s) => {
                       const cnt = countByStatus(selectedOrders, s);
                       return cnt > 0 ? (
-                        <Chip
-                          key={s}
-                          label={`${STATUS_LABEL[s]} ${cnt}`}
-                          color={STATUS_COLOR[s]}
-                          size="small"
-                          sx={{ fontWeight: 700 }}
-                        />
+                        <Chip key={s} label={`${STATUS_LABEL[s]} ${cnt}`} color={STATUS_COLOR[s]} size="small" sx={{ fontWeight: 700 }} />
                       ) : null;
                     })}
                   </Stack>
                 </Stack>
               </Box>
 
-              {/* 상태 필터 탭 + 모두 승인 버튼 */}
+              {/* 탭 + 버튼 */}
               <Stack direction="row" alignItems="center" sx={{ borderBottom: `1px solid ${theme.palette.divider}` }}>
                 <Tabs
                   value={tab}
                   onChange={(_, v) => setTab(v)}
                   sx={{ px: 1, minHeight: 44, flex: 1 }}
                   textColor="primary" indicatorColor="primary"
+                  variant="scrollable" scrollButtons="auto"
                 >
                   {ORDER_TABS.map((t) => {
                     const cnt =
                       t.value === 'CANCELLED'
                         ? countByStatus(selectedOrders, 'CANCELLED') + countByStatus(selectedOrders, 'REJECTED')
-                      : t.value === 'APPROVED'
-                        ? selectedOrders.filter((o) => o.status === 'APPROVED' && !deliveringIds.has(o.id)).length
-                      : t.value === 'DONE'
-                        ? selectedOrders.filter((o) => o.status === 'APPROVED' && deliveringIds.has(o.id)).length
-                      : countByStatus(selectedOrders, t.value);
+                        : countByStatus(selectedOrders, t.value);
                     return (
                       <Tab
                         key={t.value}
@@ -376,7 +361,7 @@ const AdminOrders = () => {
                               <Chip
                                 label={cnt}
                                 size="small"
-                                color={t.value === 'REQUESTED' ? 'warning' : t.value === 'APPROVED' ? 'info' : t.value === 'DONE' ? 'success' : 'default'}
+                                color={STATUS_COLOR[t.value] ?? 'default'}
                                 sx={{ height: 18, fontSize: 11, fontWeight: 700, '& .MuiChip-label': { px: 0.75 } }}
                               />
                             )}
@@ -393,24 +378,35 @@ const AdminOrders = () => {
                       onClick={handleApproveAll}
                       sx={{ borderRadius: 2, fontWeight: 700, whiteSpace: 'nowrap' }}
                     >
-                      모두 승인 ({countByStatus(selectedOrders, 'REQUESTED')}건)
+                      일괄 승인 ({countByStatus(selectedOrders, 'REQUESTED')}건)
                     </Button>
                   </Box>
                 )}
               </Stack>
 
+              {/* APPROVED 탭: 그룹 배달 링크 배너 */}
+              {tab === 'APPROVED' && approvedGroupToken && (
+                <Box sx={{ px: 2.5, py: 1.5, bgcolor: 'info.lighter', borderBottom: `1px solid ${theme.palette.divider}` }}>
+                  <Stack direction="row" alignItems="center" justifyContent="space-between">
+                    <Typography variant="body2" fontWeight={600} color="info.dark">
+                      배달기사에게 묶음 배달 링크를 전달하세요
+                    </Typography>
+                    <Button
+                      variant="contained" color="info" size="small"
+                      onClick={() => copyGroupLink(approvedGroupToken)}
+                      sx={{ borderRadius: 2, fontWeight: 700 }}
+                    >
+                      🔗 배달 링크 복사
+                    </Button>
+                  </Stack>
+                </Box>
+              )}
+
               {/* 발주 목록 */}
               <Box sx={{ flex: 1, overflowY: 'auto' }}>
                 {tabFilteredOrders.length === 0 ? (
-                  <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: 300, gap: 1.5 }}>
-                    {tab === 'DONE' ? (
-                      <>
-                        <IconifyIcon icon="mingcute:check-circle-fill" width={40} color={theme.palette.success.main} />
-                        <Typography color="text.secondary" fontWeight={600}>모든 배달이 완료되었습니다.</Typography>
-                      </>
-                    ) : (
-                      <Typography color="text.secondary">해당 상태의 발주가 없습니다.</Typography>
-                    )}
+                  <Box sx={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', height: 260, gap: 1.5 }}>
+                    <Typography color="text.secondary">해당 상태의 발주가 없습니다.</Typography>
                   </Box>
                 ) : (
                   <TableContainer>
@@ -421,74 +417,27 @@ const AdminOrders = () => {
                           <TableCell align="right" sx={{ fontWeight: 700, color: 'text.secondary', fontSize: 12 }}>수량</TableCell>
                           <TableCell sx={{ fontWeight: 700, color: 'text.secondary', fontSize: 12 }}>상태</TableCell>
                           <TableCell sx={{ fontWeight: 700, color: 'text.secondary', fontSize: 12 }}>발주 일시</TableCell>
-                          <TableCell align="center" sx={{ fontWeight: 700, color: 'text.secondary', fontSize: 12 }}>관리</TableCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>
                         {tabFilteredOrders.map((order) => (
                           <TableRow key={order.id} hover>
-                            <TableCell sx={{ fontWeight: 600, color: 'text.primary' }}>
-                              {order.ingredient?.name ?? '-'}
-                            </TableCell>
-                            <TableCell align="right" sx={{ color: 'text.primary' }}>
+                            <TableCell sx={{ fontWeight: 600 }}>{order.ingredient?.name ?? '-'}</TableCell>
+                            <TableCell align="right">
                               {order.orderedQty ?? order.quantity}
                               <Typography component="span" variant="caption" color="text.secondary" ml={0.5}>
                                 {order.ingredient?.unit ?? ''}
                               </Typography>
                             </TableCell>
                             <TableCell>
-                              {tab === 'DONE' && deliveringIds.has(order.id) ? (
-                                <Chip
-                                  label="🚚 배달 중"
-                                  color="info"
-                                  size="small" sx={{ fontWeight: 700 }}
-                                />
-                              ) : (
-                                <Chip
-                                  label={STATUS_LABEL[order.status] ?? order.status}
-                                  color={STATUS_COLOR[order.status] ?? 'default'}
-                                  size="small" sx={{ fontWeight: 700 }}
-                                />
-                              )}
+                              <Chip
+                                label={STATUS_LABEL[order.status] ?? order.status}
+                                color={STATUS_COLOR[order.status] ?? 'default'}
+                                size="small" sx={{ fontWeight: 700 }}
+                              />
                             </TableCell>
                             <TableCell sx={{ color: 'text.secondary', fontSize: 12 }}>
                               {order.orderedAt ? new Date(order.orderedAt).toLocaleString() : '-'}
-                            </TableCell>
-                            <TableCell align="center">
-                              {/* 대기중 → 승인 */}
-                              {order.status === 'REQUESTED' && (
-                                <Button
-                                  variant="contained" color="info" size="small"
-                                  sx={{ borderRadius: 2, minWidth: 52 }}
-                                  onClick={() => handleApprove(order.id)}
-                                >
-                                  승인
-                                </Button>
-                              )}
-                              {/* 승인됨 → 배달기사에게 링크 전달 (완료는 배달기사가 처리 → 자동) */}
-                              {order.status === 'APPROVED' && order.deliveryToken && !deliveringIds.has(order.id) && (
-                                <Button
-                                  variant="outlined" color="info" size="small"
-                                  sx={{ borderRadius: 2, fontSize: 11, gap: 0.5 }}
-                                  onClick={() => {
-                                    const url = `${window.location.origin}/driver/${order.deliveryToken}`;
-                                    navigator.clipboard.writeText(url);
-                                    setSuccess('배달 링크가 복사되었습니다. 배달기사에게 전달하세요.');
-                                    setTimeout(() => setSuccess(''), 3000);
-                                  }}
-                                >
-                                  🔗 링크 복사
-                                </Button>
-                              )}
-                              {/* 완료 — 배달기사가 완료 처리 시 자동 업데이트 */}
-                              {order.status === 'DONE' && (
-                                <Chip
-                                  label="배달 완료"
-                                  color="success" size="small"
-                                  icon={<IconifyIcon icon="mingcute:check-circle-fill" width={14} />}
-                                  sx={{ fontWeight: 700 }}
-                                />
-                              )}
                             </TableCell>
                           </TableRow>
                         ))}

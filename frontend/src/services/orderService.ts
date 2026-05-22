@@ -25,4 +25,7 @@ export const orderService = {
   autoOrder: async (storeId: number) => {
     return api.post(`/orders/auto/${storeId}`, {});
   },
+  approveAll: async (storeId: number) => {
+    return api.post(`/orders/approve-all/${storeId}`, {});
+  },
 };

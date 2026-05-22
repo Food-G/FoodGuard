@@ -47,6 +47,9 @@ public class OrderRequest {
     @Column(name = "delivery_token", length = 64)
     private String deliveryToken;
 
+    @Column(name = "delivery_group_token", length = 64)
+    private String deliveryGroupToken;
+
     @Column(name = "updated_at", insertable = false, updatable = false)
     private LocalDateTime updatedAt;
 

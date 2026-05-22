@@ -119,29 +119,78 @@ public class OrderRequestService {
         }
 
         if ("DONE".equals(status) && !"DONE".equals(prev)) {
-            Long storeId = order.getStore().getId();
-            Long ingredientId = order.getIngredient().getId();
-            double qty = order.getOrderedQty().doubleValue();
-
-            Optional<Inventory> invOpt = inventoryRepository.findByStoreIdAndIngredientId(storeId, ingredientId);
-            if (invOpt.isPresent()) {
-                Inventory inv = invOpt.get();
-                inv.setQuantity(inv.getCurrentQty().doubleValue() + qty);
-                inv.setUpdatedAt(LocalDateTime.now());
-                inventoryRepository.save(inv);
-            } else {
-                Inventory inv = new Inventory();
-                inv.setStore(order.getStore());
-                inv.setIngredient(order.getIngredient());
-                inv.setQuantity(qty);
-                inv.setMinThreshold(BigDecimal.ZERO);
-                inv.setUnit(order.getIngredient().getUnit());
-                inv.setUpdatedAt(LocalDateTime.now());
-                inventoryRepository.save(inv);
-            }
+            applyInventory(order);
         }
 
         return order;
+    }
+
+    // 가맹점 전체 발주 일괄 승인 — 그룹 토큰 공유
+    @Transactional
+    public String approveAllForStore(Long storeId) {
+        List<OrderRequest> requested = orderRequestRepository.findByStoreIdAndStatus(storeId, "REQUESTED");
+        if (requested.isEmpty()) return null;
+
+        String groupToken = UUID.randomUUID().toString().replace("-", "");
+        LocalDateTime now = LocalDateTime.now();
+        for (OrderRequest order : requested) {
+            order.setStatus("APPROVED");
+            order.setApprovedAt(now);
+            order.setDeliveryToken(UUID.randomUUID().toString().replace("-", ""));
+            order.setDeliveryGroupToken(groupToken);
+        }
+        orderRequestRepository.saveAll(requested);
+        return groupToken;
+    }
+
+    // 그룹 배송 시작 (APPROVED → IN_DELIVERY)
+    @Transactional
+    public List<OrderRequest> startGroupDelivery(String groupToken) {
+        List<OrderRequest> orders = orderRequestRepository.findByDeliveryGroupToken(groupToken);
+        orders.forEach(o -> o.setStatus("IN_DELIVERY"));
+        return orderRequestRepository.saveAll(orders);
+    }
+
+    // 그룹 배달 완료 (IN_DELIVERY → DELIVERED)
+    @Transactional
+    public List<OrderRequest> completeGroupDelivery(String groupToken) {
+        List<OrderRequest> orders = orderRequestRepository.findByDeliveryGroupToken(groupToken);
+        orders.forEach(o -> o.setStatus("DELIVERED"));
+        return orderRequestRepository.saveAll(orders);
+    }
+
+    // 가맹점주 검수 확인 (DELIVERED → INSPECTED) — 재고 반영
+    @Transactional
+    public List<OrderRequest> inspectGroupDelivery(String groupToken) {
+        List<OrderRequest> orders = orderRequestRepository.findByDeliveryGroupToken(groupToken);
+        for (OrderRequest order : orders) {
+            order.setStatus("INSPECTED");
+            applyInventory(order);
+        }
+        return orderRequestRepository.saveAll(orders);
+    }
+
+    private void applyInventory(OrderRequest order) {
+        Long storeId = order.getStore().getId();
+        Long ingredientId = order.getIngredient().getId();
+        double qty = order.getOrderedQty().doubleValue();
+
+        Optional<Inventory> invOpt = inventoryRepository.findByStoreIdAndIngredientId(storeId, ingredientId);
+        if (invOpt.isPresent()) {
+            Inventory inv = invOpt.get();
+            inv.setQuantity(inv.getCurrentQty().doubleValue() + qty);
+            inv.setUpdatedAt(LocalDateTime.now());
+            inventoryRepository.save(inv);
+        } else {
+            Inventory inv = new Inventory();
+            inv.setStore(order.getStore());
+            inv.setIngredient(order.getIngredient());
+            inv.setQuantity(qty);
+            inv.setMinThreshold(BigDecimal.ZERO);
+            inv.setUnit(order.getIngredient().getUnit());
+            inv.setUpdatedAt(LocalDateTime.now());
+            inventoryRepository.save(inv);
+        }
     }
 
     // 발주 취소 (삭제 대신 CANCELLED 상태로 변경 — recommend 중복 방지 및 이력 보존)
@@ -201,7 +250,7 @@ public class OrderRequestService {
 
         // 이미 진행 중인 발주량 (REQUESTED + APPROVED) — 중복 발주 방지
         Map<Long, Double> pending = new LinkedHashMap<>();
-        for (OrderRequest o : orderRequestRepository.findByStoreIdAndStatusIn(storeId, List.of("REQUESTED", "APPROVED"))) {
+        for (OrderRequest o : orderRequestRepository.findByStoreIdAndStatusIn(storeId, List.of("REQUESTED", "APPROVED", "IN_DELIVERY", "DELIVERED"))) {
             pending.merge(o.getIngredient().getId(), o.getOrderedQty().doubleValue(), Double::sum);
         }
 

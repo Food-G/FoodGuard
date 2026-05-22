@@ -34,12 +34,22 @@ function MapRecenter({ lat, lng }: { lat: number; lng: number }) {
   return null;
 }
 
-const STAGES = ['승인됨', '픽업 완료', '배송중', '거의 도착'];
-const STAGE_ICONS = ['✅', '🏭', '🚚', '📍'];
+const STAGES = ['승인됨', '배송중', '배달완료', '검수완료'];
+const STAGE_ICONS = ['✅', '🚚', '📦', '🔍'];
+
+const statusToStage: Record<string, number> = {
+  APPROVED: 0,
+  IN_DELIVERY: 1,
+  DELIVERED: 2,
+  INSPECTED: 3,
+};
 
 const STATUS_LABEL: Record<string, string> = {
   REQUESTED: '대기중',
   APPROVED: '승인됨',
+  IN_DELIVERY: '배송중',
+  DELIVERED: '배송완료',
+  INSPECTED: '검수완료',
   DONE: '완료',
   REJECTED: '거절됨',
   CANCELLED: '취소됨',
@@ -47,6 +57,9 @@ const STATUS_LABEL: Record<string, string> = {
 const STATUS_COLOR: Record<string, any> = {
   REQUESTED: 'warning',
   APPROVED: 'info',
+  IN_DELIVERY: 'primary',
+  DELIVERED: 'success',
+  INSPECTED: 'success',
   DONE: 'success',
   REJECTED: 'error',
   CANCELLED: 'default',
@@ -89,6 +102,33 @@ const Orders = ({ user }: any) => {
     if (deliveryCloseTimer.current) clearTimeout(deliveryCloseTimer.current);
   };
 
+  const subscribeGroupDelivery = (groupToken: string) => {
+    if (stompClients.current[groupToken]) return;
+    const client = new Client({
+      webSocketFactory: () => new SockJS('/ws'),
+      reconnectDelay: 5000,
+      onConnect: () => {
+        client.subscribe(`/topic/delivery/group/${groupToken}`, (msg) => {
+          const data = JSON.parse(msg.body);
+          if (data.type === 'LOCATION') {
+            setDeliveryMap((prev) => ({
+              ...prev,
+              [groupToken]: { lat: data.lat, lng: data.lng, stage: prev[groupToken]?.stage ?? 0 },
+            }));
+          } else {
+            if (data.type === 'INSPECTED') {
+              stompClients.current[groupToken]?.deactivate();
+              delete stompClients.current[groupToken];
+            }
+            if (storeId) loadOrders(storeId);
+          }
+        });
+      },
+    });
+    client.activate();
+    stompClients.current[groupToken] = client;
+  };
+
   const subscribeDelivery = (token: string) => {
     if (stompClients.current[token]) return;
     const client = new Client({
@@ -125,12 +165,23 @@ const Orders = ({ user }: any) => {
       const all = orders ?? [];
       setCancelledCount(all.filter((o: any) => o.status === 'CANCELLED').length);
 
-      const approved = all.filter((o: any) => o.status === 'APPROVED' && o.deliveryToken);
-      setApprovedOrders(approved);
-      approved.forEach((o: any) => subscribeDelivery(o.deliveryToken));
+      // 진행중인 배달: APPROVED/IN_DELIVERY/DELIVERED
+      const active = all.filter((o: any) => ['APPROVED', 'IN_DELIVERY', 'DELIVERED'].includes(o.status));
+      setApprovedOrders(active);
+
+      // 그룹 토큰 기반 구독 (중복 방지)
+      const seen = new Set<string>();
+      active.forEach((o: any) => {
+        if (o.deliveryGroupToken && !seen.has(o.deliveryGroupToken)) {
+          seen.add(o.deliveryGroupToken);
+          subscribeGroupDelivery(o.deliveryGroupToken);
+        } else if (o.deliveryToken && !o.deliveryGroupToken) {
+          subscribeDelivery(o.deliveryToken);
+        }
+      });
 
       setRows(all
-        .filter((item: any) => item.status !== 'CANCELLED' && item.status !== 'DONE')
+        .filter((item: any) => !['CANCELLED', 'DONE', 'INSPECTED'].includes(item.status))
         .map((item: any) => ({
           id: item.id,
           name: item.ingredient?.name ?? '-',
@@ -139,6 +190,7 @@ const Orders = ({ user }: any) => {
           status: item.status,
           orderedAt: item.orderedAt ? new Date(item.orderedAt).toLocaleString() : '-',
           deliveryToken: item.deliveryToken ?? null,
+          deliveryGroupToken: item.deliveryGroupToken ?? null,
         })));
     } catch {
       setError('발주 내역을 불러오지 못했습니다.');
@@ -169,6 +221,17 @@ const Orders = ({ user }: any) => {
       if (storeId) await loadOrders(storeId);
     } catch {
       setError('취소에 실패했습니다.');
+    }
+  };
+
+  const handleInspect = async (groupToken: string) => {
+    try {
+      await fetch(`/api/delivery/group/${groupToken}/inspect`, { method: 'POST' });
+      setSuccess('검수 확인이 완료되었습니다. 재고에 반영됩니다.');
+      setTimeout(() => setSuccess(''), 4000);
+      if (storeId) await loadOrders(storeId);
+    } catch {
+      setError('검수 처리에 실패했습니다.');
     }
   };
 
@@ -267,15 +330,28 @@ const Orders = ({ user }: any) => {
       ),
     },
     {
-      field: 'actions', headerName: '관리', width: 90,
+      field: 'actions', headerName: '관리', width: 110,
       sortable: false, disableColumnMenu: true,
-      renderCell: (params) =>
-        params.row.status === 'REQUESTED' ? (
-          <Button color="error" size="small" variant="outlined"
-            onClick={() => handleCancel(params.id as number)} sx={{ borderRadius: 2 }}>
-            취소
-          </Button>
-        ) : null,
+      renderCell: (params) => {
+        if (params.row.status === 'REQUESTED') {
+          return (
+            <Button color="error" size="small" variant="outlined"
+              onClick={() => handleCancel(params.id as number)} sx={{ borderRadius: 2 }}>
+              취소
+            </Button>
+          );
+        }
+        if (params.row.status === 'DELIVERED' && params.row.deliveryGroupToken) {
+          return (
+            <Button color="success" size="small" variant="contained"
+              onClick={() => handleInspect(params.row.deliveryGroupToken)}
+              sx={{ borderRadius: 2, fontSize: 11, fontWeight: 700 }}>
+              검수 확인
+            </Button>
+          );
+        }
+        return null;
+      },
     },
   ];
 
@@ -297,7 +373,7 @@ const Orders = ({ user }: any) => {
           {approvedOrders.length > 0 && (
             <Button
               variant="outlined"
-              color={liveCount > 0 ? 'error' : 'info'}
+              color={approvedOrders.some((o: any) => o.status === 'DELIVERED') ? 'success' : liveCount > 0 ? 'error' : 'info'}
               onMouseEnter={openDelivery}
               onMouseLeave={scheduleCloseDelivery}
               startIcon={<IconifyIcon icon="mingcute:truck-line" width={18} />}
@@ -399,9 +475,14 @@ const Orders = ({ user }: any) => {
         </Box>
 
         <Stack gap={0}>
-          {approvedOrders.map((order: any, idx: number) => {
-            const loc = deliveryMap[order.deliveryToken];
-            const stage = loc?.stage ?? 0;
+          {/* 그룹 토큰 기준으로 중복 제거 후 표시 */}
+          {approvedOrders.filter((order: any, idx: number, arr: any[]) => {
+            if (!order.deliveryGroupToken) return true;
+            return arr.findIndex((o: any) => o.deliveryGroupToken === order.deliveryGroupToken) === idx;
+          }).map((order: any, idx: number) => {
+            const trackKey = order.deliveryGroupToken ?? order.deliveryToken;
+            const loc = deliveryMap[trackKey];
+            const stage = statusToStage[order.status] ?? 0;
             return (
               <Box
                 key={order.id}
@@ -418,10 +499,12 @@ const Orders = ({ user }: any) => {
                       {order.orderedQty ?? order.quantity} {order.ingredient?.unit}
                     </Typography>
                   </Box>
-                  {loc ? (
+                  {order.status === 'DELIVERED' ? (
+                    <Chip label="배달완료" color="success" size="small" sx={{ fontWeight: 700 }} />
+                  ) : loc ? (
                     <Chip label="🔴 실시간 추적중" color="error" size="small" sx={{ fontWeight: 700 }} />
                   ) : (
-                    <Chip label="배달 준비중" color="default" size="small" />
+                    <Chip label={STATUS_LABEL[order.status] ?? '준비중'} color="default" size="small" />
                   )}
                 </Stack>
 
@@ -453,7 +536,15 @@ const Orders = ({ user }: any) => {
                 </Box>
 
                 {/* 지도 (실시간 위치 수신 시에만 표시) */}
-                {loc ? (
+                {order.status === 'DELIVERED' && order.deliveryGroupToken ? (
+                  <Button
+                    variant="contained" color="success" size="small" fullWidth
+                    onClick={() => { setDeliveryAnchor(null); handleInspect(order.deliveryGroupToken); }}
+                    sx={{ borderRadius: 2, fontWeight: 700, mt: 0.5 }}
+                  >
+                    검수 확인 (물건을 확인하셨나요?)
+                  </Button>
+                ) : loc ? (
                   <Box sx={{ borderRadius: 2, overflow: 'hidden', height: 200 }}>
                     <MapContainer center={[loc.lat, loc.lng]} zoom={15} style={{ height: '100%', width: '100%' }}>
                       <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />

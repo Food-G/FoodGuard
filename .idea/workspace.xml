@@ -7,6 +7,16 @@
     <list default="true" id="5cf40e29-3cc9-4695-8ab3-20a40cad9768" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.claude/settings.local.json" beforeDir="false" afterPath="$PROJECT_DIR$/.claude/settings.local.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ai-service/start.bat" beforeDir="false" afterPath="$PROJECT_DIR$/ai-service/start.bat" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/controller/DeliveryController.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/controller/DeliveryController.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/controller/OrderRequestController.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/controller/OrderRequestController.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/entity/OrderRequest.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/entity/OrderRequest.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/repository/OrderRequestRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/repository/OrderRequestRepository.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/service/OrderRequestService.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/service/OrderRequestService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/App.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/App.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/pages/Orders.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/pages/Orders.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/pages/admin/AdminOrders.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/pages/admin/AdminOrders.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/services/orderService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/services/orderService.ts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -40,7 +50,7 @@
   <component name="GithubPullRequestsUISettings">{
   &quot;selectedUrlAndAccountId&quot;: {
     &quot;url&quot;: &quot;https://github.com/Food-G/Test-Repository.git&quot;,
-    &quot;accountId&quot;: &quot;b51caa11-2e2d-4bc3-916d-eb29acf471be&quot;
+    &quot;accountId&quot;: &quot;b1a42d28-2e60-4993-bdae-f29dccbd30aa&quot;
   }
 }</component>
   <component name="ProjectColorInfo">{
@@ -77,6 +87,14 @@
     &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
 }</component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-jdk-30f59d01ecdd-37e91769500f-intellij.indexing.shared.core-IU-261.24374.151" />
+        <option value="bundled-js-predefined-d6986cc7102b-31caf2ab9e3c-JavaScript-IU-261.24374.151" />
+      </set>
+    </attachedChunks>
+  </component>
   <component name="TaskManager">
     <task active="true" id="Default" summary="Default task">
       <changelist id="5cf40e29-3cc9-4695-8ab3-20a40cad9768" name="Changes" comment="" />
@@ -97,6 +115,9 @@
       <workItem from="1778199613717" duration="9000" />
       <workItem from="1778199642131" duration="3000" />
       <workItem from="1778199653834" duration="3000" />
+      <workItem from="1779427747803" duration="1047000" />
+      <workItem from="1779431707833" duration="516000" />
+      <workItem from="1779432240451" duration="2075000" />
     </task>
     <servers />
   </component>
@@ -111,8 +132,24 @@
     </option>
   </component>
   <component name="Vcs.Log.Tabs.Properties">
+    <option name="OPEN_GENERIC_TABS">
+      <map>
+        <entry key="2df4bb68-a4e0-4cf0-949b-3ceaf261be7d" value="TOOL_WINDOW" />
+      </map>
+    </option>
     <option name="TAB_STATES">
       <map>
+        <entry key="2df4bb68-a4e0-4cf0-949b-3ceaf261be7d">
+          <value>
+            <State>
+              <option name="CUSTOM_BOOLEAN_PROPERTIES">
+                <map>
+                  <entry key="Show.Git.Branches" value="true" />
+                </map>
+              </option>
+            </State>
+          </value>
+        </entry>
         <entry key="MAIN">
           <value>
             <State>
@@ -121,7 +158,7 @@
                   <entry key="branch">
                     <value>
                       <list>
-                        <option value="origin/junho" />
+                        <option value="origin/jihwan" />
                       </list>
                     </value>
                   </entry>

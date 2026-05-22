@@ -19,6 +19,7 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import Login from './pages/auth/Login';
 import Signup from './pages/auth/Signup';
 import DeliveryDriver from './pages/DeliveryDriver';
+import DeliveryDriverGroup from './pages/DeliveryDriverGroup';
 import POS from './pages/POS';
 import SalesStats from './pages/SalesStats';
 import Profile from './pages/Profile';
@@ -46,6 +47,7 @@ function App() {
           <Routes>
             <Route path="/login" element={<PublicRoute><Login onLogin={login} /></PublicRoute>} />
             <Route path="/signup" element={<PublicRoute><Signup /></PublicRoute>} />
+            <Route path="/driver/group/:groupToken" element={<DeliveryDriverGroup />} />
             <Route path="/driver/:token" element={<DeliveryDriver />} />
 
             <Route path="/" element={<ProtectedRoute><Dashboard user={user} /></ProtectedRoute>} />
