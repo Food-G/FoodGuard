@@ -11,7 +11,6 @@ import SalesEntry from './pages/SalesEntry';
 import Predictions from './pages/Predictions';
 import Orders from './pages/Orders';
 import StoreManagement from './pages/admin/StoreManagement';
-import StoreRegister from './pages/StoreRegister';
 import MenuManagement from './pages/MenuManagement';
 import Stats from './pages/admin/Stats';
 import AdminOrders from './pages/admin/AdminOrders';
@@ -56,7 +55,6 @@ function App() {
             <Route path="/orders" element={<ProtectedRoute role="OWNER"><Orders user={user} /></ProtectedRoute>} />
             <Route path="/sales" element={<ProtectedRoute role="OWNER"><SalesEntry user={user} /></ProtectedRoute>} />
             <Route path="/predictions" element={<ProtectedRoute role="OWNER"><Predictions user={user} /></ProtectedRoute>} />
-            <Route path="/store" element={<ProtectedRoute role="OWNER"><StoreRegister user={user} /></ProtectedRoute>} />
             <Route path="/menus" element={<ProtectedRoute role="OWNER"><MenuManagement user={user} /></ProtectedRoute>} />
 
             {/* HQ Admin */}

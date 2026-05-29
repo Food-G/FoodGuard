@@ -34,6 +34,9 @@ public class Menu {
     @Column(nullable = false)
     private Integer price = 0;
 
+    @Column(name = "image_url", columnDefinition = "LONGTEXT")
+    private String imageUrl;
+
     @Column(name = "created_at", insertable = false, updatable = false)
     private LocalDateTime createdAt;
 

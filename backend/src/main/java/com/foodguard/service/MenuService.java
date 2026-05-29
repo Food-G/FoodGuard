@@ -17,7 +17,7 @@ public class MenuService {
     private final StoreRepository storeRepository;
 
     // 메뉴 등록
-    public Menu create(Long storeId, String menuName, Integer price, String category) {
+    public Menu create(Long storeId, String menuName, Integer price, String category, String imageUrl) {
         Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new RuntimeException("가맹점을 찾을 수 없습니다."));
         Menu menu = new Menu();
@@ -25,6 +25,7 @@ public class MenuService {
         menu.setMenuName(menuName);
         menu.setPrice(price);
         menu.setCategory(category);
+        menu.setImageUrl(imageUrl);
         return menuRepository.save(menu);
     }
 
@@ -34,12 +35,13 @@ public class MenuService {
     }
 
     // 메뉴 수정
-    public Menu update(Long menuId, String menuName, Integer price, String category) {
+    public Menu update(Long menuId, String menuName, Integer price, String category, String imageUrl) {
         Menu menu = menuRepository.findById(menuId)
                 .orElseThrow(() -> new RuntimeException("메뉴를 찾을 수 없습니다."));
         menu.setMenuName(menuName);
         menu.setPrice(price);
         menu.setCategory(category);
+        if (imageUrl != null) menu.setImageUrl(imageUrl);
         return menuRepository.save(menu);
     }
 

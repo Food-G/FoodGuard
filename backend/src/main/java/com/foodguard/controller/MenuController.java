@@ -22,7 +22,8 @@ public class MenuController {
                 Long.parseLong(body.get("storeId").toString()),
                 body.get("menuName").toString(),
                 Integer.parseInt(body.get("price").toString()),
-                body.get("category").toString()
+                str(body.get("category")),
+                str(body.get("imageUrl"))
         ));
     }
 
@@ -38,8 +39,13 @@ public class MenuController {
                 id,
                 body.get("menuName").toString(),
                 Integer.parseInt(body.get("price").toString()),
-                body.get("category").toString()
+                str(body.get("category")),
+                str(body.get("imageUrl"))
         ));
+    }
+
+    private static String str(Object v) {
+        return v == null ? null : v.toString();
     }
 
     @DeleteMapping("/{id}")
