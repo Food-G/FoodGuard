@@ -282,9 +282,9 @@ public class OrderRequestService {
         }
     }
 
-    // AI 기반 자동 발주 등록
+    // AI 기반 자동 발주 등록 — 생성된 주문 ID 목록 반환 (엔티티 직렬화 문제 방지)
     @Transactional
-    public List<OrderRequest> autoOrder(Long storeId) {
+    public List<Long> autoOrder(Long storeId) {
         boolean hasPredictions = !predictionResultRepository
                 .findByStore_IdAndPredictionDateGreaterThanEqualOrderByPredictionDateAsc(storeId, LocalDate.now())
                 .isEmpty();
@@ -292,13 +292,13 @@ public class OrderRequestService {
             throw new RuntimeException("AI 예측 데이터가 없습니다. 예측 페이지에서 먼저 예측을 실행해주세요.");
         }
         List<Map<String, Object>> recs = recommend(storeId);
-        List<OrderRequest> orders = new ArrayList<>();
+        List<Long> ids = new ArrayList<>();
         for (Map<String, Object> rec : recs) {
             Long ingId = ((Number) rec.get("ingredientId")).longValue();
             Double qty = ((Number) rec.get("orderQty")).doubleValue();
-            orders.add(create(storeId, ingId, qty));
+            ids.add(create(storeId, ingId, qty).getId());
         }
-        return orders;
+        return ids;
     }
 
     // 발주량 → 재고 초기화 (승인되지 않은 발주 기반)
