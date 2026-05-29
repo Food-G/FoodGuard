@@ -7,6 +7,7 @@ import MainLayout from './layouts/main-layout';
 import AuthLayout from './layouts/auth-layout';
 import Dashboard from './pages/Dashboard';
 import Inventory from './pages/Inventory';
+import Ingredients from './pages/Ingredients';
 import SalesEntry from './pages/SalesEntry';
 import Predictions from './pages/Predictions';
 import Orders from './pages/Orders';
@@ -21,9 +22,6 @@ import Login from './pages/auth/Login';
 import Signup from './pages/auth/Signup';
 import DeliveryDriver from './pages/DeliveryDriver';
 import DeliveryDriverGroup from './pages/DeliveryDriverGroup';
-import POS from './pages/POS';
-import SalesStats from './pages/SalesStats';
-import Profile from './pages/Profile';
 import { useAuth } from './hooks/useAuth';
 
 function App() {
@@ -60,6 +58,12 @@ function App() {
             <Route path="/inventory" element={
               <ProtectedRoute role="OWNER">
                 <Inventory user={user} />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/ingredients" element={
+              <ProtectedRoute role="OWNER">
+                <Ingredients />
               </ProtectedRoute>
             } />
 
@@ -100,6 +104,12 @@ function App() {
             } />
 
             {/* HQ Admin Routes */}
+            <Route path="/admin" element={
+              <ProtectedRoute role="HQ_ADMIN">
+                <AdminDashboard />
+              </ProtectedRoute>
+            } />
+
             <Route path="/admin/stores" element={
               <ProtectedRoute role="HQ_ADMIN">
                 <StoreManagement />

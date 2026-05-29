@@ -1,6 +1,14 @@
-import { Menu, Avatar, Button, Tooltip, MenuItem, ListItemIcon, ListItemText } from '@mui/material';
+import {
+  Menu, Avatar, Button, Tooltip, MenuItem, ListItemIcon, ListItemText,
+  Dialog, DialogTitle, DialogContent, DialogActions,
+  Stack, Typography, Box, TextField, Divider,
+  Switch, FormControlLabel, Chip, IconButton,
+  CircularProgress, Alert,
+} from '@mui/material';
 import IconifyIcon from 'components/base/IconifyIcon';
-import { useState, MouseEvent, useCallback, ReactElement } from 'react';
+import { useState, MouseEvent, useCallback, ReactElement, useEffect } from 'react';
+import { decodeToken } from '../../../utils/jwt';
+import { api } from '../../../services/api';
 
 interface UserDropdownProps {
   onLogout: () => void;
@@ -211,7 +219,21 @@ const SettingsDialog = ({ open, onClose }: { open: boolean; onClose: () => void 
   );
 };
 
-/* ─────────────── UserDropdown ─────────────── */    { id: 3, title: '로그아웃', icon: 'material-symbols:logout', color: 'error.main', onClick: handleLogout },
+/* ─────────────── UserDropdown ─────────────── */
+const UserDropdown = ({ onLogout }: UserDropdownProps): ReactElement => {
+  const [anchorEl, setAnchorEl]         = useState<null | HTMLElement>(null);
+  const [profileOpen, setProfileOpen]   = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const menuOpen = Boolean(anchorEl);
+
+  const handleUserClick = useCallback((e: MouseEvent<HTMLElement>) => setAnchorEl(e.currentTarget), []);
+  const handleUserClose = useCallback(() => setAnchorEl(null), []);
+  const handleLogout = () => { handleUserClose(); onLogout(); };
+
+  const userMenuItems = [
+    { id: 1, title: '내 프로필', icon: 'mingcute:user-2-fill', color: 'text.primary', onClick: () => { handleUserClose(); setProfileOpen(true); } },
+    { id: 2, title: '설정', icon: 'material-symbols:settings-account-box-rounded', color: 'text.primary', onClick: () => { handleUserClose(); setSettingsOpen(true); } },
+    { id: 3, title: '로그아웃', icon: 'material-symbols:logout', color: 'error.main', onClick: handleLogout },
   ];
 
   return (
@@ -219,15 +241,12 @@ const SettingsDialog = ({ open, onClose }: { open: boolean; onClose: () => void 
       <Button
         color="inherit"
         variant="text"
-        id="account-dropdown-menu"
-        aria-controls={menuOpen ? 'account-dropdown-menu' : undefined}
-        aria-haspopup="true"
-        aria-expanded={menuOpen ? 'true' : undefined}
         onClick={handleUserClick}
         disableRipple
-        sx={{ borderRadius: 2, gap: 1.5, px: { xs: 0, sm: 0.625 }, py: 0.625, '&:hover': { bgcolor: 'transparent' } }}      >
-        <Tooltip title="Account" arrow placement="bottom">
-          <Avatar sx={{ width: 44, height: 44, bgcolor: 'primary.main' }}>FG</Avatar>
+        sx={{ borderRadius: 2, gap: 1.5, px: { xs: 0, sm: 0.625 }, py: 0.625, '&:hover': { bgcolor: 'transparent' } }}
+      >
+        <Tooltip title="계정" arrow placement="bottom">
+          <Avatar sx={{ width: 44, height: 44, background: 'linear-gradient(135deg,#43a047,#1e88e5)', fontWeight: 700 }}>FG</Avatar>
         </Tooltip>
         <IconifyIcon
           color="text.primary"
@@ -279,6 +298,9 @@ const SettingsDialog = ({ open, onClose }: { open: boolean; onClose: () => void 
           </MenuItem>
         ))}
       </Menu>
+
+      <ProfileDialog  open={profileOpen}  onClose={() => setProfileOpen(false)} />
+      <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </>
   );
 };

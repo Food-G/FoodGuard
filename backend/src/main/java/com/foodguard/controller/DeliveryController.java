@@ -12,6 +12,7 @@ import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.bind.annotation.*;
 
+
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -101,37 +102,10 @@ public class DeliveryController {
         return ResponseEntity.ok(info);
     }
 
-    // 그룹 배송 시작 (배달기사)
-    @PostMapping("/api/delivery/group/{groupToken}/start")
-    public ResponseEntity<String> startGroupDelivery(@PathVariable String groupToken) {
-        orderRequestService.startGroupDelivery(groupToken);
-        messagingTemplate.convertAndSend("/topic/delivery/group/" + groupToken,
-                Map.of("type", "START", "groupToken", groupToken));
-        return ResponseEntity.ok("배송 시작");
-    }
-
-    // 그룹 배달 완료 (배달기사)
-    @PostMapping("/api/delivery/group/{groupToken}/complete")
-    public ResponseEntity<String> completeGroupDelivery(@PathVariable String groupToken) {
-        orderRequestService.completeGroupDelivery(groupToken);
-        messagingTemplate.convertAndSend("/topic/delivery/group/" + groupToken,
-                Map.of("type", "DONE", "groupToken", groupToken));
-        return ResponseEntity.ok("배달 완료");
-    }
-
-    // 검수 확인 (가맹점주) — 재고 자동 반영
-    @PostMapping("/api/delivery/group/{groupToken}/inspect")
-    public ResponseEntity<String> inspectGroupDelivery(@PathVariable String groupToken) {
-        orderRequestService.inspectGroupDelivery(groupToken);
-        messagingTemplate.convertAndSend("/topic/delivery/group/" + groupToken,
-                Map.of("type", "INSPECTED", "groupToken", groupToken));
-        return ResponseEntity.ok("검수 완료");
-    }
-
-    // WebSocket — 그룹 GPS 위치 전송
-    @MessageMapping("/delivery/group/{groupToken}/location")
-    public void receiveGroupLocation(@DestinationVariable String groupToken, LocationMessage location) {
-        messagingTemplate.convertAndSend("/topic/delivery/group/" + groupToken,
-                Map.of("type", "LOCATION", "lat", location.getLat(), "lng", location.getLng()));
+    // 2단계: 배달기사 그룹 수령 확인 (HQ_SENT → DRIVER_RECEIVED)
+    @PostMapping("/api/delivery/group/{groupToken}/driver-receive")
+    public ResponseEntity<String> driverReceiveGroup(@PathVariable String groupToken) {
+        orderRequestService.driverReceiveGroup(groupToken);
+        return ResponseEntity.ok("배달기사 검수 완료");
     }
 }

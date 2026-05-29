@@ -17,8 +17,8 @@ public class OrderRequest {
     @Column(name = "order_id")
     private Long id;
 
-    @JsonIgnore
-    @ManyToOne(fetch = FetchType.LAZY)    @JoinColumn(name = "store_id", nullable = false)
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "store_id", nullable = false)
     private Store store;
 
     @ManyToOne(fetch = FetchType.EAGER)
@@ -48,6 +48,15 @@ public class OrderRequest {
 
     @Column(name = "delivery_group_token", length = 64)
     private String deliveryGroupToken;
+
+    @Column(name = "hq_sent_at")
+    private LocalDateTime hqSentAt;
+
+    @Column(name = "driver_received_at")
+    private LocalDateTime driverReceivedAt;
+
+    @Column(name = "owner_received_at")
+    private LocalDateTime ownerReceivedAt;
 
     @Column(name = "updated_at", insertable = false, updatable = false)
     private LocalDateTime updatedAt;

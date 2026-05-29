@@ -1,12 +1,8 @@
 import { useEffect, useState } from 'react';
 import {
   Typography, Box, Paper, Button, CircularProgress, Chip, Stack, useTheme, Alert,
-} from '@mui/material';import { DataGrid, GridColDef } from '@mui/x-data-grid';
-import { Client } from '@stomp/stompjs';
-import SockJS from 'sockjs-client';
-import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
+} from '@mui/material';
+import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { orderService } from '../services/orderService';
 import { storeService } from '../services/storeService';
 import IconifyIcon from '../components/base/IconifyIcon';
@@ -14,13 +10,19 @@ import IconifyIcon from '../components/base/IconifyIcon';
 const STATUS_LABEL: Record<string, string> = {
   REQUESTED: '대기중',
   APPROVED: '승인됨',
+  HQ_SENT: '발송완료',
+  DRIVER_RECEIVED: '배달기사 수령',
   DONE: '완료',
+  CANCELLED: '취소됨',
   REJECTED: '거절됨',
 };
 const STATUS_COLOR: Record<string, any> = {
   REQUESTED: 'warning',
   APPROVED: 'info',
+  HQ_SENT: 'primary',
+  DRIVER_RECEIVED: 'secondary',
   DONE: 'success',
+  CANCELLED: 'default',
   REJECTED: 'error',
 };
 
@@ -36,7 +38,8 @@ const Orders = ({ user }: any) => {
   const loadOrders = async (sid: number) => {
     try {
       const orders = await orderService.getByStore(sid);
-      setRows((orders ?? []).map((item: any) => ({
+      const hiddenStatuses = new Set(['DONE', 'CANCELLED', 'REJECTED']);
+      setRows((orders ?? []).filter((item: any) => !hiddenStatuses.has(item.status)).map((item: any) => ({
         id: item.id,
         name: item.ingredient?.name ?? '-',
         quantity: item.orderedQty ?? item.quantity,
@@ -51,9 +54,10 @@ const Orders = ({ user }: any) => {
 
   useEffect(() => {
     if (!user?.id) return;
+    let sid: number | null = null;
     storeService.getMyStores(user.id).then(async (stores: any[]) => {
       if (!stores?.length) return;
-      const sid = stores[0].id;
+      sid = stores[0].id;
       setStoreId(sid);
       try {
         await loadOrders(sid);
@@ -63,6 +67,11 @@ const Orders = ({ user }: any) => {
         setLoading(false);
       }
     }).catch(() => setLoading(false));
+
+    const timer = setInterval(() => {
+      if (sid) loadOrders(sid);
+    }, 5000);
+    return () => clearInterval(timer);
   }, [user]);
   const handleCancel = async (id: number) => {
     if (!window.confirm('발주를 취소하시겠습니까?')) return;
@@ -72,7 +81,19 @@ const Orders = ({ user }: any) => {
       if (storeId) await loadOrders(storeId);
     } catch {
       setError('취소에 실패했습니다.');
-    }  };
+    }
+  };
+
+  const handleOwnerReceive = async (id: number) => {
+    if (!window.confirm('상품을 확인하셨습니까? 검수 완료 처리하면 재고에 자동 반영됩니다.')) return;
+    try {
+      await orderService.ownerReceive(id);
+      setSuccess('가맹점주 검수가 완료되었습니다. 재고에 반영되었습니다.');
+      if (storeId) await loadOrders(storeId);
+    } catch {
+      setError('검수 처리에 실패했습니다.');
+    }
+  };
 
   const handleAutoOrder = async () => {
     if (!storeId) return;
@@ -83,13 +104,18 @@ const Orders = ({ user }: any) => {
       const result = await orderService.autoOrder(storeId);
       const count = Array.isArray(result) ? result.length : 0;
       if (count === 0) {
-        setError('발주가 필요한 식자재가 없거나 AI 예측 데이터가 없습니다. 예측 페이지에서 먼저 예측을 실행해주세요.');
+        setSuccess('현재 재고가 충분하여 발주가 필요한 식자재가 없습니다.');
       } else {
         setSuccess(`${count}건 발주가 등록되었습니다.`);
+        await loadOrders(storeId);
       }
-      await loadOrders(storeId);
-    } catch {
-      setError('자동 발주 등록에 실패했습니다.');
+    } catch (e: any) {
+      try {
+        const parsed = JSON.parse(e.message);
+        setError(parsed.error || '자동 발주 등록에 실패했습니다.');
+      } catch {
+        setError('자동 발주 등록에 실패했습니다.');
+      }
     } finally {
       setOrdering(false);
     }
@@ -117,14 +143,26 @@ const Orders = ({ user }: any) => {
       ),
     },
     {
-      field: 'actions', headerName: '관리', width: 90,
-      renderCell: (params) =>
-        params.row.status === 'REQUESTED' ? (
-          <Button color="error" size="small" variant="outlined"
-            onClick={() => handleCancel(params.id as number)} sx={{ borderRadius: 2 }}>
-            취소
-          </Button>
-        ) : null,
+      field: 'actions', headerName: '관리', width: 160,
+      renderCell: (params) => {
+        if (params.row.status === 'REQUESTED') {
+          return (
+            <Button color="error" size="small" variant="outlined"
+              onClick={() => handleCancel(params.id as number)} sx={{ borderRadius: 2 }}>
+              취소
+            </Button>
+          );
+        }
+        if (params.row.status === 'DRIVER_RECEIVED') {
+          return (
+            <Button color="success" size="small" variant="contained"
+              onClick={() => handleOwnerReceive(params.id as number)} sx={{ borderRadius: 2 }}>
+              검수완료
+            </Button>
+          );
+        }
+        return null;
+      },
     },
   ];
 

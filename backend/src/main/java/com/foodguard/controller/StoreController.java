@@ -18,11 +18,14 @@ public class StoreController {
 
     @PostMapping
     public ResponseEntity<Store> create(@RequestBody Map<String, Object> body) {
+        String region = body.containsKey("region") ? body.get("region").toString() : null;
         return ResponseEntity.ok(storeService.create(
                 Long.parseLong(body.get("userId").toString()),
                 body.get("storeName").toString(),
-                body.get("address").toString(),
-                body.get("phone").toString()
+                body.get("address") != null ? body.get("address").toString() : "",
+                body.get("phone") != null ? body.get("phone").toString() : "",
+                region,
+                null
         ));
     }
     @GetMapping("/my/{userId}")
@@ -38,11 +41,13 @@ public class StoreController {
     @PutMapping("/{id}")
     public ResponseEntity<Store> update(@PathVariable Long id,
                                         @RequestBody Map<String, Object> body) {
+        String region = body.containsKey("region") ? body.get("region").toString() : null;
         return ResponseEntity.ok(storeService.update(
                 id,
                 body.get("storeName").toString(),
-                body.get("address").toString(),
-                body.get("phone").toString()
+                body.get("address") != null ? body.get("address").toString() : "",
+                body.get("phone") != null ? body.get("phone").toString() : "",
+                region
         ));
     }
 

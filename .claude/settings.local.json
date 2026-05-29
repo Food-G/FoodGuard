@@ -40,7 +40,16 @@
       "Bash(python *)",
       "Bash(git rm *)",
       "Bash(git add *)",
-      "Bash(git rebase *)"
+      "Bash(git rebase *)",
+      "Bash(grep -rn \"^.*// .*{$\\\\|^.*//.*public void\\\\|^.*//.*public \" \"C:/Test-Repository/backend/src/main/java/com/foodguard/entity/\" --include=\"*.java\")",
+      "Bash(grep -v \"^\\\\s*//\")",
+      "Bash(gradlew.bat compileJava)",
+      "Bash(sed -n '10,20p' \"C:/Test-Repository/backend/src/main/java/com/foodguard/dto/SaleResponse.java\")",
+      "Bash(sed -n '50,58p' \"C:/Test-Repository/backend/src/main/java/com/foodguard/service/IngredientService.java\")",
+      "Bash(xargs grep -l -i \"delivery\\\\|driver\\\\|gps\\\\|location\")",
+      "Bash(xargs grep -l -i \"inspection\\\\|inspect\\\\|delivery\\\\|status\")",
+      "Bash(xargs grep -i \"REQUESTED\\\\|APPROVED\\\\|DONE\\\\|HQ_SENT\\\\|DRIVER_RECEIVED\\\\|IN_DELIVERY\\\\|DELIVERED\")",
+      "Bash(xargs ls -lh)"
     ]
   }
 }

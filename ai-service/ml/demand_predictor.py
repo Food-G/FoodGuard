@@ -146,14 +146,16 @@ class DemandPredictor:
             return self._zero_predictions(days)
 
         last_date = pd.to_datetime(self._history["ds"]).dt.date.max()
+        # 판매 데이터가 오래됐을 경우 오늘 기준으로 예측 (과거 날짜에 저장 방지)
+        base_date = max(last_date, date.today())
 
         if not self.is_trained:
-            return self._simple_avg_predictions(last_date, days)
+            return self._simple_avg_predictions(base_date, days)
 
         predictions = []
 
         for i in range(1, days + 1):
-            target = last_date + timedelta(days=i)
+            target = base_date + timedelta(days=i)
 
             weather_row = None
             if forecast_df is not None and not forecast_df.empty:

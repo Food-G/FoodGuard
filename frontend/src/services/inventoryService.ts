@@ -13,4 +13,7 @@ export const inventoryService = {
   delete: async (id: number) => {
     return api.delete(`/inventory/${id}`);
   },
+  clearByStore: async (storeId: number) => {
+    return api.delete(`/inventory/store/${storeId}`);
+  },
 };

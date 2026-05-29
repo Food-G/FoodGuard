@@ -58,17 +58,7 @@ const SalesEntry = ({ user }: any) => {
     fetchData();
   }, [user]);
 
-  const handleDelete = async (id: number) => {
-    if (!window.confirm('이 판매 기록을 삭제하시겠습니까?')) return;
-    try {
-      await salesService.delete(id);
-      setRows((prev) => prev.filter((r) => r.id !== id));
-      setSuccess('판매 기록이 삭제되었습니다.');
-      setTimeout(() => setSuccess(''), 3000);
-    } catch {
-      setError('삭제에 실패했습니다.');
-    }
-  };
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -185,6 +175,7 @@ const SalesEntry = ({ user }: any) => {
                         <TableCell align="right" sx={{ color: 'primary.main', fontWeight: 700 }}>
                           ₩{row.totalPrice?.toLocaleString() ?? 0}
                         </TableCell>
+                      </TableRow>
                     ))}
                   </TableBody>
                 </Table>

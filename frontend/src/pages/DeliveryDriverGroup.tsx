@@ -1,43 +1,18 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import {
-  Box, Button, CircularProgress, Stack, Typography, Paper, Chip, Alert,
+  Box, Button, CircularProgress, Stack, Typography, Paper, Alert,
   Table, TableBody, TableCell, TableHead, TableRow,
 } from '@mui/material';
-import { Client } from '@stomp/stompjs';
-import SockJS from 'sockjs-client';
-import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
+import { orderService } from '../services/orderService';
 
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-});
-
-const truckIcon = L.divIcon({
-  className: '',
-  html: `<div style="background:#1976d2;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 2px 8px rgba(0,0,0,0.3)">🚚</div>`,
-  iconSize: [36, 36],
-  iconAnchor: [18, 18],
-});
-
-function MapRecenter({ lat, lng }: { lat: number; lng: number }) {
-  const map = useMap();
-  useEffect(() => { map.setView([lat, lng], map.getZoom()); }, [lat, lng]);
-  return null;
-}
-
-const STAGES = ['승인됨', '배송중', '배달완료', '검수완료'];
-const STAGE_ICONS = ['✅', '🚚', '📦', '🔍'];
+const STAGES = ['본사 발송완료', '배달기사 검수완료', '가맹점주 검수완료'];
+const STAGE_ICONS = ['📦', '🚚', '✅'];
 
 const statusToStage: Record<string, number> = {
-  APPROVED: 0,
-  IN_DELIVERY: 1,
-  DELIVERED: 2,
-  INSPECTED: 3,
+  HQ_SENT: 0,
+  DRIVER_RECEIVED: 1,
+  DONE: 2,
 };
 
 const DeliveryDriverGroup = () => {
@@ -45,96 +20,30 @@ const DeliveryDriverGroup = () => {
   const [info, setInfo] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [tracking, setTracking] = useState(false);
-  const [position, setPosition] = useState<{ lat: number; lng: number } | null>(null);
-  const [completing, setCompleting] = useState(false);
+  const [confirming, setConfirming] = useState(false);
 
-  const stompClient = useRef<Client | null>(null);
-  const watchId = useRef<number | null>(null);
-  const sendInterval = useRef<ReturnType<typeof setInterval> | null>(null);
-  const latestPos = useRef<{ lat: number; lng: number } | null>(null);
-
-  const currentStage = info ? (statusToStage[info.status] ?? 0) : 0;
-  const isDone = info?.status === 'DELIVERED' || info?.status === 'INSPECTED';
+  const currentStage = info ? (statusToStage[info.status] ?? -1) : -1;
 
   const loadInfo = () => {
     if (!groupToken) return;
     fetch(`/api/delivery/group/${groupToken}`)
       .then((r) => r.json())
-      .then((data) => {
-        setInfo(data);
-        if (data.status === 'IN_DELIVERY') setTracking(true);
-      })
+      .then(setInfo)
       .catch(() => setError('배달 정보를 불러올 수 없습니다.'))
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => {
-    loadInfo();
-    return () => stopTracking();
-  }, [groupToken]);
+  useEffect(() => { loadInfo(); }, [groupToken]);
 
-  const stopTracking = () => {
-    if (watchId.current !== null) navigator.geolocation.clearWatch(watchId.current);
-    if (sendInterval.current) clearInterval(sendInterval.current);
-    stompClient.current?.deactivate();
-    watchId.current = null;
-    sendInterval.current = null;
-  };
-
-  const startDelivery = async () => {
-    if (!navigator.geolocation) {
-      setError('이 기기는 GPS를 지원하지 않습니다.');
-      return;
-    }
-
+  const handleDriverReceive = async () => {
+    setConfirming(true);
     try {
-      await fetch(`/api/delivery/group/${groupToken}/start`, { method: 'POST' });
+      await orderService.driverReceiveGroup(groupToken!);
+      setInfo((prev: any) => ({ ...prev, status: 'DRIVER_RECEIVED' }));
     } catch {
-      setError('배송 시작 처리에 실패했습니다.');
-      return;
-    }
-
-    const client = new Client({
-      webSocketFactory: () => new SockJS('/ws'),
-      reconnectDelay: 5000,
-    });
-    client.activate();
-    stompClient.current = client;
-
-    setTracking(true);
-    setInfo((prev: any) => ({ ...prev, status: 'IN_DELIVERY' }));
-
-    watchId.current = navigator.geolocation.watchPosition(
-      (pos) => {
-        const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        setPosition(loc);
-        latestPos.current = loc;
-      },
-      () => setError('GPS 권한이 필요합니다. 브라우저 설정에서 위치 접근을 허용해주세요.'),
-      { enableHighAccuracy: true, maximumAge: 5000 }
-    );
-
-    sendInterval.current = setInterval(() => {
-      if (latestPos.current && stompClient.current?.connected) {
-        stompClient.current.publish({
-          destination: `/app/delivery/group/${groupToken}/location`,
-          body: JSON.stringify(latestPos.current),
-        });
-      }
-    }, 5000);
-  };
-
-  const completeDelivery = async () => {
-    setCompleting(true);
-    try {
-      await fetch(`/api/delivery/group/${groupToken}/complete`, { method: 'POST' });
-      stopTracking();
-      setInfo((prev: any) => ({ ...prev, status: 'DELIVERED' }));
-    } catch {
-      setError('완료 처리에 실패했습니다.');
+      setError('검수 처리에 실패했습니다.');
     } finally {
-      setCompleting(false);
+      setConfirming(false);
     }
   };
 
@@ -150,22 +59,13 @@ const DeliveryDriverGroup = () => {
     </Box>
   );
 
-  if (isDone && info?.status === 'DELIVERED') return (
-    <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, p: 3 }}>
-      <Typography fontSize={64}>📦</Typography>
-      <Typography variant="h5" fontWeight={800} color="success.main">배달 완료!</Typography>
-      <Typography color="text.secondary" textAlign="center">
-        {info?.storeName}에 배달이 완료되었습니다.<br />
-        가맹점주의 검수 확인을 기다리고 있습니다.
-      </Typography>
-    </Box>
-  );
-
-  if (info?.status === 'INSPECTED') return (
+  if (info?.status === 'DONE') return (
     <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, p: 3 }}>
       <Typography fontSize={64}>✅</Typography>
-      <Typography variant="h5" fontWeight={800} color="success.main">검수 완료!</Typography>
-      <Typography color="text.secondary">{info?.storeName} 검수가 확인되었습니다.</Typography>
+      <Typography variant="h5" fontWeight={800} color="success.main">모든 검수 완료!</Typography>
+      <Typography color="text.secondary" textAlign="center">
+        {info?.storeName} 가맹점의 모든 검수가 완료되었습니다.
+      </Typography>
     </Box>
   );
 
@@ -176,7 +76,7 @@ const DeliveryDriverGroup = () => {
         <Stack direction="row" alignItems="center" gap={1.5}>
           <Typography fontSize={28}>🚚</Typography>
           <Box>
-            <Typography fontWeight={800} fontSize={18}>FoodGuard 묶음 배달</Typography>
+            <Typography fontWeight={800} fontSize={18}>FoodGuard 배달 검수</Typography>
             <Typography fontSize={13} sx={{ opacity: 0.85 }}>배달기사 전용 페이지</Typography>
           </Box>
         </Stack>
@@ -185,8 +85,9 @@ const DeliveryDriverGroup = () => {
       <Stack gap={2} sx={{ px: 2, pt: 2 }}>
         {error && <Alert severity="error" onClose={() => setError('')}>{error}</Alert>}
 
-        {/* 배달 진행 단계 */}
+        {/* 검수 단계 표시 */}
         <Paper sx={{ p: 2, borderRadius: 3 }}>
+          <Typography variant="caption" color="text.secondary" mb={1.5} display="block">검수 책임 흐름</Typography>
           <Stack direction="row" justifyContent="space-between">
             {STAGES.map((label, i) => (
               <Stack key={i} alignItems="center" gap={0.5} sx={{ flex: 1, opacity: i <= currentStage ? 1 : 0.3 }}>
@@ -201,7 +102,7 @@ const DeliveryDriverGroup = () => {
           <Box sx={{ height: 5, bgcolor: 'grey.200', borderRadius: 3, overflow: 'hidden', mt: 1.5 }}>
             <Box sx={{
               height: '100%', bgcolor: 'primary.main', borderRadius: 3,
-              width: `${(currentStage / (STAGES.length - 1)) * 100}%`,
+              width: currentStage < 0 ? '0%' : `${((currentStage + 1) / STAGES.length) * 100}%`,
               transition: 'width 0.5s',
             }} />
           </Box>
@@ -210,14 +111,12 @@ const DeliveryDriverGroup = () => {
         {/* 배달지 정보 */}
         <Paper sx={{ p: 2.5, borderRadius: 3 }}>
           <Typography variant="subtitle2" color="text.secondary" mb={1.5}>배달지 정보</Typography>
-          <Stack gap={1}>
-            <Stack direction="row" gap={1} alignItems="center">
-              <Typography fontSize={20}>🏪</Typography>
-              <Box>
-                <Typography fontWeight={700}>{info?.storeName}</Typography>
-                <Typography variant="body2" color="text.secondary">{info?.storeAddress}</Typography>
-              </Box>
-            </Stack>
+          <Stack direction="row" gap={1} alignItems="center">
+            <Typography fontSize={20}>🏪</Typography>
+            <Box>
+              <Typography fontWeight={700}>{info?.storeName}</Typography>
+              <Typography variant="body2" color="text.secondary">{info?.storeAddress}</Typography>
+            </Box>
           </Stack>
         </Paper>
 
@@ -225,7 +124,7 @@ const DeliveryDriverGroup = () => {
         <Paper sx={{ borderRadius: 3, overflow: 'hidden' }}>
           <Box sx={{ px: 2.5, py: 1.5, borderBottom: '1px solid', borderColor: 'divider' }}>
             <Stack direction="row" alignItems="center" gap={1}>
-              <Typography fontSize={18}>📦</Typography>
+              <Typography fontSize={18}>📋</Typography>
               <Typography fontWeight={700}>배달 품목 ({info?.items?.length ?? 0}건)</Typography>
             </Stack>
           </Box>
@@ -252,53 +151,43 @@ const DeliveryDriverGroup = () => {
           </Table>
         </Paper>
 
-        {/* 지도 */}
-        {position && (
-          <Paper sx={{ borderRadius: 3, overflow: 'hidden' }}>
-            <Box sx={{ height: 280 }}>
-              <MapContainer center={[position.lat, position.lng]} zoom={15} style={{ height: '100%', width: '100%' }}>
-                <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                <Marker position={[position.lat, position.lng]} icon={truckIcon} />
-                <MapRecenter lat={position.lat} lng={position.lng} />
-              </MapContainer>
-            </Box>
+        {/* 상태별 안내 및 버튼 */}
+        {info?.status === 'APPROVED' && (
+          <Paper sx={{ p: 2.5, borderRadius: 3, bgcolor: 'warning.50', border: '1px solid', borderColor: 'warning.200' }}>
+            <Stack direction="row" gap={1} alignItems="center">
+              <Typography fontSize={20}>⏳</Typography>
+              <Typography fontWeight={600} color="warning.dark">본사 발송 처리 대기 중입니다.</Typography>
+            </Stack>
+            <Typography variant="body2" color="text.secondary" mt={0.5}>
+              본사에서 상품을 발송 처리하면 검수가 시작됩니다.
+            </Typography>
           </Paper>
         )}
 
-        {tracking && position && (
-          <Stack direction="row" gap={1} alignItems="center" sx={{ px: 1 }}>
-            <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: 'success.main' }} />
-            <Typography variant="caption" color="text.secondary">
-              GPS 실시간 전송 중 ({position.lat.toFixed(5)}, {position.lng.toFixed(5)})
-            </Typography>
-          </Stack>
-        )}
-
-        {/* 버튼 */}
-        {info?.status === 'APPROVED' && (
-          <Button
-            variant="contained"
-            size="large"
-            onClick={startDelivery}
-            sx={{ borderRadius: 3, py: 2, fontSize: 16, fontWeight: 700 }}
-            startIcon={<Typography fontSize={20}>🚀</Typography>}
-          >
-            배송 시작 ({info?.items?.length ?? 0}건 일괄)
-          </Button>
-        )}
-
-        {info?.status === 'IN_DELIVERY' && (
+        {info?.status === 'HQ_SENT' && (
           <Button
             variant="contained"
             color="success"
             size="large"
-            onClick={completeDelivery}
-            disabled={completing}
+            onClick={handleDriverReceive}
+            disabled={confirming}
             sx={{ borderRadius: 3, py: 2, fontSize: 16, fontWeight: 700 }}
-            startIcon={completing ? <CircularProgress size={20} color="inherit" /> : <Typography fontSize={20}>✅</Typography>}
+            startIcon={confirming ? <CircularProgress size={20} color="inherit" /> : <Typography fontSize={20}>✅</Typography>}
           >
-            {completing ? '처리 중...' : '배달 완료'}
+            {confirming ? '처리 중...' : '배달기사 검수완료 — 제품 확인 완료'}
           </Button>
+        )}
+
+        {info?.status === 'DRIVER_RECEIVED' && (
+          <Paper sx={{ p: 2.5, borderRadius: 3, bgcolor: 'success.50', border: '1px solid', borderColor: 'success.200' }}>
+            <Stack direction="row" gap={1} alignItems="center">
+              <Typography fontSize={20}>✅</Typography>
+              <Typography fontWeight={700} color="success.dark">배달기사 검수 완료!</Typography>
+            </Stack>
+            <Typography variant="body2" color="text.secondary" mt={0.5}>
+              {info?.storeName} 가맹점주의 최종 검수 확인을 기다리고 있습니다.
+            </Typography>
+          </Paper>
         )}
       </Stack>
     </Box>

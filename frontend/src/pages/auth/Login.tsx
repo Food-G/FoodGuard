@@ -15,7 +15,7 @@ import {
 } from '@mui/material';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import IconifyIcon from '../../components/base/IconifyIcon';
-import Image from '../../components/base/Image';
+
 import { authService } from '../../services/authService';
 
 const Login = ({ onLogin }: { onLogin: (token: string) => void }) => {

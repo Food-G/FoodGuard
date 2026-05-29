@@ -52,4 +52,11 @@ public class InventoryService {
         inventoryRepository.deleteById(id);
         return "재고 삭제 완료";
     }
+
+    // 가맹점 전체 재고 삭제
+    @org.springframework.transaction.annotation.Transactional
+    public String deleteByStore(Long storeId) {
+        inventoryRepository.deleteByStoreId(storeId);
+        return "전체 재고 삭제 완료";
+    }
 }

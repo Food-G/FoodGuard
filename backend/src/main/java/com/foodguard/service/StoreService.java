@@ -18,13 +18,21 @@ public class StoreService {
 
     // 가맹점 등록
     public Store create(Long userId, String storeName, String address, String phone) {
-        User user = userRepository.findById(userId)                .orElseThrow(() -> new RuntimeException("유저를 찾을 수 없습니다."));
+        return create(userId, storeName, address, phone, null, null);
+    }
+
+    public Store create(Long userId, String storeName, String address, String phone, String region, String rawRegion) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("유저를 찾을 수 없습니다."));
         Store store = new Store();
         store.setUser(user);
         store.setStoreName(storeName);
         store.setAddress(address);
         store.setPhone(phone);
-        return storeRepository.save(store);    }
+        store.setRegion(region != null ? region : "서울");
+        store.setOpenedAt(java.time.LocalDate.now());
+        return storeRepository.save(store);
+    }
 
     // 내 가맹점 목록 조회
     public List<Store> getMyStores(Long userId) {
@@ -38,12 +46,18 @@ public class StoreService {
 
     // 가맹점 수정
     public Store update(Long storeId, String storeName, String address, String phone) {
+        return update(storeId, storeName, address, phone, null);
+    }
+
+    public Store update(Long storeId, String storeName, String address, String phone, String region) {
         Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new RuntimeException("가맹점을 찾을 수 없습니다."));
         store.setStoreName(storeName);
         store.setAddress(address);
         store.setPhone(phone);
-        return storeRepository.save(store);    }
+        if (region != null) store.setRegion(region);
+        return storeRepository.save(store);
+    }
 
     // 가맹점 삭제
     public String delete(Long storeId) {

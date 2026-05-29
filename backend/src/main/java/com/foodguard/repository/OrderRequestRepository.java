@@ -5,7 +5,12 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
 import java.util.Optional;
 
+
 public interface OrderRequestRepository extends JpaRepository<OrderRequest, Long> {
     List<OrderRequest> findByStoreId(Long storeId);
     List<OrderRequest> findByStoreIdAndStatus(Long storeId, String status);
-    void deleteByIngredientId(Long ingredientId);}
+    List<OrderRequest> findByStoreIdAndStatusIn(Long storeId, List<String> statuses);
+    Optional<OrderRequest> findByDeliveryToken(String deliveryToken);
+    List<OrderRequest> findByDeliveryGroupToken(String deliveryGroupToken);
+    void deleteByIngredientId(Long ingredientId);
+}
