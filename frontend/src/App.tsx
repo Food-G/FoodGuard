@@ -15,6 +15,8 @@ import StoreRegister from './pages/StoreRegister';
 import MenuManagement from './pages/MenuManagement';
 import Stats from './pages/admin/Stats';
 import AdminOrders from './pages/admin/AdminOrders';
+import AdminDashboard from './pages/admin/AdminDashboard';
+import POS from './pages/POS';
 import Login from './pages/auth/Login';
 import Signup from './pages/auth/Signup';
 import DeliveryDriver from './pages/DeliveryDriver';
@@ -70,6 +72,12 @@ function App() {
             <Route path="/sales" element={
               <ProtectedRoute role="OWNER">
                 <SalesEntry user={user} />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/pos" element={
+              <ProtectedRoute role="OWNER">
+                <POS user={user} />
               </ProtectedRoute>
             } />
 

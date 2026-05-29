@@ -3,6 +3,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+from config import settings
 from database import get_db
 from schemas.schemas import (
     SingleMenuPredictionResponse,
@@ -11,8 +12,9 @@ from schemas.schemas import (
     MenuPrediction,
     PredictionItem,
 )
-from services.data_service import get_active_menus, get_saved_predictions
+from services.data_service import get_active_menus, get_saved_predictions, get_store_region
 from services.prediction_service import predict_and_save_menu, predict_and_save_store
+from services.weather_service import fetch_forecast_weather, get_coords
 
 router = APIRouter()
 
@@ -43,7 +45,12 @@ def trigger_menu_prediction(
         raise HTTPException(status_code=404, detail="Menu not found")
 
     try:
-        raw_preds = predict_and_save_menu(db, store_id, menu_id)
+        # #12: 날씨 API를 여기서 한 번만 호출 (predict_and_save_menu 내부 재호출 방지)
+        region = get_store_region(db, store_id)
+        lat, lon = get_coords(region)
+        forecast_df = fetch_forecast_weather(region, settings.KMA_API_KEY, days=settings.PREDICTION_DAYS)
+
+        raw_preds = predict_and_save_menu(db, store_id, menu_id, lat=lat, lon=lon, forecast_df=forecast_df)
         items = [
             PredictionItem(
                 prediction_date=p["date"],

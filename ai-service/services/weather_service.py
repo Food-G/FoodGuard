@@ -4,11 +4,14 @@
 - 예보 (예측용): 기상청 공공데이터포털 단기/중기예보 API
 """
 
+import logging
 from datetime import date, datetime, timedelta
 from typing import Optional
 
 import pandas as pd
 import requests
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # 공통
@@ -85,7 +88,9 @@ def fetch_historical_weather(
         for col in ["temp_max", "temp_min", "precipitation"]:
             df[col] = df[col].fillna(0.0)
         return df[["ds"] + WEATHER_FEATURE_COLS]
-    except Exception:
+    except Exception as e:
+        # #9: 조용한 실패 대신 경고 로그 기록
+        logger.warning("Open-Meteo 과거 날씨 조회 실패 (lat=%.4f, lon=%.4f): %s", lat, lon, e)
         return pd.DataFrame()
 
 
@@ -186,7 +191,9 @@ def _fetch_short_term(nx: int, ny: int, api_key: str) -> pd.DataFrame:
         )
         resp.raise_for_status()
         items = resp.json()["response"]["body"]["items"]["item"]
-    except Exception:
+    except Exception as e:
+        # #9: 경고 로그 추가
+        logger.warning("기상청 단기예보 조회 실패 (nx=%d, ny=%d): %s", nx, ny, e)
         return pd.DataFrame()
 
     # 날짜별로 모아서 일 집계
@@ -242,7 +249,9 @@ def _fetch_mid_term(reg_land: str, reg_ta: str, api_key: str) -> pd.DataFrame:
         )
         ta.raise_for_status()
         ta_item = ta.json()["response"]["body"]["items"]["item"][0]
-    except Exception:
+    except Exception as e:
+        # #9: 경고 로그 추가
+        logger.warning("기상청 중기예보 조회 실패 (regId=%s): %s", reg_land, e)
         return pd.DataFrame()
 
     today = date.today()
@@ -255,17 +264,33 @@ def _fetch_mid_term(reg_land: str, reg_ta: str, api_key: str) -> pd.DataFrame:
         is_rainy = int(
             any(kw in (wf_am + wf_pm) for kw in _RAINY_KEYWORDS)
         )
+
         try:
             temp_max = float(ta_item.get(f"taMax{key}", 0) or 0)
             temp_min = float(ta_item.get(f"taMin{key}", 0) or 0)
         except (ValueError, TypeError):
             temp_max = temp_min = None
 
+        # #3: 강수확률(rnSt)로 강수량 추정 (기존 항상 0.0 하드코딩 대체)
+        try:
+            rnst_am = int(land_item.get(f"rnSt{key}Am", 0) or 0)
+            rnst_pm = int(land_item.get(f"rnSt{key}Pm", 0) or 0)
+            rain_prob = max(rnst_am, rnst_pm)
+        except (ValueError, TypeError):
+            rain_prob = 0
+
+        if rain_prob >= 60:
+            estimated_precip = 5.0
+        elif rain_prob >= 30:
+            estimated_precip = 2.0
+        else:
+            estimated_precip = 0.0
+
         rows.append({
             "ds":            target,
             "temp_max":      temp_max,
             "temp_min":      temp_min,
-            "precipitation": 0.0,   # 중기예보는 강수량 수치 미제공
+            "precipitation": estimated_precip,
             "is_rainy":      is_rainy,
             "is_hot":        int((temp_max or 0) >= 30),
             "is_cold":       int((temp_max or 99) <= 5),
@@ -284,6 +309,8 @@ def fetch_forecast_weather(
     api_key가 비어있으면 빈 DataFrame 반환 (예측은 날씨 없이 동작).
     """
     if not api_key:
+        # #9: API 키 미설정 경고
+        logger.warning("KMA_API_KEY 미설정 — 날씨 예보 없이 예측 실행 (계절 평균값 사용)")
         return pd.DataFrame()
 
     grid, reg_land, reg_ta = _get_region_codes(region)
@@ -293,6 +320,7 @@ def fetch_forecast_weather(
     mid_df   = _fetch_mid_term(reg_land, reg_ta, api_key)
 
     if short_df.empty and mid_df.empty:
+        logger.warning("단기/중기 예보 모두 실패 (region=%s) — 계절 평균값으로 예측", region)
         return pd.DataFrame()
 
     combined = (
