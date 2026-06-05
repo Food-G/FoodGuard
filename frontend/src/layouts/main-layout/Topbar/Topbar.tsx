@@ -86,28 +86,28 @@ const Topbar = ({ onLogout }: TopbarProps): ReactElement => {
     }).catch(() => {});
   }, []);
 
-  const fetchNotifications = useCallback(async () => {
+  const fetchNotifications = useCallback(async (initial = false) => {
     if (!storeId) return;
-    setNotiLoading(true);
+    if (initial) setNotiLoading(true);
     try {
       const data = await notificationService.getUnread(storeId);
+      const incoming = Array.isArray(data) ? data : [];
       setNotifications(prev => {
-        const incoming = Array.isArray(data) ? data : [];
-        // 이미 로컬에서 읽음 처리된 것은 isRead 상태 유지
-        const readIds = new Set(prev.filter(n => n._localRead).map(n => n.id));
-        return incoming.map(n => ({ ...n, _localRead: readIds.has(n.id) }));
+        const existingIds = new Set(prev.map(n => n.id));
+        const newOnes = incoming
+          .filter(n => !existingIds.has(n.id))
+          .map(n => ({ ...n, _localRead: false }));
+        return [...prev, ...newOnes];
       });
-    } catch {
-      setNotifications([]);
-    } finally {
-      setNotiLoading(false);
+    } catch {} finally {
+      if (initial) setNotiLoading(false);
     }
   }, [storeId]);
 
   useEffect(() => {
     if (!storeId) return;
-    fetchNotifications();
-    const t = setInterval(fetchNotifications, 30000);
+    fetchNotifications(true);
+    const t = setInterval(() => fetchNotifications(false), 30000);
     return () => clearInterval(t);
   }, [storeId, fetchNotifications]);
 
