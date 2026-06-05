@@ -33,6 +33,12 @@ const ADMIN_TILES: TileProps[] = [
 ];
 
 const won = (n: number) => `₩${Math.round(n).toLocaleString()}`;
+// 원화 축약 (소수점 생략): 45,000 → ₩4만, 8,000 → ₩8천, 500 → ₩500
+const wonShort = (n: number) => {
+  if (n >= 10000) return `₩${Math.floor(n / 10000)}만`;
+  if (n >= 1000) return `₩${Math.floor(n / 1000)}천`;
+  return `₩${Math.round(n)}`;
+};
 
 const LaunchTile = ({ title, icon, color, path, badge }: TileProps) => {
   const navigate = useNavigate();
@@ -207,8 +213,8 @@ const Dashboard = ({ user }: any) => {
                     const isToday = w.date === new Date().toISOString().split('T')[0];
                     return (
                       <Stack key={w.date} flex={1} alignItems="center" gap={0.8} sx={{ height: '100%', justifyContent: 'flex-end', minWidth: 0 }}>
-                        <Typography variant="caption" color="text.disabled" fontSize={10} noWrap>
-                          {w.revenue > 0 ? `${Math.round(w.revenue / 1000)}k` : ''}
+                        <Typography variant="caption" color="text.disabled" fontSize={10} noWrap sx={{ fontVariantNumeric: 'tabular-nums' }}>
+                          {w.revenue > 0 ? wonShort(w.revenue) : ''}
                         </Typography>
                         <Box
                           sx={{

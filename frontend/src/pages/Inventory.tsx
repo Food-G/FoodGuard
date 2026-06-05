@@ -5,7 +5,6 @@ import {
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   Divider,
 } from '@mui/material';
-import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { inventoryService } from '../services/inventoryService';
 import { storeService } from '../services/storeService';
 import { menuService } from '../services/menuService';
@@ -59,9 +58,9 @@ const Inventory = ({ user }: any) => {
       setRows((data ?? []).map((item: any) => ({
         id: item.id,
         name: item.ingredient?.name ?? '',
-        category: item.ingredient?.category ?? '',
-        quantity: item.currentQty ?? item.quantity,
-        unit: item.ingredient?.unit ?? '',
+        quantity: Number(item.currentQty ?? item.quantity ?? 0),
+        minThreshold: Number(item.minThreshold ?? 0),
+        unit: item.ingredient?.unit ?? item.unit ?? '',
         updatedAt: item.updatedAt ? new Date(item.updatedAt).toLocaleString() : '-',
       })));
     }).catch(console.error).finally(() => setLoadingInventory(false));
@@ -148,18 +147,16 @@ const Inventory = ({ user }: any) => {
     setForm((prev) => ({ ...prev, ingredientId, unit: toRecipeUnit(ing?.unit ?? '') }));
   };
 
-  const columns: GridColDef[] = [
-    { field: 'name', headerName: '식자재명', flex: 1, minWidth: 200 },
-    {
-      field: 'category', headerName: '분류', width: 150,
-      renderCell: (params) => (
-        <Chip label={params.value} size="small" variant="outlined" color="primary" />
-      ),
-    },
-    { field: 'quantity', headerName: '현재고', width: 150, align: 'right', headerAlign: 'right' },
-    { field: 'unit', headerName: '단위', width: 100 },
-    { field: 'updatedAt', headerName: '최근 업데이트', width: 250 },
-  ];
+  // 재고 긴급도: 현재고 / 최소임계치 비율로 판단 (낮을수록 급함)
+  const urgencyOf = (q: number, min: number) => {
+    const ratio = min > 0 ? q / min : (q <= 0 ? 0 : 99);
+    if (q <= 0 || ratio <= 1) return { level: '긴급', color: theme.palette.error.main, sort: ratio - (q <= 0 ? 1 : 0) };
+    if (ratio <= 2) return { level: '부족', color: theme.palette.warning.main, sort: ratio };
+    return { level: '충분', color: theme.palette.success.main, sort: ratio };
+  };
+  // 급한(현재고 적은) 순으로 상단 정렬
+  const sortedRows = [...rows].sort((a, b) => urgencyOf(a.quantity, a.minThreshold).sort - urgencyOf(b.quantity, b.minThreshold).sort);
+
   return (
     <Stack gap={4} sx={{ bgcolor: 'background.default' }}>
       {error && <Alert severity="error" onClose={() => setError('')}>{error}</Alert>}
@@ -310,26 +307,57 @@ const Inventory = ({ user }: any) => {
             전체 삭제
           </Button>
         </Stack>
-        <Box sx={{ height: 420 }}>
-          {loadingInventory ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-              <CircularProgress color="primary" />
-            </Box>
-          ) : (
-            <DataGrid
-              rows={rows}
-              columns={columns}
-              disableRowSelectionOnClick
-              initialState={{ pagination: { paginationModel: { pageSize: 10 } } }}
-              pageSizeOptions={[10, 20]}
-              sx={{
-                border: 'none',
-                '& .MuiDataGrid-columnHeaders': { bgcolor: 'primary.light', color: 'primary.dark', fontWeight: 700 },
-                '& .MuiDataGrid-cell:focus': { outline: 'none' },
-              }}
-            />
-          )}
-        </Box>
+        {loadingInventory ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200 }}>
+            <CircularProgress color="primary" />
+          </Box>
+        ) : sortedRows.length === 0 ? (
+          <Typography variant="body2" color="text.secondary" sx={{ py: 3 }}>등록된 재고가 없습니다.</Typography>
+        ) : (
+          // 급한 재고일수록 상단 · 색상으로 긴급도 표현 (스크롤바 숨김)
+          <Box
+            sx={{
+              maxHeight: 480, overflowY: 'auto',
+              scrollbarWidth: 'none', msOverflowStyle: 'none',
+              '&::-webkit-scrollbar': { display: 'none' },
+            }}
+          >
+            <Stack gap={1}>
+              {sortedRows.map((row) => {
+                const u = urgencyOf(row.quantity, row.minThreshold);
+                return (
+                  <Stack
+                    key={row.id}
+                    direction="row"
+                    alignItems="center"
+                    gap={2}
+                    sx={{
+                      p: 1.8, borderRadius: 2,
+                      border: `1px solid ${theme.palette.divider}`,
+                      borderLeft: `5px solid ${u.color}`,
+                      bgcolor: `${u.color}0d`,   // 아주 옅은 긴급도 색 배경
+                    }}
+                  >
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                      <Typography fontWeight={700} noWrap>{row.name}</Typography>
+                    </Box>
+                    <Box sx={{ textAlign: 'right' }}>
+                      <Typography fontWeight={800} fontSize={17} sx={{ color: u.color, lineHeight: 1.1 }}>
+                        {row.quantity}<Box component="span" sx={{ fontSize: 12, fontWeight: 500, color: 'text.secondary', ml: 0.3 }}>{row.unit}</Box>
+                      </Typography>
+                      <Typography variant="caption" color="text.disabled">최소 {row.minThreshold}{row.unit}</Typography>
+                    </Box>
+                    <Chip
+                      label={u.level}
+                      size="small"
+                      sx={{ fontWeight: 800, minWidth: 56, color: '#fff', bgcolor: u.color }}
+                    />
+                  </Stack>
+                );
+              })}
+            </Stack>
+          </Box>
+        )}
       </Paper>    </Stack>
   );
 };

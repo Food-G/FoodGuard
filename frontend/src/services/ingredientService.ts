@@ -11,4 +11,7 @@ export const ingredientService = {
   getAll: async (): Promise<Ingredient[]> => {
     return api.get('/ingredients');
   },
+  create: async (data: { name: string; unit: string }): Promise<Ingredient> => {
+    return api.post('/ingredients', data);
+  },
 };

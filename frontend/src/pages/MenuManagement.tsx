@@ -4,6 +4,7 @@ import {
   Alert, CircularProgress, Box,
   Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, IconButton, MenuItem, Chip, Tooltip,
+  Dialog, DialogTitle, DialogContent, DialogActions,
 } from '@mui/material';
 import { storeService } from '../services/storeService';
 import { menuService } from '../services/menuService';
@@ -39,6 +40,39 @@ const MenuManagement = ({ user }: any) => {
   const [form, setForm] = useState({ menuName: '', price: '' });
   const [recipe, setRecipe] = useState<RecipeRow[]>([emptyRow()]);
   const [photoBusyId, setPhotoBusyId] = useState<number | null>(null);
+
+  // 새 식자재 즉시 등록 (식자재 관리 페이지 기능 통합)
+  const [newIngOpen, setNewIngOpen] = useState(false);
+  const [newIngRow, setNewIngRow] = useState<number | null>(null);
+  const [newIng, setNewIng] = useState({ name: '', unit: 'kg' });
+  const [creatingIng, setCreatingIng] = useState(false);
+
+  const openNewIngredient = (rowIdx: number) => {
+    setNewIngRow(rowIdx);
+    setNewIng({ name: '', unit: 'kg' });
+    setNewIngOpen(true);
+  };
+
+  const handleCreateIngredient = async () => {
+    if (!newIng.name.trim()) return;
+    setCreatingIng(true);
+    setError('');
+    try {
+      const created = await ingredientService.create({ name: newIng.name.trim(), unit: newIng.unit });
+      const list = await ingredientService.getAll();
+      setIngredients(list);
+      // 방금 만든 식자재를 호출한 레시피 행에 자동 선택
+      if (newIngRow != null && created?.id) {
+        setRow(newIngRow, { ingredientId: String(created.id), unit: recipeUnitFor(created.unit) });
+      }
+      setSuccess(`"${created?.name ?? newIng.name}" 식자재가 등록되었습니다.`);
+      setNewIngOpen(false);
+    } catch {
+      setError('식자재 등록에 실패했습니다. (이미 존재하는 이름일 수 있습니다)');
+    } finally {
+      setCreatingIng(false);
+    }
+  };
 
   // 메뉴 사진 추가/변경 → POS 메뉴판에 표시됨
   const handlePhoto = async (menu: any, file?: File) => {
@@ -204,6 +238,12 @@ const MenuManagement = ({ user }: any) => {
                         <MenuItem key={i.id} value={String(i.id)}>{i.name}</MenuItem>
                       ))}
                     </TextField>
+                    <Tooltip title="새 식자재 등록">
+                      <IconButton size="small" color="primary" onClick={() => openNewIngredient(idx)}
+                        sx={{ border: `1px solid ${'rgba(0,0,0,0.12)'}`, borderRadius: 1.5 }}>
+                        <IconifyIcon icon="mingcute:add-line" width={18} />
+                      </IconButton>
+                    </Tooltip>
                     <TextField
                       size="small" label="사용량" type="number" value={row.qtyPerUnit}
                       onChange={(e) => setRow(idx, { qtyPerUnit: e.target.value })}
@@ -334,6 +374,38 @@ const MenuManagement = ({ user }: any) => {
           )}
         </Paper>
       )}
+
+      {/* 새 식자재 등록 다이얼로그 (식자재 관리 기능 통합) */}
+      <Dialog open={newIngOpen} onClose={() => setNewIngOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle fontWeight={800}>새 식자재 등록</DialogTitle>
+        <DialogContent>
+          <Stack gap={2} mt={0.5}>
+            <TextField
+              label="식자재명" size="small" autoFocus fullWidth required
+              value={newIng.name}
+              onChange={(e) => setNewIng((p) => ({ ...p, name: e.target.value }))}
+              placeholder="예: 치즈, 토마토"
+            />
+            <TextField
+              select label="기준 단위" size="small" fullWidth
+              value={newIng.unit}
+              onChange={(e) => setNewIng((p) => ({ ...p, unit: e.target.value }))}
+              helperText="무게=kg, 액체=L, 낱개=개 (재고·발주의 기준 단위)"
+            >
+              {['kg', 'L', '개'].map((u) => <MenuItem key={u} value={u}>{u}</MenuItem>)}
+            </TextField>
+            <Typography variant="caption" color="text.secondary">
+              여기서 등록한 식자재는 모든 메뉴의 레시피·재고·발주에서 사용할 수 있습니다.
+            </Typography>
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setNewIngOpen(false)}>취소</Button>
+          <Button variant="contained" onClick={handleCreateIngredient} disabled={creatingIng || !newIng.name.trim()} sx={{ fontWeight: 700 }}>
+            {creatingIng ? <CircularProgress size={18} color="inherit" /> : '등록'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Stack>
   );
 };
