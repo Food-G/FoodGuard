@@ -57,11 +57,7 @@ public class OrderRequestService {
         order.setOrderedQty(BigDecimal.valueOf(quantity));
         order.setStatus("REQUESTED");
         order.setOrderedAt(LocalDateTime.now());
-        OrderRequest saved = orderRequestRepository.save(order);
-        notificationService.create(storeId,
-            String.format("발주 신청 완료: %s %s%s", ingredient.getName(), quantity, ingredient.getUnit()),
-            "ORDER");
-        return saved;
+        return orderRequestRepository.save(order);
     }
 
     // 단건 조회
