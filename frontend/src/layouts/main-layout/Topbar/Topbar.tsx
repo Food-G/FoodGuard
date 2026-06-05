@@ -91,7 +91,12 @@ const Topbar = ({ onLogout }: TopbarProps): ReactElement => {
     setNotiLoading(true);
     try {
       const data = await notificationService.getUnread(storeId);
-      setNotifications(Array.isArray(data) ? data : []);
+      setNotifications(prev => {
+        const incoming = Array.isArray(data) ? data : [];
+        // 이미 로컬에서 읽음 처리된 것은 isRead 상태 유지
+        const readIds = new Set(prev.filter(n => n._localRead).map(n => n.id));
+        return incoming.map(n => ({ ...n, _localRead: readIds.has(n.id) }));
+      });
     } catch {
       setNotifications([]);
     } finally {
@@ -111,18 +116,24 @@ const Topbar = ({ onLogout }: TopbarProps): ReactElement => {
     fetchNotifications();
   };
 
+  // 읽음 처리 — 목록에서 제거하지 않고 로컬 isRead만 표시
   const handleMarkRead = async (id: number) => {
-    try {
-      await notificationService.markAsRead(id);
-      setNotifications(prev => prev.filter(n => n.id !== id));
-    } catch {}
+    setNotifications(prev =>
+      prev.map(n => n.id === id && !n._localRead ? { ...n, _localRead: true } : n)
+    );
+    try { await notificationService.markAsRead(id); } catch {}
+  };
+
+  // X 버튼 — 목록에서 직접 제거
+  const handleDismiss = (id: number) => {
+    setNotifications(prev => prev.filter(n => n.id !== id));
   };
 
   const handleMarkAllRead = async () => {
+    setNotifications(prev => prev.map(n => ({ ...n, _localRead: true })));
     for (const n of notifications) {
       try { await notificationService.markAsRead(n.id); } catch {}
     }
-    setNotifications([]);
   };
 
   const notiTypeIcon: Record<string, string> = {
@@ -183,7 +194,7 @@ const Topbar = ({ onLogout }: TopbarProps): ReactElement => {
           </Typography>
           <Badge
             color="error"
-            badgeContent={notifications.length > 0 ? notifications.length : undefined}
+            badgeContent={notifications.filter(n => !n._localRead).length || undefined}
             max={9}
             sx={{ '& .MuiBadge-badge': { top: 6, right: 6, fontSize: 10, minWidth: 18, height: 18 } }}
           >
@@ -251,8 +262,15 @@ const Topbar = ({ onLogout }: TopbarProps): ReactElement => {
                       px: 2.5, py: 1.75,
                       cursor: 'default',
                       '&:hover': { bgcolor: 'action.hover' },
-                      bgcolor: 'primary.50',
+                      bgcolor: noti._localRead ? 'transparent' : 'primary.50',
+                      opacity: noti._localRead ? 0.6 : 1,
+                      transition: 'opacity 0.2s, background-color 0.2s',
                     }}
+                    secondaryAction={
+                      <IconButton size="small" onClick={() => handleDismiss(noti.id)} sx={{ opacity: 0.4, '&:hover': { opacity: 1 } }}>
+                        <IconifyIcon icon="mingcute:close-line" width={14} />
+                      </IconButton>
+                    }
                   >
                     <ListItemIcon sx={{ minWidth: 36, mt: 0.5 }}>
                       <Box sx={{
