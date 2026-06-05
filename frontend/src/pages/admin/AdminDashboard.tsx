@@ -19,20 +19,31 @@ const AdminDashboard = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchAll = async () => {
+    // 승인 대기 발주: 즉시 + 폴링
+    const fetchPending = async () => {
       try {
-        const [storeList, revMap, allOrders] = await Promise.all([
+        const allOrders = await orderService.getAll();
+        setPendingOrders((allOrders ?? []).filter((o: any) => o.status === 'REQUESTED'));
+      } catch (e) { console.error('fetchPending error:', e); }
+    };
+
+    // 나머지 대시보드 데이터 (느려도 무방)
+    const fetchRest = async () => {
+      try {
+        const [storeList, revMap] = await Promise.all([
           storeService.getAll(),
           salesService.getAllStoreWeeklySummary(),
-          orderService.getAll(),
         ]);
         setStores(storeList ?? []);
         setWeeklyRevenue(revMap ?? {});
-        setPendingOrders((allOrders ?? []).filter((o: any) => o.status === 'REQUESTED'));
       } catch { /* ignore */ }
       finally { setLoading(false); }
     };
-    fetchAll();
+
+    fetchPending();
+    fetchRest();
+    const timer = setInterval(fetchPending, 3000);
+    return () => clearInterval(timer);
   }, []);
 
   const totalRevenue = Object.values(weeklyRevenue).reduce((s, v) => s + (v as number), 0);
@@ -76,7 +87,7 @@ const AdminDashboard = () => {
   const quickMenus = [
     {
       title: '가맹점 관리',
-      desc: '가맹점 목록 · 지역별 현황 · 주간 매출',
+      desc: '가맹점 목록 · 지역별 현황 · 발주 승인',
       icon: 'mingcute:grid-fill',
       path: '/admin/stores',
       color: theme.palette.primary.main,
@@ -88,19 +99,15 @@ const AdminDashboard = () => {
       path: '/admin/stats',
       color: theme.palette.secondary.main,
     },
-    {
-      title: '발주 관리',
-      desc: '전체 발주 내역 · 승인 · 완료 처리',
-      icon: 'mingcute:list-check-fill',
-      path: '/admin/orders',
-      color: theme.palette.warning.main,
-    },
   ];
 
   return (
     <Stack gap={4} sx={{ bgcolor: 'background.default' }}>
       <Box>
-        <Typography variant="h2" color="primary.main" fontWeight={800}>FoodGuard</Typography>
+        <Typography variant="h2" color="primary.main" fontWeight={800}
+          onClick={() => navigate('/admin')} sx={{ cursor: 'pointer', width: 'fit-content' }}>
+          FoodGuard
+        </Typography>
         <Typography variant="h5" color="text.secondary" fontWeight={600}>본사 통합 관리 센터</Typography>
       </Box>
 
@@ -189,15 +196,7 @@ const AdminDashboard = () => {
 
         <Grid item xs={12} lg={5}>
           <Paper sx={{ p: 4, borderRadius: 4, border: `1px solid ${theme.palette.divider}`, height: 380 }}>
-            <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2.5}>
-              <Typography variant="h6" fontWeight={700}>승인 대기 발주</Typography>
-              <Button
-                size="small" variant="outlined" sx={{ fontWeight: 600, borderRadius: 2 }}
-                onClick={() => navigate('/admin/orders')}
-              >
-                전체 보기
-              </Button>
-            </Stack>
+            <Typography variant="h6" fontWeight={700} mb={2.5}>승인 대기 발주</Typography>
             {loading ? (
               <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 280 }}>
                 <CircularProgress />
@@ -221,7 +220,7 @@ const AdminDashboard = () => {
                   {storeList.map(({ store, count }, idx) => (
                     <Box
                       key={store.id}
-                      onClick={() => navigate(`/admin/orders?storeId=${store.id}`)}
+                      onClick={() => navigate(`/admin/stores`)}
                       sx={{
                         px: 1.5, py: 1.5,
                         display: 'flex', alignItems: 'center', justifyContent: 'space-between',

@@ -1,15 +1,17 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
   Typography, Paper, Stack, Button, TextField,
-  Alert, CircularProgress, Chip, Box,
+  Alert, CircularProgress, Chip,
   Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, IconButton,
 } from '@mui/material';
 import { storeService } from '../services/storeService';
 import { menuService } from '../services/menuService';
 import IconifyIcon from '../components/base/IconifyIcon';
+import { useConfirm } from '../hooks/useConfirm';
 
 const MenuManagement = ({ user }: any) => {
+  const confirm = useConfirm();
   const [storeId, setStoreId] = useState<number | null>(null);
   const [menus, setMenus] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -19,7 +21,7 @@ const MenuManagement = ({ user }: any) => {
   const [form, setForm] = useState({ menuName: '', price: '' });
 
   useEffect(() => {
-    if (!user?.id) { setLoading(false); return; }
+    if (!user?.id) return;
     storeService.getMyStores(user.id).then((stores: any[]) => {
       if (stores?.length > 0) setStoreId(stores[0].id);
       else setLoading(false);
@@ -72,7 +74,7 @@ const MenuManagement = ({ user }: any) => {
   };
 
   const handleDeactivate = async (menuId: number, menuName: string) => {
-    if (!window.confirm(`"${menuName}" 메뉴를 비활성화하시겠습니까?`)) return;
+    if (!await confirm(`"${menuName}" 메뉴를 비활성화하시겠습니까?`)) return;
     try {
       await menuService.deactivate(menuId);
       setSuccess(`"${menuName}" 메뉴가 비활성화되었습니다.`);
@@ -84,13 +86,6 @@ const MenuManagement = ({ user }: any) => {
 
   return (
     <Stack gap={4} maxWidth={720}>
-      <Box>
-        <Typography variant="h2" color="primary.main" fontWeight={800}>메뉴 관리</Typography>
-        <Typography variant="h6" color="text.secondary" fontWeight={400} sx={{ mt: 0.5 }}>
-          AI 예측을 위해 메뉴를 먼저 등록하세요.
-        </Typography>
-      </Box>
-
       {!storeId && !loading && (
         <Alert severity="warning">등록된 가게가 없습니다. 먼저 가게를 등록해주세요.</Alert>
       )}

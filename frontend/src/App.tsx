@@ -7,6 +7,7 @@ import MainLayout from './layouts/main-layout';
 import AuthLayout from './layouts/auth-layout';
 import Dashboard from './pages/Dashboard';
 import Inventory from './pages/Inventory';
+import Ingredients from './pages/Ingredients';
 import SalesEntry from './pages/SalesEntry';
 import Predictions from './pages/Predictions';
 import Orders from './pages/Orders';
@@ -14,14 +15,15 @@ import StoreManagement from './pages/admin/StoreManagement';
 import MenuManagement from './pages/MenuManagement';
 import Stats from './pages/admin/Stats';
 import AdminOrders from './pages/admin/AdminOrders';
-import AdminDashboard from './pages/admin/AdminDashboard';
+import POS from './pages/POS';
 import Login from './pages/auth/Login';
 import Signup from './pages/auth/Signup';
 import DeliveryDriver from './pages/DeliveryDriver';
-import POS from './pages/POS';
-import SalesStats from './pages/SalesStats';
-import Profile from './pages/Profile';
+import DeliveryDriverGroup from './pages/DeliveryDriverGroup';
+import WastePrediction from './pages/WastePrediction';
+import DonationHistory from './pages/DonationHistory';
 import { useAuth } from './hooks/useAuth';
+import { ConfirmProvider } from './hooks/useConfirm';
 
 function App() {
   const { user, login, logout, isLoggedIn } = useAuth();
@@ -39,34 +41,102 @@ function App() {
 
   return (
     <ThemeProvider theme={theme}>
+      <ConfirmProvider>
       <BreakpointsProvider>
         <CssBaseline />
         <Router>
           <Routes>
             <Route path="/login" element={<PublicRoute><Login onLogin={login} /></PublicRoute>} />
             <Route path="/signup" element={<PublicRoute><Signup /></PublicRoute>} />
+            <Route path="/driver/group/:groupToken" element={<DeliveryDriverGroup />} />
             <Route path="/driver/:token" element={<DeliveryDriver />} />
 
-            <Route path="/" element={<ProtectedRoute><Dashboard user={user} /></ProtectedRoute>} />
-            <Route path="/pos" element={<ProtectedRoute role="OWNER"><POS user={user} /></ProtectedRoute>} />
-            <Route path="/sales-stats" element={<ProtectedRoute role="OWNER"><SalesStats user={user} /></ProtectedRoute>} />
-            <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-            <Route path="/inventory" element={<ProtectedRoute role="OWNER"><Inventory user={user} /></ProtectedRoute>} />
-            <Route path="/orders" element={<ProtectedRoute role="OWNER"><Orders user={user} /></ProtectedRoute>} />
-            <Route path="/sales" element={<ProtectedRoute role="OWNER"><SalesEntry user={user} /></ProtectedRoute>} />
-            <Route path="/predictions" element={<ProtectedRoute role="OWNER"><Predictions user={user} /></ProtectedRoute>} />
-            <Route path="/menus" element={<ProtectedRoute role="OWNER"><MenuManagement user={user} /></ProtectedRoute>} />
+            <Route path="/" element={
+              <ProtectedRoute>
+                <Dashboard user={user} />
+              </ProtectedRoute>
+            } />
 
-            {/* HQ Admin */}
-            <Route path="/admin" element={<ProtectedRoute role="HQ_ADMIN"><AdminDashboard /></ProtectedRoute>} />
-            <Route path="/admin/stores" element={<ProtectedRoute role="HQ_ADMIN"><StoreManagement /></ProtectedRoute>} />
-            <Route path="/admin/stats" element={<ProtectedRoute role="HQ_ADMIN"><Stats /></ProtectedRoute>} />
-            <Route path="/admin/orders" element={<ProtectedRoute role="HQ_ADMIN"><AdminOrders /></ProtectedRoute>} />
+            <Route path="/inventory" element={
+              <ProtectedRoute role="OWNER">
+                <Inventory user={user} />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/ingredients" element={
+              <ProtectedRoute role="OWNER">
+                <Ingredients />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/orders" element={
+              <ProtectedRoute role="OWNER">
+                <Orders user={user} />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/sales" element={
+              <ProtectedRoute role="OWNER">
+                <SalesEntry user={user} />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/pos" element={
+              <ProtectedRoute role="OWNER">
+                <POS user={user} />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/predictions" element={
+              <ProtectedRoute role="OWNER">
+                <Predictions user={user} />
+              </ProtectedRoute>
+            } />
+
+
+
+            <Route path="/menus" element={
+              <ProtectedRoute role="OWNER">
+                <MenuManagement user={user} />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/waste-prediction" element={
+              <ProtectedRoute role="OWNER">
+                <WastePrediction user={user} />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/donations" element={
+              <ProtectedRoute role="OWNER">
+                <DonationHistory user={user} />
+              </ProtectedRoute>
+            } />
+
+            {/* HQ Admin Routes */}
+            <Route path="/admin/stores" element={
+              <ProtectedRoute role="HQ_ADMIN">
+                <StoreManagement />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/admin/stats" element={
+              <ProtectedRoute role="HQ_ADMIN">
+                <Stats />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/admin/orders" element={
+              <ProtectedRoute role="HQ_ADMIN">
+                <AdminOrders />
+              </ProtectedRoute>
+            } />
 
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Router>
       </BreakpointsProvider>
+      </ConfirmProvider>
     </ThemeProvider>
   );
 }

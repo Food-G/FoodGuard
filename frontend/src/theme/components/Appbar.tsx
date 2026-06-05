@@ -6,7 +6,8 @@ const AppBar: Components<Omit<Theme, 'components'>>['MuiAppBar'] = {
   styleOverrides: {
     root: ({ theme }) => ({
       boxShadow: 'none',
-      backgroundColor: theme.palette.background.default,
+      backgroundColor: '#FFFFFF',
+      borderBottom: `1px solid ${theme.palette.divider}`,
     }),
   },
 };

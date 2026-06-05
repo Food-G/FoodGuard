@@ -13,6 +13,21 @@ export const orderService = {
   approve: async (id: number) => {
     return api.put(`/orders/${id}/status`, { status: 'APPROVED' });
   },
+  hqSend: async (id: number, expiryDate?: string) => {
+    return api.post(`/orders/${id}/hq-send`, { expiryDate: expiryDate ?? null });
+  },
+  scanQr: async (qrData: string) => {
+    return api.post('/orders/scan', { qrData });
+  },
+  driverReceive: async (id: number) => {
+    return api.post(`/orders/${id}/driver-receive`, {});
+  },
+  driverReceiveGroup: async (groupToken: string) => {
+    return api.post(`/delivery/group/${groupToken}/driver-receive`, {});
+  },
+  ownerReceive: async (id: number) => {
+    return api.post(`/orders/${id}/owner-receive`, {});
+  },
   cancel: async (id: number) => {
     return api.delete(`/orders/${id}`);
   },

@@ -40,8 +40,7 @@ const DataGrid: DataGridComponents<Omit<Theme, 'components'>>['MuiDataGrid'] = {
       display: 'flex',
       alignItems: 'center',
       color: theme.palette.common.black,
-      fontSize: theme.typography.body2.fontSize,
-      fontWeight: theme.typography.body2.fontWeight,
+      fontSize: theme.typography.body2.fontSize,      fontWeight: theme.typography.body2.fontWeight,
       '&:focus': {
         outline: 'none !important',
       },

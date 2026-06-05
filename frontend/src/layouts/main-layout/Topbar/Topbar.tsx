@@ -1,43 +1,47 @@
 import {
-  Badge, Stack, AppBar, Toolbar, TextField, IconButton,
-  InputAdornment, Collapse, Box, Popover, Typography,
-  List, ListItem, ListItemText, ListItemIcon, Divider,
-  CircularProgress, Button, Chip,
+  Badge, Stack, AppBar, Toolbar, IconButton, Box,
+  Popover, Typography, List, ListItem,
+  ListItemText, ListItemIcon, Divider, CircularProgress,
+  Button, Chip,
 } from '@mui/material';
 import IconifyIcon from 'components/base/IconifyIcon';
-import { ReactElement, useState, useRef, useEffect, useCallback } from 'react';
-import { drawerCloseWidth } from '..';
+import { ReactElement, useState, useEffect, useCallback } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import UserDropdown from './UserDropdown';
-import { useNavigate } from 'react-router-dom';
 import { notificationService } from '../../../services/notificationService';
 import { storeService } from '../../../services/storeService';
 import { authService } from '../../../services/authService';
 import { decodeToken } from '../../../utils/jwt';
 
+const PAGE_SUBTITLES: Record<string, string> = {
+  '/pos': 'POS 시스템',
+  '/orders': '식자재 발주',
+  '/predictions': 'AI 수요 예측',
+  '/inventory': '실시간 자원 및 재고 현황',
+  '/ingredients': '식자재 관리',
+  '/menus': '메뉴 관리',
+  '/sales': '판매 실적 기록',
+  '/waste-prediction': '폐기 예측 & 기부',
+  '/donations': '기부 이력',
+  '/admin/stores': '가맹점 네트워크 관리',
+  '/admin/stats': '환경 통계 분석',
+  '/admin/orders': '발주 관리',
+};
+
 interface TopbarProps {
   onLogout: () => void;
 }
 
-const PAGE_MAP: Record<string, string> = {
-  '대시보드': '/', '에코': '/',
-  'pos': '/pos', '포스': '/pos', '메뉴': '/pos', '판매': '/pos',
-  '예측': '/predictions', 'ai': '/predictions',
-  '발주': '/orders', '재고': '/inventory', '자원': '/inventory', '가게': '/store',
-};
-
 const Topbar = ({ onLogout }: TopbarProps): ReactElement => {
   const navigate = useNavigate();
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [query, setQuery] = useState('');
-  const inputRef = useRef<HTMLInputElement>(null);
-
+  const location = useLocation();
+  const subtitle = PAGE_SUBTITLES[location.pathname] ?? '';
   // Notification state
   const [bellAnchor, setBellAnchor] = useState<null | HTMLElement>(null);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [notiLoading, setNotiLoading] = useState(false);
   const [storeId, setStoreId] = useState<number | null>(null);
 
-  // Get storeId once from JWT user
   useEffect(() => {
     const token = authService.getToken();
     if (!token) return;
@@ -80,19 +84,6 @@ const Topbar = ({ onLogout }: TopbarProps): ReactElement => {
     setNotifications([]);
   };
 
-  useEffect(() => {
-    if (searchOpen) setTimeout(() => inputRef.current?.focus(), 100);
-  }, [searchOpen]);
-
-  const handleSearch = () => {
-    if (!query.trim()) return;
-    const lower = query.toLowerCase();
-    const path = Object.entries(PAGE_MAP).find(([k]) => lower.includes(k))?.[1] ?? '/';
-    navigate(path);
-    setQuery('');
-    setSearchOpen(false);
-  };
-
   const notiTypeIcon: Record<string, string> = {
     ORDER: 'mingcute:refresh-2-line',
     ALERT: 'mingcute:warning-line',
@@ -103,63 +94,56 @@ const Topbar = ({ onLogout }: TopbarProps): ReactElement => {
   const notiTypeColor: Record<string, string> = {
     ORDER: '#2e7d32', ALERT: '#ed6c02', INFO: '#0288d1', PREDICTION: '#7b1fa2',
   };
-
   return (
     <AppBar
       position="fixed"
-      sx={{ left: 0, ml: { sm: `${drawerCloseWidth}px` }, width: { sm: `calc(100% - ${drawerCloseWidth}px)` }, paddingRight: '0 !important' }}
+      sx={{
+        left: 0,
+        width: '100%',
+        paddingRight: '0 !important',
+        bgcolor: 'background.default',
+        backgroundImage: 'none',
+        boxShadow: 'none',      }}
     >
       <Toolbar
         component={Stack}
         direction="row"
         alignItems="center"
         justifyContent="space-between"
-        sx={{ bgcolor: 'background.default', height: 116 }}
+        sx={{
+          bgcolor: 'background.default',
+          height: 116,
+          '& *:focus': { outline: 'none' },
+        }}
       >
-        {/* Left: Search */}
-        <Stack direction="row" alignItems="center" gap={1.5} ml={2.5} flex={1}>
-          <IconButton onClick={() => setSearchOpen(v => !v)} sx={{ color: searchOpen ? 'primary.main' : 'text.primary' }}>
-            <IconifyIcon icon="akar-icons:search" width={22} height={22} />
-          </IconButton>
-          <Collapse in={searchOpen} orientation="horizontal" timeout={200}>
-            <Box sx={{ width: 280 }}>
-              <TextField
-                inputRef={inputRef}
-                variant="filled"
-                size="small"
-                fullWidth
-                placeholder="페이지 검색... (예: POS, 발주, 예측)"
-                value={query}
-                onChange={e => setQuery(e.target.value)}
-                onKeyDown={e => {
-                  if (e.key === 'Enter') handleSearch();
-                  if (e.key === 'Escape') { setSearchOpen(false); setQuery(''); }
-                }}
-                InputProps={{
-                  endAdornment: query ? (
-                    <InputAdornment position="end">
-                      <IconButton size="small" onClick={handleSearch}>
-                        <IconifyIcon icon="mingcute:arrow-right-line" width={16} />
-                      </IconButton>
-                    </InputAdornment>
-                  ) : undefined,
-                }}
-                sx={{ '& .MuiFilledInput-root': { borderRadius: 2 } }}
-              />
-            </Box>
-          </Collapse>
+        {/* FoodGuard 로고 + 현재 페이지 부제목 */}
+        <Stack direction="row" gap={1.5} alignItems="center" ml={2.5} flex="1 1 auto">
+          <Typography
+            variant="h5" fontWeight={800} color="primary.main"
+            onClick={() => navigate('/')}
+            sx={{ cursor: 'pointer', flexShrink: 0, letterSpacing: '-0.3px' }}
+          >
+            FoodGuard
+          </Typography>
+          {subtitle && (
+            <>
+              <Typography color="text.disabled" sx={{ fontSize: 18, lineHeight: 1 }}>·</Typography>
+              <Typography variant="body1" color="text.secondary" fontWeight={500} noWrap>
+                {subtitle}
+              </Typography>
+            </>
+          )}
         </Stack>
 
-        {/* Right: Bell + Profile */}
-        <Stack direction="row" gap={3.75} alignItems="center" justifyContent="flex-end" mr={3.75}>
+        {/* 우측 알림 + 유저 */}
+        <Stack direction="row" gap={3.75} alignItems="center" justifyContent="flex-end" mr={3.75} flex="1 1 20%">
           <Badge
             color="error"
             badgeContent={notifications.length > 0 ? notifications.length : undefined}
             max={9}
             sx={{ '& .MuiBadge-badge': { top: 6, right: 6, fontSize: 10, minWidth: 18, height: 18 } }}
           >
-            <IconButton sx={{ padding: 1 }} onClick={handleBellClick}>
-              <IconifyIcon icon="ph:bell-bold" width={29} height={32} />
+            <IconButton sx={{ padding: 1 }} onClick={handleBellClick}>              <IconifyIcon icon="ph:bell-bold" width={29} height={32} />
             </IconButton>
           </Badge>
           <UserDropdown onLogout={onLogout} />
