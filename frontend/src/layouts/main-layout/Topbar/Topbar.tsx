@@ -13,6 +13,38 @@ import { storeService } from '../../../services/storeService';
 import { authService } from '../../../services/authService';
 import { decodeToken } from '../../../utils/jwt';
 
+const DAY_KO = ['일', '월', '화', '수', '목', '금', '토'];
+
+function useDateTime() {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  const d = now;
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const dateStr = `${d.getFullYear()}.${pad(d.getMonth()+1)}.${pad(d.getDate())}(${DAY_KO[d.getDay()]})`;
+  const ampm = d.getHours() < 12 ? '오전' : '오후';
+  const h = d.getHours() % 12 || 12;
+  const timeStr = `${ampm} ${pad(h)}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  return `${dateStr} ${timeStr}`;
+}
+
+function useTemperature() {
+  const [temp, setTemp] = useState<string>('--');
+  useEffect(() => {
+    const fetch_ = () =>
+      fetch('https://api.open-meteo.com/v1/forecast?latitude=37.5665&longitude=126.9780&current_weather=true')
+        .then(r => r.json())
+        .then(d => setTemp(`${Math.round(d.current_weather.temperature)}°C`))
+        .catch(() => {});
+    fetch_();
+    const t = setInterval(fetch_, 10 * 60 * 1000);
+    return () => clearInterval(t);
+  }, []);
+  return temp;
+}
+
 const PAGE_SUBTITLES: Record<string, string> = {
   '/pos': 'POS 시스템',
   '/orders': '식자재 발주',
@@ -35,6 +67,8 @@ interface TopbarProps {
 const Topbar = ({ onLogout }: TopbarProps): ReactElement => {
   const navigate = useNavigate();
   const location = useLocation();
+  const dateTime = useDateTime();
+  const temperature = useTemperature();
   const subtitle = PAGE_SUBTITLES[location.pathname] ?? '';
   // Notification state
   const [bellAnchor, setBellAnchor] = useState<null | HTMLElement>(null);
@@ -64,6 +98,13 @@ const Topbar = ({ onLogout }: TopbarProps): ReactElement => {
       setNotiLoading(false);
     }
   }, [storeId]);
+
+  useEffect(() => {
+    if (!storeId) return;
+    fetchNotifications();
+    const t = setInterval(fetchNotifications, 30000);
+    return () => clearInterval(t);
+  }, [storeId, fetchNotifications]);
 
   const handleBellClick = (e: React.MouseEvent<HTMLElement>) => {
     setBellAnchor(e.currentTarget);
@@ -137,6 +178,9 @@ const Topbar = ({ onLogout }: TopbarProps): ReactElement => {
 
         {/* 우측 알림 + 유저 */}
         <Stack direction="row" gap={3.75} alignItems="center" justifyContent="flex-end" mr={3.75} flex="1 1 20%">
+          <Typography variant="h6" color="text.secondary" fontWeight={500} noWrap sx={{ letterSpacing: 0.2 }}>
+            {dateTime} · {temperature}
+          </Typography>
           <Badge
             color="error"
             badgeContent={notifications.length > 0 ? notifications.length : undefined}
