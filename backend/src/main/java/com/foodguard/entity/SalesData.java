@@ -22,6 +22,7 @@ public class SalesData {
     @JoinColumn(name = "store_id", nullable = false)
     private Store store;
 
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "menu_id", nullable = false)
     private Menu menu;
@@ -41,11 +42,6 @@ public class SalesData {
     @Column(name = "updated_at", insertable = false, updatable = false)
     private LocalDateTime updatedAt;
     
-    @Transient
-    private Integer totalPrice;
-    @Transient
-    private LocalDateTime deletedAt;
-
     public void setIsDeleted(boolean isDeleted) {
         this.isDeleted = isDeleted;
     }

@@ -3,9 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import {
   Typography, Box, Paper, Grid, Stack, useTheme,
   TextField, InputAdornment, Popover,
-  CircularProgress, Alert, Chip, Divider, Button,
+  CircularProgress, Alert, Chip, Divider, Button, Tab, Tabs,
 } from '@mui/material';
 import { storeService } from '../../services/storeService';
+import { orderService } from '../../services/orderService';
 import IconifyIcon from '../../components/base/IconifyIcon';
 
 declare global {
@@ -276,6 +277,11 @@ const StoreManagement = () => {
   });
   const [editSubmitting, setEditSubmitting] = useState(false);
   const [success, setSuccess] = useState('');
+  const [detailTab, setDetailTab] = useState(0);
+  const [pendingOrders, setPendingOrders] = useState<any[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [pendingStoreIds, setPendingStoreIds] = useState<Set<number>>(new Set());
+  const [showPendingOnly, setShowPendingOnly] = useState(false);
   const scriptLoaded = useRef(false);
 
   const loadPostcodeScript = () => {
@@ -296,10 +302,30 @@ const StoreManagement = () => {
       .catch(() => setError('가맹점 목록을 불러오지 못했습니다.'))
       .finally(() => setLoading(false));
     loadPostcodeScript();
+
+    const loadPendingStores = () =>
+      orderService.getAll().then((orders: any[]) => {
+        const ids = new Set<number>(
+          (orders ?? []).filter((o: any) => o.status === 'REQUESTED').map((o: any) => o.store?.id).filter(Boolean)
+        );
+        setPendingStoreIds(ids);
+      }).catch(() => {});
+    loadPendingStores();
+    const timer = setInterval(loadPendingStores, 5000);
+    return () => clearInterval(timer);
   }, []);
 
   useEffect(() => {
     setEditMode(false);
+    setDetailTab(0);
+    if (!selectedStore?.id) return;
+    setOrdersLoading(true);
+    orderService.getByStore(selectedStore.id)
+      .then((orders: any[]) =>
+        setPendingOrders((orders ?? []).filter((o: any) => o.status === 'REQUESTED'))
+      )
+      .catch(() => {})
+      .finally(() => setOrdersLoading(false));
   }, [selectedStore?.id]);
 
   const filtered = stores.filter((s: any) => {
@@ -308,7 +334,8 @@ const StoreManagement = () => {
       || (s.region === regionFilter.sido
         && (!regionFilter.sigun || s.address?.includes(regionFilter.sigun))
         && (!regionFilter.sgg || s.address?.includes(regionFilter.sgg)));
-    return matchSearch && matchRegion;
+    const matchPending = !showPendingOnly || pendingStoreIds.has(s.id);
+    return matchSearch && matchRegion && matchPending;
   });
 
   const openPostcode = () => {
@@ -382,11 +409,6 @@ const StoreManagement = () => {
 
   return (
     <Stack gap={3.5} sx={{ bgcolor: 'background.default' }}>
-      <Box>
-        <Typography variant="h2" color="primary.main" fontWeight={800}>FoodGuard</Typography>
-        <Typography variant="h5" color="text.secondary" fontWeight={600}>가맹점 네트워크 관리</Typography>
-      </Box>
-
       {error && <Alert severity="error" onClose={() => setError('')}>{error}</Alert>}
       {success && <Alert severity="success" onClose={() => setSuccess('')}>{success}</Alert>}
 
@@ -407,6 +429,19 @@ const StoreManagement = () => {
           }}
         />
         <CascadingRegionFilter value={regionFilter} onChange={setRegionFilter} />
+        <Chip
+          icon={<IconifyIcon icon="mingcute:alert-fill" width={14} />}
+          label={
+            showPendingOnly
+              ? `발주 대기 ${pendingStoreIds.size}곳`
+              : `발주 대기 ${pendingStoreIds.size}곳`
+          }
+          color="warning"
+          variant={showPendingOnly ? 'filled' : 'outlined'}
+          clickable
+          onClick={() => setShowPendingOnly(v => !v)}
+          sx={{ fontWeight: 700, fontSize: 12 }}
+        />
         <Chip
           label={loading ? '로딩 중...' : `총 ${filtered.length}개 가맹점`}
           color="primary" variant="outlined" size="small"
@@ -455,16 +490,26 @@ const StoreManagement = () => {
                         <Typography
                           fontWeight={700} fontSize={14}
                           color={isSelected ? 'primary.main' : 'text.primary'}
-                          noWrap sx={{ maxWidth: 170 }}
+                          noWrap sx={{ maxWidth: 140 }}
                         >
                           {store.storeName}
                         </Typography>
-                        <Chip
-                          label={store.isActive ? '운영중' : '비활성'}
-                          size="small"
-                          color={store.isActive ? 'success' : 'default'}
-                          sx={{ height: 20, fontSize: 10, fontWeight: 700, '& .MuiChip-label': { px: 0.75 } }}
-                        />
+                        <Stack direction="row" gap={0.5} alignItems="center">
+                          {pendingStoreIds.has(store.id) && (
+                            <Chip
+                              label="대기"
+                              size="small"
+                              color="warning"
+                              sx={{ height: 18, fontSize: 10, fontWeight: 700, '& .MuiChip-label': { px: 0.6 } }}
+                            />
+                          )}
+                          <Chip
+                            label={store.isActive ? '운영중' : '비활성'}
+                            size="small"
+                            color={store.isActive ? 'success' : 'default'}
+                            sx={{ height: 18, fontSize: 10, fontWeight: 700, '& .MuiChip-label': { px: 0.75 } }}
+                          />
+                        </Stack>
                       </Stack>
                       <Stack direction="row" gap={0.5} mt={0.5} alignItems="center">
                         <IconifyIcon icon="mingcute:location-line" width={12} color={theme.palette.text.disabled} />
@@ -496,132 +541,171 @@ const StoreManagement = () => {
               <Typography variant="caption" color="text.disabled">왼쪽 목록에서 가맹점을 클릭하세요</Typography>
             </Paper>
           ) : (
-            <Paper sx={{ p: 3.5, border: `1px solid ${theme.palette.divider}`, borderRadius: 3, height: 600, display: 'flex', flexDirection: 'column' }}>
+            <Paper sx={{ border: `1px solid ${theme.palette.divider}`, borderRadius: 3, height: 600, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
               {/* 헤더 */}
-              <Stack direction="row" justifyContent="space-between" alignItems="flex-start" mb={2.5}>
-                <Box>
-                  <Typography variant="h5" fontWeight={800} color="text.primary">{selectedStore.storeName}</Typography>
-                  <Typography variant="body2" color="text.secondary" mt={0.5}>
-                    {selectedStore.address ?? '주소 미등록'}
-                  </Typography>
-                </Box>
-                <Stack direction="row" gap={1} alignItems="center">
-                  <Chip
-                    label={selectedStore.isActive ? '운영중' : '비활성'}
-                    color={selectedStore.isActive ? 'success' : 'default'}
-                    sx={{ fontWeight: 700 }}
-                  />
-                  {!editMode && (
-                    <Button size="small" variant="outlined" onClick={startEdit}
-                      startIcon={<IconifyIcon icon="mingcute:edit-2-line" width={14} />}>
-                      수정
-                    </Button>
-                  )}
-                </Stack>
-              </Stack>
-
-              <Divider sx={{ mb: 2.5 }} />
-
-              {editMode ? (
-                <Stack gap={2} sx={{ flex: 1, overflowY: 'auto' }}>
-                  <TextField label="가게 이름" name="storeName" value={editForm.storeName} onChange={handleEditChange} size="small" fullWidth required />
-                  <Stack gap={1}>
-                    <TextField
-                      label="기본 주소"
-                      value={editForm.address}
-                      size="small"
-                      fullWidth
-                      required
-                      InputProps={{
-                        readOnly: true,
-                        endAdornment: (
-                          <InputAdornment position="end">
-                            <Button variant="contained" size="small" onClick={openPostcode}
-                              sx={{ borderRadius: 1.5, px: 1.5, whiteSpace: 'nowrap' }}
-                              startIcon={<IconifyIcon icon="mingcute:search-2-line" width={15} />}>
-                              주소 검색
-                            </Button>
-                          </InputAdornment>
-                        ),
-                      }}
-                    />
-                    {editForm.address && (
-                      <TextField label="상세 주소" name="detailAddress" value={editForm.detailAddress} onChange={handleEditChange} size="small" placeholder="동/호수, 건물명 등 (선택)" fullWidth />
-                    )}
-                    {editForm.region && (
-                      <Stack direction="row" gap={1} alignItems="center">
-                        <IconifyIcon icon="mingcute:location-fill" width={15} color="primary.main" />
-                        <Typography variant="caption" color="primary.main" fontWeight={700}>지역: {editForm.region}</Typography>
-                      </Stack>
+              <Box sx={{ px: 3, pt: 2.5 }}>
+                <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+                  <Box>
+                    <Typography variant="h5" fontWeight={800} color="text.primary">{selectedStore.storeName}</Typography>
+                    <Typography variant="body2" color="text.secondary" mt={0.5}>
+                      {selectedStore.address ?? '주소 미등록'}
+                    </Typography>
+                  </Box>
+                  <Stack direction="row" gap={1} alignItems="center">
+                    <Chip label={selectedStore.isActive ? '운영중' : '비활성'}
+                      color={selectedStore.isActive ? 'success' : 'default'} sx={{ fontWeight: 700 }} />
+                    {!editMode && detailTab === 0 && (
+                      <Button size="small" variant="outlined" onClick={startEdit}
+                        startIcon={<IconifyIcon icon="mingcute:edit-2-line" width={14} />}>
+                        수정
+                      </Button>
                     )}
                   </Stack>
-                  <TextField label="전화번호" name="phone" value={editForm.phone} onChange={handleEditChange} size="small" placeholder="010-0000-0000" fullWidth required />
                 </Stack>
-              ) : (
-                <Grid container spacing={2} sx={{ flex: 1 }}>
-                  {infoItems.map((item) => (
-                    <Grid item xs={12} sm={6} key={item.label}>
-                      <Stack direction="row" gap={1} alignItems="center">
-                        <IconifyIcon icon={item.icon} width={15} color={theme.palette.text.secondary} />
-                        <Typography variant="body2" color="text.secondary" sx={{ minWidth: 72 }}>{item.label}</Typography>
-                        <Typography variant="body2" fontWeight={600} color="text.primary" noWrap>{item.value}</Typography>
-                      </Stack>
-                    </Grid>
-                  ))}
-                </Grid>
-              )}
 
-              <Box sx={{ mt: 'auto', pt: 3 }}>
-                <Divider sx={{ mb: 2.5 }} />
-                {editMode ? (
-                  <Stack direction="row" gap={1.5}>
-                    <Button
-                      variant="contained"
-                      fullWidth
-                      size="large"
-                      onClick={handleEditSubmit}
-                      disabled={editSubmitting}
-                      startIcon={editSubmitting ? <CircularProgress size={18} color="inherit" /> : null}
-                      sx={{ borderRadius: 3, py: 1.5 }}
-                    >
-                      {editSubmitting ? '저장 중...' : '저장'}
-                    </Button>
-                    <Button
-                      variant="outlined"
-                      size="large"
-                      onClick={() => setEditMode(false)}
-                      sx={{ borderRadius: 3, py: 1.5, minWidth: 80 }}
-                    >
-                      취소
-                    </Button>
-                  </Stack>
-                ) : (
-                  <Stack direction="row" gap={1.5}>
-                    <Button
-                      variant="contained"
-                      fullWidth
-                      size="large"
-                      startIcon={<IconifyIcon icon="mingcute:chart-bar-fill" width={20} />}
-                      sx={{ borderRadius: 3, py: 1.5 }}
-                      onClick={() =>
-                        navigate(`/admin/stats?storeId=${selectedStore.id}&storeName=${encodeURIComponent(selectedStore.storeName)}`)
-                      }
-                    >
-                      매출 통계
-                    </Button>
-                    <Button
-                      variant="outlined"
-                      fullWidth
-                      size="large"
-                      startIcon={<IconifyIcon icon="mingcute:list-check-fill" width={20} />}
-                      sx={{ borderRadius: 3, py: 1.5 }}
-                      onClick={() =>
-                        navigate(`/admin/orders?storeId=${selectedStore.id}&storeName=${encodeURIComponent(selectedStore.storeName)}`)
-                      }
-                    >
-                      발주 관리
-                    </Button>
-                  </Stack>
+                <Tabs value={detailTab} onChange={(_, v) => { setDetailTab(v); setEditMode(false); }}
+                  sx={{ mt: 1.5, borderBottom: `1px solid ${theme.palette.divider}` }}>
+                  <Tab label="가맹점 정보" />
+                  <Tab label={
+                    <Stack direction="row" gap={0.75} alignItems="center">
+                      발주 대기
+                      {pendingOrders.length > 0 && (
+                        <Chip label={pendingOrders.length} color="warning" size="small"
+                          sx={{ height: 18, fontSize: 10, fontWeight: 700 }} />
+                      )}
+                    </Stack>
+                  } />
+                </Tabs>
+              </Box>
+
+              {/* 탭 내용 */}
+              <Box sx={{ flex: 1, overflowY: 'auto', p: 3 }}>
+                {detailTab === 0 && (
+                  <>
+                    {editMode ? (
+                      <Stack gap={2}>
+                        <TextField label="가게 이름" name="storeName" value={editForm.storeName} onChange={handleEditChange} size="small" fullWidth required />
+                        <Stack gap={1}>
+                          <TextField
+                            label="기본 주소" value={editForm.address} size="small" fullWidth required
+                            InputProps={{
+                              readOnly: true,
+                              endAdornment: (
+                                <InputAdornment position="end">
+                                  <Button variant="contained" size="small" onClick={openPostcode}
+                                    sx={{ borderRadius: 1.5, px: 1.5, whiteSpace: 'nowrap' }}
+                                    startIcon={<IconifyIcon icon="mingcute:search-2-line" width={15} />}>
+                                    주소 검색
+                                  </Button>
+                                </InputAdornment>
+                              ),
+                            }}
+                          />
+                          {editForm.address && (
+                            <TextField label="상세 주소" name="detailAddress" value={editForm.detailAddress} onChange={handleEditChange} size="small" placeholder="동/호수, 건물명 등 (선택)" fullWidth />
+                          )}
+                          {editForm.region && (
+                            <Stack direction="row" gap={1} alignItems="center">
+                              <IconifyIcon icon="mingcute:location-fill" width={15} color="primary.main" />
+                              <Typography variant="caption" color="primary.main" fontWeight={700}>지역: {editForm.region}</Typography>
+                            </Stack>
+                          )}
+                        </Stack>
+                        <TextField label="전화번호" name="phone" value={editForm.phone} onChange={handleEditChange} size="small" placeholder="010-0000-0000" fullWidth required />
+                        <Stack direction="row" gap={1.5} mt={1}>
+                          <Button variant="contained" fullWidth size="large" onClick={handleEditSubmit}
+                            disabled={editSubmitting}
+                            startIcon={editSubmitting ? <CircularProgress size={18} color="inherit" /> : null}
+                            sx={{ borderRadius: 3, py: 1.5 }}>
+                            {editSubmitting ? '저장 중...' : '저장'}
+                          </Button>
+                          <Button variant="outlined" size="large" onClick={() => setEditMode(false)}
+                            sx={{ borderRadius: 3, py: 1.5, minWidth: 80 }}>
+                            취소
+                          </Button>
+                        </Stack>
+                      </Stack>
+                    ) : (
+                      <>
+                        <Grid container spacing={2}>
+                          {infoItems.map((item) => (
+                            <Grid item xs={12} sm={6} key={item.label}>
+                              <Stack direction="row" gap={1} alignItems="center">
+                                <IconifyIcon icon={item.icon} width={15} color={theme.palette.text.secondary} />
+                                <Typography variant="body2" color="text.secondary" sx={{ minWidth: 72 }}>{item.label}</Typography>
+                                <Typography variant="body2" fontWeight={600} color="text.primary" noWrap>{item.value}</Typography>
+                              </Stack>
+                            </Grid>
+                          ))}
+                        </Grid>
+                        <Divider sx={{ my: 2.5 }} />
+                        <Button
+                          variant="contained" fullWidth size="large"
+                          startIcon={<IconifyIcon icon="mingcute:chart-bar-fill" width={20} />}
+                          sx={{ borderRadius: 3, py: 1.5 }}
+                          onClick={() => navigate(`/admin/stats?storeId=${selectedStore.id}&storeName=${encodeURIComponent(selectedStore.storeName)}`)}
+                        >
+                          매출 통계 보기
+                        </Button>
+                      </>
+                    )}
+                  </>
+                )}
+
+                {detailTab === 1 && (
+                  <>
+                    {ordersLoading ? (
+                      <Box sx={{ display: 'flex', justifyContent: 'center', pt: 4 }}>
+                        <CircularProgress />
+                      </Box>
+                    ) : pendingOrders.length === 0 ? (
+                      <Stack alignItems="center" justifyContent="center" gap={1.5} sx={{ pt: 6 }}>
+                        <IconifyIcon icon="mingcute:check-circle-fill" color={theme.palette.success.main} width={44} />
+                        <Typography color="text.secondary" fontWeight={600}>대기 중인 발주가 없습니다.</Typography>
+                      </Stack>
+                    ) : (
+                      <Stack gap={1.5}>
+                        {pendingOrders.map((order: any) => (
+                          <Paper key={order.id} variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
+                            <Stack direction="row" justifyContent="space-between" alignItems="center">
+                              <Box>
+                                <Typography fontWeight={700} fontSize={14}>
+                                  {order.ingredient?.name ?? '-'}
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                  {order.orderedQty ?? order.quantity} {order.ingredient?.unit ?? ''} · {order.orderedAt ? new Date(order.orderedAt).toLocaleDateString() : '-'}
+                                </Typography>
+                              </Box>
+                              <Stack direction="row" gap={1}>
+                                <Button size="small" variant="contained" color="primary"
+                                  onClick={async () => {
+                                    try {
+                                      await orderService.approve(order.id);
+                                      setPendingOrders(prev => prev.filter(o => o.id !== order.id));
+                                      setSuccess('발주가 승인되었습니다.');
+                                    } catch { setError('승인에 실패했습니다.'); }
+                                  }}
+                                  sx={{ borderRadius: 2, fontSize: 12 }}>
+                                  승인
+                                </Button>
+                                <Button size="small" variant="outlined" color="error"
+                                  onClick={async () => {
+                                    try {
+                                      await orderService.updateStatus(order.id, 'REJECTED');
+                                      setPendingOrders(prev => prev.filter(o => o.id !== order.id));
+                                      setSuccess('발주가 거절되었습니다.');
+                                    } catch { setError('거절에 실패했습니다.'); }
+                                  }}
+                                  sx={{ borderRadius: 2, fontSize: 12 }}>
+                                  거절
+                                </Button>
+                              </Stack>
+                            </Stack>
+                          </Paper>
+                        ))}
+                      </Stack>
+                    )}
+                  </>
                 )}
               </Box>
             </Paper>

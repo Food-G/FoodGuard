@@ -5,6 +5,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableRow,
 } from '@mui/material';
 import { orderService } from '../services/orderService';
+import QrScanner from '../components/QrScanner';
 
 const STAGES = ['본사 발송완료', '배달기사 검수완료', '가맹점주 검수완료'];
 const STAGE_ICONS = ['📦', '🚚', '✅'];
@@ -20,7 +21,8 @@ const DeliveryDriverGroup = () => {
   const [info, setInfo] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [confirming, setConfirming] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const [scanSuccess, setScanSuccess] = useState('');
 
   const currentStage = info ? (statusToStage[info.status] ?? -1) : -1;
 
@@ -35,15 +37,14 @@ const DeliveryDriverGroup = () => {
 
   useEffect(() => { loadInfo(); }, [groupToken]);
 
-  const handleDriverReceive = async () => {
-    setConfirming(true);
+  const handleQrScan = async (qrData: string) => {
+    setScanning(false);
     try {
-      await orderService.driverReceiveGroup(groupToken!);
-      setInfo((prev: any) => ({ ...prev, status: 'DRIVER_RECEIVED' }));
+      const result = await orderService.scanQr(qrData);
+      setScanSuccess(`${result.ingredientName} 수령 확인 완료`);
+      loadInfo();
     } catch {
-      setError('검수 처리에 실패했습니다.');
-    } finally {
-      setConfirming(false);
+      setError('QR 스캔 처리에 실패했습니다.');
     }
   };
 
@@ -84,6 +85,7 @@ const DeliveryDriverGroup = () => {
 
       <Stack gap={2} sx={{ px: 2, pt: 2 }}>
         {error && <Alert severity="error" onClose={() => setError('')}>{error}</Alert>}
+        {scanSuccess && <Alert severity="success" onClose={() => setScanSuccess('')}>{scanSuccess}</Alert>}
 
         {/* 검수 단계 표시 */}
         <Paper sx={{ p: 2, borderRadius: 3 }}>
@@ -169,13 +171,19 @@ const DeliveryDriverGroup = () => {
             variant="contained"
             color="success"
             size="large"
-            onClick={handleDriverReceive}
-            disabled={confirming}
-            sx={{ borderRadius: 3, py: 2, fontSize: 16, fontWeight: 700 }}
-            startIcon={confirming ? <CircularProgress size={20} color="inherit" /> : <Typography fontSize={20}>✅</Typography>}
+            onClick={() => setScanning(true)}
+            sx={{ borderRadius: 3, py: 2.5, fontSize: 17, fontWeight: 700 }}
           >
-            {confirming ? '처리 중...' : '배달기사 검수완료 — 제품 확인 완료'}
+            📷 QR / 바코드 스캔으로 검수
           </Button>
+        )}
+
+        {scanning && (
+          <QrScanner
+            title="배달기사 검수 QR 스캔"
+            onScan={handleQrScan}
+            onClose={() => setScanning(false)}
+          />
         )}
 
         {info?.status === 'DRIVER_RECEIVED' && (

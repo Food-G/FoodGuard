@@ -17,13 +17,8 @@ public class AuthController {
     // 회원가입 API
     @PostMapping("/signup")
     public ResponseEntity<String> signup(@RequestBody SignupRequest request) {
-        try {
-            String result = userService.signup(request);
-            return ResponseEntity.ok(result);
-        } catch (Exception e) {
-            String errorMessage = e.getMessage() != null ? e.getMessage() : e.toString();
-            return ResponseEntity.badRequest().body(errorMessage);
-        }    }
+        return ResponseEntity.ok(userService.signup(request));
+    }
 
     // 로그인 API
     @PostMapping("/login")

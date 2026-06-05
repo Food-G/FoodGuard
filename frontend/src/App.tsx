@@ -12,17 +12,18 @@ import SalesEntry from './pages/SalesEntry';
 import Predictions from './pages/Predictions';
 import Orders from './pages/Orders';
 import StoreManagement from './pages/admin/StoreManagement';
-import StoreRegister from './pages/StoreRegister';
 import MenuManagement from './pages/MenuManagement';
 import Stats from './pages/admin/Stats';
 import AdminOrders from './pages/admin/AdminOrders';
-import AdminDashboard from './pages/admin/AdminDashboard';
 import POS from './pages/POS';
 import Login from './pages/auth/Login';
 import Signup from './pages/auth/Signup';
 import DeliveryDriver from './pages/DeliveryDriver';
 import DeliveryDriverGroup from './pages/DeliveryDriverGroup';
+import WastePrediction from './pages/WastePrediction';
+import DonationHistory from './pages/DonationHistory';
 import { useAuth } from './hooks/useAuth';
+import { ConfirmProvider } from './hooks/useConfirm';
 
 function App() {
   const { user, login, logout, isLoggedIn } = useAuth();
@@ -40,6 +41,7 @@ function App() {
 
   return (
     <ThemeProvider theme={theme}>
+      <ConfirmProvider>
       <BreakpointsProvider>
         <CssBaseline />
         <Router>
@@ -91,11 +93,7 @@ function App() {
               </ProtectedRoute>
             } />
 
-            <Route path="/store" element={
-              <ProtectedRoute role="OWNER">
-                <StoreRegister user={user} />
-              </ProtectedRoute>
-            } />
+
 
             <Route path="/menus" element={
               <ProtectedRoute role="OWNER">
@@ -103,13 +101,19 @@ function App() {
               </ProtectedRoute>
             } />
 
-            {/* HQ Admin Routes */}
-            <Route path="/admin" element={
-              <ProtectedRoute role="HQ_ADMIN">
-                <AdminDashboard />
+            <Route path="/waste-prediction" element={
+              <ProtectedRoute role="OWNER">
+                <WastePrediction user={user} />
               </ProtectedRoute>
             } />
 
+            <Route path="/donations" element={
+              <ProtectedRoute role="OWNER">
+                <DonationHistory user={user} />
+              </ProtectedRoute>
+            } />
+
+            {/* HQ Admin Routes */}
             <Route path="/admin/stores" element={
               <ProtectedRoute role="HQ_ADMIN">
                 <StoreManagement />
@@ -132,6 +136,7 @@ function App() {
           </Routes>
         </Router>
       </BreakpointsProvider>
+      </ConfirmProvider>
     </ThemeProvider>
   );
 }

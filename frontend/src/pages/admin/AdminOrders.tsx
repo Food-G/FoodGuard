@@ -2,11 +2,15 @@ import { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
   Typography, Paper, Button, CircularProgress, Chip,
-  Stack, useTheme, Box, Alert, Tab, Tabs,
+  Stack, useTheme, Box, Tab, Tabs,
+  Dialog, DialogTitle, DialogContent, DialogActions, TextField,
 } from '@mui/material';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { orderService } from '../../services/orderService';
 import IconifyIcon from '../../components/base/IconifyIcon';
+import QrCodeDisplay from '../../components/QrCodeDisplay';
+import { useConfirm } from '../../hooks/useConfirm';
+import AlertMessages from '../../components/AlertMessages';
 
 const STATUS_LABEL: Record<string, string> = {
   REQUESTED: '승인 대기',
@@ -79,7 +83,6 @@ const AdminOrders = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const filterStoreId = searchParams.get('storeId') ? Number(searchParams.get('storeId')) : null;
-  const filterStoreName = searchParams.get('storeName') ?? null;
 
   const [allRows, setAllRows] = useState<any[]>([]);
   const [dismissedIds, setDismissedIds] = useState<Set<number>>(() => {
@@ -92,6 +95,10 @@ const AdminOrders = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [tab, setTab] = useState(0);
+  const confirm = useConfirm();
+  const [hqSendTarget, setHqSendTarget] = useState<number | null>(null);
+  const [expiryDate, setExpiryDate] = useState('');
+  const [qrData, setQrData] = useState<{ data: string; name: string } | null>(null);
 
   const loadOrders = async () => {
     try {
@@ -137,7 +144,7 @@ const AdminOrders = () => {
   };
 
   const handleReject = async (id: number) => {
-    if (!window.confirm('이 발주를 거절하시겠습니까?')) return;
+    if (!await confirm({ message: '이 발주를 거절하시겠습니까?', confirmLabel: '거절', severity: 'error' })) return;
     try {
       await orderService.updateStatus(id, 'REJECTED');
       withStatus(id, 'REJECTED');
@@ -145,12 +152,22 @@ const AdminOrders = () => {
     } catch { setError('거절 처리에 실패했습니다.'); }
   };
 
-  const handleHqSend = async (id: number) => {
+  const handleHqSendConfirm = async () => {
+    if (hqSendTarget === null) return;
     try {
-      await orderService.hqSend(id);
-      withStatus(id, 'HQ_SENT');
+      const row = allRows.find(r => r.id === hqSendTarget);
+      const result = await orderService.hqSend(hqSendTarget, expiryDate || undefined);
+      withStatus(hqSendTarget, 'HQ_SENT');
       setSuccess('발송 검수가 완료되었습니다.');
-    } catch { setError('발송 검수 처리에 실패했습니다.'); }
+      setHqSendTarget(null);
+      setExpiryDate('');
+      if (result?.qrData) {
+        setQrData({ data: result.qrData, name: row?.name ?? '식자재' });
+      }
+    } catch {
+      setError('발송 검수 처리에 실패했습니다.');
+      setHqSendTarget(null);
+    }
   };
 
   const handleDriverReceive = async (id: number) => {
@@ -210,7 +227,7 @@ const AdminOrders = () => {
         );
         if (status === 'APPROVED') return (
           <Button variant="contained" color="success" size="small"
-            onClick={() => handleHqSend(id)} sx={{ borderRadius: 2, fontSize: 12 }}>
+            onClick={() => setHqSendTarget(id)} sx={{ borderRadius: 2, fontSize: 12 }}>
             발송 검수완료 →
           </Button>
         );
@@ -259,14 +276,8 @@ const AdminOrders = () => {
 
   return (
     <Stack gap={3} sx={{ bgcolor: 'background.default' }}>
-      <Stack direction="row" justifyContent="space-between" alignItems="flex-end">
-        <Box>
-          <Typography variant="h2" color="primary.main" fontWeight={800}>FoodGuard</Typography>
-          <Typography variant="h5" color="text.secondary" fontWeight={600}>
-            {filterStoreName ? `${filterStoreName} — 발주 관리` : '전체 가맹점 발주 승인 및 검수 관리'}
-          </Typography>
-        </Box>
-        {filterStoreId && (
+      {filterStoreId && (
+        <Stack direction="row" justifyContent="flex-end">
           <Button
             variant="outlined" size="small"
             startIcon={<IconifyIcon icon="mingcute:arrow-left-line" width={14} />}
@@ -274,11 +285,48 @@ const AdminOrders = () => {
           >
             전체 발주 보기
           </Button>
-        )}
-      </Stack>
+        </Stack>
+      )}
 
-      {error && <Alert severity="error" onClose={() => setError('')}>{error}</Alert>}
-      {success && <Alert severity="success" onClose={() => setSuccess('')}>{success}</Alert>}
+      <AlertMessages error={error} success={success}
+        onClearError={() => setError('')} onClearSuccess={() => setSuccess('')} />
+
+      {/* 승인 대기 중인 가맹점 요약 */}
+      {!filterStoreId && (() => {
+        const pendingByStore = Object.values(
+          allRows
+            .filter(r => r.status === 'REQUESTED')
+            .reduce<Record<number, { storeId: number; storeName: string; count: number }>>((acc, r) => {
+              if (!acc[r.storeId]) acc[r.storeId] = { storeId: r.storeId, storeName: r.storeName, count: 0 };
+              acc[r.storeId].count += 1;
+              return acc;
+            }, {})
+        );
+        if (pendingByStore.length === 0) return null;
+        return (
+          <Paper sx={{ p: 2.5, border: `1px solid ${theme.palette.warning.light}`, borderRadius: 3, bgcolor: 'warning.50' }}>
+            <Stack direction="row" alignItems="center" gap={1} mb={1.5}>
+              <IconifyIcon icon="mingcute:alert-fill" color={theme.palette.warning.main} width={18} />
+              <Typography variant="subtitle2" fontWeight={700} color="warning.dark">
+                승인 대기 중인 가맹점 ({pendingByStore.length}곳)
+              </Typography>
+            </Stack>
+            <Stack direction="row" flexWrap="wrap" gap={1}>
+              {pendingByStore.map(s => (
+                <Chip
+                  key={s.storeId}
+                  label={`${s.storeName}  ${s.count}건`}
+                  color="warning"
+                  variant="filled"
+                  clickable
+                  onClick={() => navigate(`/admin/orders?storeId=${s.storeId}&storeName=${encodeURIComponent(s.storeName)}`)}
+                  sx={{ fontWeight: 700, fontSize: 13 }}
+                />
+              ))}
+            </Stack>
+          </Paper>
+        );
+      })()}
 
       {/* 3단계 흐름 안내 */}
       <Paper sx={{ p: 2.5, border: `1px solid ${theme.palette.divider}`, borderRadius: 3 }}>
@@ -406,6 +454,43 @@ const AdminOrders = () => {
           </Box>
         </Box>
       </Paper>
+
+      {/* 유통기한 입력 다이얼로그 */}
+      <Dialog open={hqSendTarget !== null} onClose={() => { setHqSendTarget(null); setExpiryDate(''); }} maxWidth="xs" fullWidth>
+        <DialogTitle>발송 검수 완료</DialogTitle>
+        <DialogContent>
+          <Stack gap={2} pt={1}>
+            <Typography variant="body2" color="text.secondary">
+              해당 식자재의 유통기한을 입력하면 QR 코드가 생성됩니다. (선택 사항)
+            </Typography>
+            <TextField
+              label="유통기한"
+              type="date"
+              value={expiryDate}
+              onChange={(e) => setExpiryDate(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+              fullWidth
+              size="small"
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => { setHqSendTarget(null); setExpiryDate(''); }}>취소</Button>
+          <Button variant="contained" color="success" onClick={handleHqSendConfirm}>
+            발송 검수완료
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* QR 코드 표시 */}
+      {qrData && (
+        <QrCodeDisplay
+          data={qrData.data}
+          title={`${qrData.name} QR 코드`}
+          subtitle={`이 QR 코드를 패키지에 부착하세요`}
+          onClose={() => setQrData(null)}
+        />
+      )}
     </Stack>
   );
 };

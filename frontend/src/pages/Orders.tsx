@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react';
 import {
-  Typography, Box, Paper, Button, CircularProgress, Chip, Stack, useTheme, Alert,
+  Typography, Box, Paper, Button, CircularProgress, Chip, Stack, useTheme,
 } from '@mui/material';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { orderService } from '../services/orderService';
-import { storeService } from '../services/storeService';
 import IconifyIcon from '../components/base/IconifyIcon';
+import QrScanner from '../components/QrScanner';
+import { useMyStore } from '../hooks/useMyStore';
+import { useConfirm } from '../hooks/useConfirm';
+import AlertMessages from '../components/AlertMessages';
 
 const STATUS_LABEL: Record<string, string> = {
   REQUESTED: '대기중',
@@ -28,12 +31,14 @@ const STATUS_COLOR: Record<string, any> = {
 
 const Orders = ({ user }: any) => {
   const theme = useTheme();
+  const { storeId, storeLoading } = useMyStore(user);
+  const confirm = useConfirm();
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [ordering, setOrdering] = useState(false);
-  const [storeId, setStoreId] = useState<number | null>(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [scanning, setScanning] = useState(false);
 
   const loadOrders = async (sid: number) => {
     try {
@@ -53,28 +58,13 @@ const Orders = ({ user }: any) => {
   };
 
   useEffect(() => {
-    if (!user?.id) return;
-    let sid: number | null = null;
-    storeService.getMyStores(user.id).then(async (stores: any[]) => {
-      if (!stores?.length) return;
-      sid = stores[0].id;
-      setStoreId(sid);
-      try {
-        await loadOrders(sid);
-      } catch {
-        setError('발주 내역을 불러오지 못했습니다.');
-      } finally {
-        setLoading(false);
-      }
-    }).catch(() => setLoading(false));
-
-    const timer = setInterval(() => {
-      if (sid) loadOrders(sid);
-    }, 5000);
+    if (!storeId) { if (!storeLoading) setLoading(false); return; }
+    loadOrders(storeId).finally(() => setLoading(false));
+    const timer = setInterval(() => loadOrders(storeId), 5000);
     return () => clearInterval(timer);
-  }, [user]);
+  }, [storeId, storeLoading]);
   const handleCancel = async (id: number) => {
-    if (!window.confirm('발주를 취소하시겠습니까?')) return;
+    if (!await confirm('발주를 취소하시겠습니까?')) return;
     try {
       await orderService.cancel(id);
       setSuccess('발주가 취소되었습니다.');
@@ -84,14 +74,14 @@ const Orders = ({ user }: any) => {
     }
   };
 
-  const handleOwnerReceive = async (id: number) => {
-    if (!window.confirm('상품을 확인하셨습니까? 검수 완료 처리하면 재고에 자동 반영됩니다.')) return;
+  const handleQrScan = async (qrData: string) => {
+    setScanning(false);
     try {
-      await orderService.ownerReceive(id);
-      setSuccess('가맹점주 검수가 완료되었습니다. 재고에 반영되었습니다.');
+      const result = await orderService.scanQr(qrData);
+      setSuccess(`${result.ingredientName} 검수 완료. 재고에 반영되었습니다.`);
       if (storeId) await loadOrders(storeId);
     } catch {
-      setError('검수 처리에 실패했습니다.');
+      setError('QR 스캔 처리에 실패했습니다.');
     }
   };
 
@@ -110,12 +100,7 @@ const Orders = ({ user }: any) => {
         await loadOrders(storeId);
       }
     } catch (e: any) {
-      try {
-        const parsed = JSON.parse(e.message);
-        setError(parsed.error || '자동 발주 등록에 실패했습니다.');
-      } catch {
-        setError('자동 발주 등록에 실패했습니다.');
-      }
+      try { setError(JSON.parse(e.message).error); } catch { setError('자동 발주 등록에 실패했습니다.'); }
     } finally {
       setOrdering(false);
     }
@@ -156,8 +141,9 @@ const Orders = ({ user }: any) => {
         if (params.row.status === 'DRIVER_RECEIVED') {
           return (
             <Button color="success" size="small" variant="contained"
-              onClick={() => handleOwnerReceive(params.id as number)} sx={{ borderRadius: 2 }}>
-              검수완료
+              onClick={() => setScanning(true)} sx={{ borderRadius: 2 }}
+              startIcon={<span>📷</span>}>
+              QR 스캔
             </Button>
           );
         }
@@ -168,11 +154,7 @@ const Orders = ({ user }: any) => {
 
   return (
     <Stack gap={3} sx={{ bgcolor: 'background.default' }}>
-      <Stack direction="row" justifyContent="space-between" alignItems="center">
-        <Box>
-          <Typography variant="h2" color="primary.main" fontWeight={800}>FoodGuard</Typography>
-          <Typography variant="h5" color="text.secondary" fontWeight={600}>지속 가능한 식자재 발주 시스템</Typography>
-        </Box>
+      <Stack direction="row" justifyContent="flex-end">
         <Button
           variant="contained"
           startIcon={ordering
@@ -186,8 +168,16 @@ const Orders = ({ user }: any) => {
         </Button>
       </Stack>
 
-      {error && <Alert severity="error" onClose={() => setError('')}>{error}</Alert>}
-      {success && <Alert severity="success" onClose={() => setSuccess('')}>{success}</Alert>}
+      <AlertMessages error={error} success={success}
+        onClearError={() => setError('')} onClearSuccess={() => setSuccess('')} />
+
+      {scanning && (
+        <QrScanner
+          title="점주 검수 QR 스캔"
+          onScan={handleQrScan}
+          onClose={() => setScanning(false)}
+        />
+      )}
 
       <Paper sx={{ p: 3, border: `1px solid ${theme.palette.divider}`, borderRadius: 3 }}>
         <Typography variant="h6" fontWeight={700} mb={2}>발주 내역</Typography>

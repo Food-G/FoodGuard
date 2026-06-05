@@ -16,10 +16,14 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.foodguard.util.UnitUtils;
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -36,6 +40,7 @@ public class OrderRequestService {
     private final PredictionResultRepository predictionResultRepository;
     private final MenuIngredientRepository menuIngredientRepository;
     private final InventoryRepository inventoryRepository;
+    private final ObjectMapper objectMapper;
 
     // 발주 요청 생성
     @Transactional
@@ -55,17 +60,20 @@ public class OrderRequestService {
     }
 
     // 단건 조회
+    @Transactional(readOnly = true)
     public OrderRequest getById(Long id) {
         return orderRequestRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("발주 요청을 찾을 수 없습니다."));
     }
 
     // 가맹점 발주 내역 조회
+    @Transactional(readOnly = true)
     public List<OrderRequest> getByStore(Long storeId) {
         return orderRequestRepository.findByStoreId(storeId);
     }
 
     // 전체 발주 조회 (본사용)
+    @Transactional(readOnly = true)
     public List<OrderRequest> getAll() {
         return orderRequestRepository.findAll();
     }
@@ -101,7 +109,7 @@ public class OrderRequestService {
         return "발주 취소 완료";
     }
 
-    // 발주 완료 시 재고 자동 반영
+    // 발주 완료 시 재고 자동 반영 (유통기한도 전파)
     private void applyInventory(OrderRequest order) {
         Long storeId = order.getStore().getId();
         Long ingId = order.getIngredient().getId();
@@ -113,8 +121,12 @@ public class OrderRequestService {
         inv.setStore(order.getStore());
         inv.setIngredient(order.getIngredient());
         inv.setCurrentQty(BigDecimal.valueOf(round1(current + qty)));
-        inv.setMinThreshold(inv.getMinThreshold() != null ? inv.getMinThreshold() : BigDecimal.ZERO);
         inv.setUnit(order.getIngredient().getUnit());
+        if (order.getExpiryDate() != null) {
+            if (inv.getExpiryDate() == null || order.getExpiryDate().isBefore(inv.getExpiryDate())) {
+                inv.setExpiryDate(order.getExpiryDate());
+            }
+        }
         inventoryRepository.save(inv);
     }
 
@@ -191,19 +203,75 @@ public class OrderRequestService {
 
     // ── 3단계 검수 흐름 ─────────────────────────────────────────────────────────
 
-    // 1단계: 본사 발송 검수 완료 (APPROVED → HQ_SENT) + 배달기사 그룹 토큰 생성
+    // 1단계: 본사 발송 검수 완료 (APPROVED → HQ_SENT) + QR 토큰 생성
     @Transactional
-    public OrderRequest hqSend(Long id) {
+    public Map<String, Object> hqSend(Long id, LocalDate expiryDate) {
         OrderRequest order = getById(id);
         if (!"APPROVED".equals(order.getStatus())) {
             throw new RuntimeException("승인된 발주만 발송 처리할 수 있습니다.");
         }
         order.setStatus("HQ_SENT");
         order.setHqSentAt(LocalDateTime.now());
+        order.setExpiryDate(expiryDate);
+        order.setQrToken(UUID.randomUUID().toString().replace("-", ""));
         if (order.getDeliveryGroupToken() == null) {
             order.setDeliveryGroupToken(UUID.randomUUID().toString().replace("-", ""));
         }
-        return orderRequestRepository.save(order);
+        orderRequestRepository.save(order);
+
+        String qrJson = String.format(
+            "{\"orderId\":%d,\"token\":\"%s\",\"expiryDate\":\"%s\"}",
+            order.getId(), order.getQrToken(),
+            expiryDate != null ? expiryDate.toString() : ""
+        );
+        String qrData = Base64.getEncoder().encodeToString(qrJson.getBytes(StandardCharsets.UTF_8));
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("order", order);
+        result.put("qrData", qrData);
+        return result;
+    }
+
+    // QR 스캔으로 검수 처리 (배달기사: HQ_SENT→DRIVER_RECEIVED, 점주: DRIVER_RECEIVED→DONE)
+    @Transactional
+    public Map<String, Object> processQrScan(String qrData) {
+        try {
+            String json = new String(Base64.getDecoder().decode(qrData), StandardCharsets.UTF_8);
+            @SuppressWarnings("unchecked")
+            Map<String, Object> qrMap = objectMapper.readValue(json, Map.class);
+            String token = (String) qrMap.get("token");
+
+            OrderRequest order = orderRequestRepository.findByQrToken(token)
+                    .orElseThrow(() -> new RuntimeException("유효하지 않은 QR 코드입니다."));
+
+            String previousStatus = order.getStatus();
+            if ("HQ_SENT".equals(order.getStatus())) {
+                order.setStatus("DRIVER_RECEIVED");
+                order.setDriverReceivedAt(LocalDateTime.now());
+                orderRequestRepository.save(order);
+            } else if ("DRIVER_RECEIVED".equals(order.getStatus())) {
+                order.setStatus("DONE");
+                order.setOwnerReceivedAt(LocalDateTime.now());
+                orderRequestRepository.save(order);
+                applyInventory(order);
+            } else {
+                throw new RuntimeException("현재 상태에서 QR 스캔을 처리할 수 없습니다. 현재 상태: " + order.getStatus());
+            }
+
+            Map<String, Object> result = new LinkedHashMap<>();
+            result.put("orderId", order.getId());
+            result.put("previousStatus", previousStatus);
+            result.put("newStatus", order.getStatus());
+            result.put("ingredientName", order.getIngredient().getName());
+            result.put("quantity", order.getOrderedQty());
+            result.put("unit", order.getIngredient().getUnit());
+            result.put("expiryDate", order.getExpiryDate());
+            return result;
+        } catch (RuntimeException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new RuntimeException("QR 코드를 읽을 수 없습니다.", e);
+        }
     }
 
     // 2단계: 배달기사 수령 확인 (HQ_SENT → DRIVER_RECEIVED)
@@ -330,7 +398,6 @@ public class OrderRequestService {
             inv.setStore(store);
             inv.setIngredient(ingredient);
             inv.setCurrentQty(BigDecimal.valueOf(round1(currentQty + qty)));
-            inv.setMinThreshold(inv.getMinThreshold() != null ? inv.getMinThreshold() : BigDecimal.ZERO);
             inv.setUnit(ingredient.getUnit());
             result.add(inventoryRepository.save(inv));
         }
@@ -338,12 +405,10 @@ public class OrderRequestService {
     }
 
     private double convertToBaseUnit(double qty, String recipeUnit, String baseUnit) {
-        if ("g".equals(recipeUnit) && "kg".equals(baseUnit)) return qty / 1000.0;
-        if ("ml".equals(recipeUnit) && "L".equals(baseUnit)) return qty / 1000.0;
-        return qty;
+        return UnitUtils.convertToBaseUnit(qty, recipeUnit, baseUnit);
     }
 
     private double round1(double v) {
-        return Math.round(v * 10.0) / 10.0;
+        return UnitUtils.round1(v);
     }
 }

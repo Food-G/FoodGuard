@@ -5,6 +5,7 @@ import jakarta.persistence.*;import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -24,9 +25,6 @@ public class OrderRequest {
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "ingredient_id", nullable = false)
     private Ingredient ingredient;
-
-    @Column(name = "prediction_id")
-    private Long predictionId;
 
     @Column(nullable = false)
     private String status;
@@ -57,6 +55,12 @@ public class OrderRequest {
 
     @Column(name = "owner_received_at")
     private LocalDateTime ownerReceivedAt;
+
+    @Column(name = "expiry_date")
+    private LocalDate expiryDate;
+
+    @Column(name = "qr_token", length = 64)
+    private String qrToken;
 
     @Column(name = "updated_at", insertable = false, updatable = false)
     private LocalDateTime updatedAt;

@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   Typography, Paper, Grid, Stack, useTheme,
-  Button, CircularProgress, Alert, Chip, Box,
+  Button, CircularProgress, Alert, Chip,
   Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, LinearProgress,
 } from '@mui/material';
@@ -165,13 +165,7 @@ const Predictions = ({ user }: any) => {
 
   return (
     <Stack gap={4}>
-      <Stack direction="row" justifyContent="space-between" alignItems="flex-end">
-        <Box>
-          <Typography variant="h2" color="primary.main" fontWeight={800}>FoodGuard</Typography>
-          <Typography variant="h5" color="text.secondary" fontWeight={600} sx={{ mt: -1 }}>
-            AI 수요 예측 및 탄소 절감 리포트
-          </Typography>
-        </Box>
+      <Stack direction="row" justifyContent="flex-end">
         <Button
           variant="contained"
           size="large"

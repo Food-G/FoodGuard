@@ -23,7 +23,6 @@ public class SalesDataController {
                 Long.parseLong(body.get("storeId").toString()),
                 Long.parseLong(body.get("menuId").toString()),
                 Integer.parseInt(body.get("quantity").toString()),
-                Integer.parseInt(body.get("totalPrice").toString()),
                 LocalDate.parse(body.get("saleDate").toString())
         ));
     }

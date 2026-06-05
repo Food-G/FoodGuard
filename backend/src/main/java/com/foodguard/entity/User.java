@@ -28,9 +28,6 @@ public class User {
     @Column(nullable = false, length = 20)
     private String role; // OWNER or HQ_ADMIN
 
-    @Column(name = "store_id")
-    private Long storeId;
-
     @Column(name = "created_at", insertable = false, updatable = false)
     private LocalDateTime createdAt;
 

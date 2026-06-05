@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
@@ -36,10 +37,21 @@ public class OrderRequestController {
         return ResponseEntity.ok(orderRequestService.getByStore(storeId));
     }
 
-    // 1단계: 본사 발송 검수 완료
+    // 1단계: 본사 발송 검수 완료 (body: {expiryDate: "yyyy-MM-dd"})
     @PostMapping("/{id}/hq-send")
-    public ResponseEntity<OrderRequest> hqSend(@PathVariable Long id) {
-        return ResponseEntity.ok(orderRequestService.hqSend(id));
+    public ResponseEntity<Map<String, Object>> hqSend(@PathVariable Long id,
+                                                       @RequestBody(required = false) Map<String, Object> body) {
+        String expiryDateStr = body != null ? (String) body.get("expiryDate") : null;
+        LocalDate expiryDate = (expiryDateStr != null && !expiryDateStr.isBlank())
+                ? LocalDate.parse(expiryDateStr) : null;
+        return ResponseEntity.ok(orderRequestService.hqSend(id, expiryDate));
+    }
+
+    // QR 스캔 검수 처리 (배달기사 / 점주 공용)
+    @PostMapping("/scan")
+    public ResponseEntity<Map<String, Object>> scan(@RequestBody Map<String, Object> body) {
+        String qrData = (String) body.get("qrData");
+        return ResponseEntity.ok(orderRequestService.processQrScan(qrData));
     }
 
     // 2단계: 배달기사 수령 확인
@@ -73,11 +85,7 @@ public class OrderRequestController {
     }
 
     @PostMapping("/auto/{storeId}")
-    public ResponseEntity<?> autoOrder(@PathVariable Long storeId) {
-        try {
-            return ResponseEntity.ok(orderRequestService.autoOrder(storeId));
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
+    public ResponseEntity<List<Long>> autoOrder(@PathVariable Long storeId) {
+        return ResponseEntity.ok(orderRequestService.autoOrder(storeId));
     }
 }

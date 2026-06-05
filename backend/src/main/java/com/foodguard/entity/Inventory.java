@@ -5,6 +5,7 @@ import jakarta.persistence.*;import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -33,15 +34,15 @@ public class Inventory {
     @Transient
     private Double quantity;
 
-    @Column(name = "min_threshold", nullable = false, precision = 10, scale = 2)
-    private BigDecimal minThreshold;
-
     @Column(nullable = false, length = 20)
     private String unit;
 
+    @Column(name = "expiry_date")
+    private LocalDate expiryDate;
+
     @Column(name = "updated_at", insertable = false, updatable = false)
     private LocalDateTime updatedAt;
-    
+
     public void setQuantity(Double quantity) {
         this.quantity = quantity;
         this.currentQty = BigDecimal.valueOf(quantity);

@@ -1,4 +1,4 @@
-import { Typography, Paper, Grid, Stack, useTheme, Box } from '@mui/material';
+import { Typography, Paper, Grid, Stack, useTheme } from '@mui/material';
 import ReactEChart from '../../components/base/ReactEChart';
 import * as echarts from 'echarts';
 
@@ -55,11 +55,6 @@ const Stats = () => {
 
   return (
     <Stack gap={4} sx={{ bgcolor: 'background.default' }}>
-      <Box>
-        <Typography variant="h2" color="primary.main" fontWeight={800}>FoodGuard</Typography>
-        <Typography variant="h5" color="text.secondary" fontWeight={600}>전체 네트워크 폐기율 및 환경 통계</Typography>
-      </Box>
-      
       <Grid container spacing={3.5}>
         <Grid item xs={12} lg={8}>
           <Paper sx={{ p: 4, height: 450, border: `1px solid ${theme.palette.divider}`, borderRadius: 5, bgcolor: 'background.paper' }}>

@@ -21,6 +21,7 @@ public class IngredientService {
     private final OrderRequestRepository orderRequestRepository;
 
     // 식자재 등록
+    @Transactional
     public Ingredient create(String name, String category, String unit) {
         Ingredient ingredient = new Ingredient();
         ingredient.setName(name);
@@ -35,6 +36,7 @@ public class IngredientService {
     }
 
     // 식자재 수정
+    @Transactional
     public Ingredient update(Long id, String name, String category, String unit) {
         Ingredient ingredient = ingredientRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("식자재를 찾을 수 없습니다."));

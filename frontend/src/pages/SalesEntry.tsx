@@ -87,11 +87,6 @@ const SalesEntry = ({ user }: any) => {
 
   return (
     <Stack gap={4} sx={{ bgcolor: 'background.default' }}>
-      <Box>
-        <Typography variant="h2" color="primary.main" fontWeight={800}>FoodGuard</Typography>
-        <Typography variant="h5" color="text.secondary" fontWeight={600}>판매 실적 및 자원 순환 기록</Typography>
-      </Box>
-      
       <Grid container spacing={3.5}>
         <Grid item xs={12} md={4}>
           <Paper sx={{ p: 4, bgcolor: 'background.paper', border: `1px solid ${theme.palette.divider}`, borderRadius: 5 }}>

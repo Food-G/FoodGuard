@@ -6,11 +6,13 @@ import {
 } from '@mui/material';
 import IconifyIcon from '../components/base/IconifyIcon';
 import { api } from '../services/api';
+import { useConfirm } from '../hooks/useConfirm';
 
 const UNIT_OPTIONS = ['kg', 'L', '개'];
 
 const Ingredients = () => {
   const theme = useTheme();
+  const confirm = useConfirm();
 
   const [allIngredients, setAllIngredients] = useState<any[]>([]);
   const [error, setError] = useState('');
@@ -75,7 +77,7 @@ const Ingredients = () => {
   };
 
   const handleDeleteIngredient = async (id: number, name: string) => {
-    if (!window.confirm(`"${name}" 식자재를 삭제하시겠습니까?`)) return;
+    if (!await confirm({ message: `"${name}" 식자재를 삭제하시겠습니까?`, confirmLabel: '삭제', severity: 'error' })) return;
     try {
       await api.delete(`/ingredients/${id}`);
       setSuccess('식자재가 삭제되었습니다.');
@@ -87,11 +89,6 @@ const Ingredients = () => {
 
   return (
     <Stack gap={4} sx={{ bgcolor: 'background.default' }}>
-      <Box>
-        <Typography variant="h2" color="primary.main" fontWeight={800}>FoodGuard</Typography>
-        <Typography variant="h5" color="text.secondary" fontWeight={600}>식자재 관리</Typography>
-      </Box>
-
       {error && <Alert severity="error" onClose={() => setError('')}>{error}</Alert>}
       {success && <Alert severity="success" onClose={() => setSuccess('')}>{success}</Alert>}
 

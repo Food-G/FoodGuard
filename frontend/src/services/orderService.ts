@@ -13,8 +13,11 @@ export const orderService = {
   approve: async (id: number) => {
     return api.put(`/orders/${id}/status`, { status: 'APPROVED' });
   },
-  hqSend: async (id: number) => {
-    return api.post(`/orders/${id}/hq-send`, {});
+  hqSend: async (id: number, expiryDate?: string) => {
+    return api.post(`/orders/${id}/hq-send`, { expiryDate: expiryDate ?? null });
+  },
+  scanQr: async (qrData: string) => {
+    return api.post('/orders/scan', { qrData });
   },
   driverReceive: async (id: number) => {
     return api.post(`/orders/${id}/driver-receive`, {});

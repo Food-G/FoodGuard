@@ -12,5 +12,6 @@ public interface OrderRequestRepository extends JpaRepository<OrderRequest, Long
     List<OrderRequest> findByStoreIdAndStatusIn(Long storeId, List<String> statuses);
     Optional<OrderRequest> findByDeliveryToken(String deliveryToken);
     List<OrderRequest> findByDeliveryGroupToken(String deliveryGroupToken);
+    Optional<OrderRequest> findByQrToken(String qrToken);
     void deleteByIngredientId(Long ingredientId);
 }

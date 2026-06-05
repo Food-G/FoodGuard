@@ -87,7 +87,7 @@ const AdminDashboard = () => {
   const quickMenus = [
     {
       title: '가맹점 관리',
-      desc: '가맹점 목록 · 지역별 현황 · 주간 매출',
+      desc: '가맹점 목록 · 지역별 현황 · 발주 승인',
       icon: 'mingcute:grid-fill',
       path: '/admin/stores',
       color: theme.palette.primary.main,
@@ -99,19 +99,15 @@ const AdminDashboard = () => {
       path: '/admin/stats',
       color: theme.palette.secondary.main,
     },
-    {
-      title: '발주 관리',
-      desc: '전체 발주 내역 · 승인 · 완료 처리',
-      icon: 'mingcute:list-check-fill',
-      path: '/admin/orders',
-      color: theme.palette.warning.main,
-    },
   ];
 
   return (
     <Stack gap={4} sx={{ bgcolor: 'background.default' }}>
       <Box>
-        <Typography variant="h2" color="primary.main" fontWeight={800}>FoodGuard</Typography>
+        <Typography variant="h2" color="primary.main" fontWeight={800}
+          onClick={() => navigate('/admin')} sx={{ cursor: 'pointer', width: 'fit-content' }}>
+          FoodGuard
+        </Typography>
         <Typography variant="h5" color="text.secondary" fontWeight={600}>본사 통합 관리 센터</Typography>
       </Box>
 
@@ -224,7 +220,7 @@ const AdminDashboard = () => {
                   {storeList.map(({ store, count }, idx) => (
                     <Box
                       key={store.id}
-                      onClick={() => navigate(`/admin/orders?storeId=${store.id}`)}
+                      onClick={() => navigate(`/admin/stores`)}
                       sx={{
                         px: 1.5, py: 1.5,
                         display: 'flex', alignItems: 'center', justifyContent: 'space-between',

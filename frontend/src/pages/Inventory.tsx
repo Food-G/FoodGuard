@@ -12,8 +12,11 @@ import { menuService } from '../services/menuService';
 import { menuIngredientService, MenuIngredient } from '../services/menuIngredientService';
 import IconifyIcon from '../components/base/IconifyIcon';
 import { api } from '../services/api';
+import { useConfirm } from '../hooks/useConfirm';
+
 const Inventory = ({ user }: any) => {
   const theme = useTheme();
+  const confirm = useConfirm();
 
   // 재고 현황
   const [rows, setRows] = useState<any[]>([]);
@@ -109,7 +112,7 @@ const Inventory = ({ user }: any) => {
   };
 
   const handleDelete = async (id: number) => {
-    if (!window.confirm('이 식자재 연결을 삭제하시겠습니까?')) return;
+    if (!await confirm('이 식자재 연결을 삭제하시겠습니까?')) return;
     try {
       await menuIngredientService.delete(id);
       setMenuIngredients((prev) => prev.filter((mi) => mi.id !== id));
@@ -130,7 +133,7 @@ const Inventory = ({ user }: any) => {
 
   const handleClearInventory = async () => {
     if (!storeId) return;
-    if (!window.confirm('전체 재고를 모두 삭제하시겠습니까?')) return;
+    if (!await confirm({ message: '전체 재고를 모두 삭제하시겠습니까?', confirmLabel: '삭제', severity: 'error' })) return;
     try {
       await inventoryService.clearByStore(storeId);
       setSuccess('전체 재고가 삭제되었습니다.');
@@ -159,13 +162,6 @@ const Inventory = ({ user }: any) => {
   ];
   return (
     <Stack gap={4} sx={{ bgcolor: 'background.default' }}>
-      <Stack direction="row" justifyContent="space-between" alignItems="center">
-        <Box>
-          <Typography variant="h2" color="primary.main" fontWeight={800}>FoodGuard</Typography>
-          <Typography variant="h5" color="text.secondary" fontWeight={600}>실시간 자원 및 재고 현황</Typography>
-        </Box>
-      </Stack>
-
       {error && <Alert severity="error" onClose={() => setError('')}>{error}</Alert>}
       {success && <Alert severity="success" onClose={() => setSuccess('')}>{success}</Alert>}
 
