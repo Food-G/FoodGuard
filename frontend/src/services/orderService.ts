@@ -19,6 +19,15 @@ export const orderService = {
   scanQr: async (qrData: string) => {
     return api.post('/orders/scan', { qrData });
   },
+  scanQrByToken: async (token: string) => {
+    return api.get(`/orders/scan?token=${encodeURIComponent(token)}`);
+  },
+  scanQrByDriver: async (token: string) => {
+    return api.get(`/orders/driver-scan?token=${encodeURIComponent(token)}`);
+  },
+  scanQrByOwner: async (token: string) => {
+    return api.get(`/orders/owner-scan?token=${encodeURIComponent(token)}`);
+  },
   driverReceive: async (id: number) => {
     return api.post(`/orders/${id}/driver-receive`, {});
   },

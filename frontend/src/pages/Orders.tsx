@@ -11,11 +11,11 @@ import { useConfirm } from '../hooks/useConfirm';
 import AlertMessages from '../components/AlertMessages';
 
 const STATUS_LABEL: Record<string, string> = {
-  REQUESTED: '대기중',
+  REQUESTED: '승인 대기',
   APPROVED: '승인됨',
-  HQ_SENT: '발송완료',
-  DRIVER_RECEIVED: '배달기사 수령',
-  DONE: '완료',
+  HQ_SENT: '발송중',
+  DRIVER_RECEIVED: '배달기사 검수완료',
+  DONE: '입고완료',
   CANCELLED: '취소됨',
   REJECTED: '거절됨',
 };
@@ -51,6 +51,7 @@ const Orders = ({ user }: any) => {
         unit: item.ingredient?.unit ?? '',
         status: item.status,
         orderedAt: item.orderedAt ? new Date(item.orderedAt).toLocaleString() : '-',
+        qrToken: item.qrToken ?? null,
       })));
     } catch {
       setError('발주 내역을 불러오지 못했습니다.');
@@ -63,6 +64,26 @@ const Orders = ({ user }: any) => {
     const timer = setInterval(() => loadOrders(storeId), 5000);
     return () => clearInterval(timer);
   }, [storeId, storeLoading]);
+  const handleOwnerQrScan = async (qrData: string) => {
+    setScanning(false);
+    try {
+      const tokenMatch = qrData.match(/[?&]token=([^&]+)/);
+      if (!tokenMatch) { setError('QR 코드 형식이 올바르지 않습니다.'); return; }
+      const result = await orderService.scanQrByOwner(decodeURIComponent(tokenMatch[1]));
+      setSuccess(`${result.ingredientName} 검수 완료. 재고에 반영되었습니다.`);
+      if (storeId) await loadOrders(storeId);
+    } catch {
+      setError('QR 스캔 처리에 실패했습니다. 배달기사 수령 확인 후 검수 가능합니다.');
+    }
+  };
+
+  const driversReceivedQrCodes = rows
+    .filter((r: any) => r.status === 'DRIVER_RECEIVED' && r.qrToken)
+    .map((r: any) => ({
+      data: `${window.location.origin}/driver/scan?token=${r.qrToken}`,
+      label: `${r.name} ${r.quantity}${r.unit}`,
+    }));
+
   const handleCancel = async (id: number) => {
     if (!await confirm('발주를 취소하시겠습니까?')) return;
     try {
@@ -71,17 +92,6 @@ const Orders = ({ user }: any) => {
       if (storeId) await loadOrders(storeId);
     } catch {
       setError('취소에 실패했습니다.');
-    }
-  };
-
-  const handleQrScan = async (qrData: string) => {
-    setScanning(false);
-    try {
-      const result = await orderService.scanQr(qrData);
-      setSuccess(`${result.ingredientName} 검수 완료. 재고에 반영되었습니다.`);
-      if (storeId) await loadOrders(storeId);
-    } catch {
-      setError('QR 스캔 처리에 실패했습니다.');
     }
   };
 
@@ -118,7 +128,7 @@ const Orders = ({ user }: any) => {
       ),
     },
     {
-      field: 'status', headerName: '상태', width: 110,
+      field: 'status', headerName: '상태', width: 130,
       renderCell: (params) => (
         <Chip
           label={STATUS_LABEL[params.value] ?? params.value}
@@ -174,8 +184,9 @@ const Orders = ({ user }: any) => {
       {scanning && (
         <QrScanner
           title="점주 검수 QR 스캔"
-          onScan={handleQrScan}
+          onScan={handleOwnerQrScan}
           onClose={() => setScanning(false)}
+          displayQrCodes={driversReceivedQrCodes}
         />
       )}
 

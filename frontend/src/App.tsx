@@ -22,6 +22,7 @@ import DeliveryDriver from './pages/DeliveryDriver';
 import DeliveryDriverGroup from './pages/DeliveryDriverGroup';
 import WastePrediction from './pages/WastePrediction';
 import DonationHistory from './pages/DonationHistory';
+import ScanComplete from './pages/ScanComplete';
 import { useAuth } from './hooks/useAuth';
 import { ConfirmProvider } from './hooks/useConfirm';
 
@@ -49,6 +50,7 @@ function App() {
             <Route path="/login" element={<PublicRoute><Login onLogin={login} /></PublicRoute>} />
             <Route path="/signup" element={<PublicRoute><Signup /></PublicRoute>} />
             <Route path="/driver/group/:groupToken" element={<DeliveryDriverGroup />} />
+            <Route path="/driver/scan" element={<ScanComplete />} />
             <Route path="/driver/:token" element={<DeliveryDriver />} />
 
             <Route path="/" element={

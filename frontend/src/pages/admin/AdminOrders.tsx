@@ -161,8 +161,9 @@ const AdminOrders = () => {
       setSuccess('발송 검수가 완료되었습니다.');
       setHqSendTarget(null);
       setExpiryDate('');
-      if (result?.qrData) {
-        setQrData({ data: result.qrData, name: row?.name ?? '식자재' });
+      if (result?.qrToken) {
+        const qrUrl = `${window.location.origin}/driver/scan?token=${result.qrToken}`;
+        setQrData({ data: qrUrl, name: row?.name ?? '식자재' });
       }
     } catch {
       setError('발송 검수 처리에 실패했습니다.');
