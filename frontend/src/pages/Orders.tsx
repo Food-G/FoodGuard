@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import {
   Typography, Box, Paper, Button, CircularProgress, Chip, Stack, useTheme,
   Dialog, DialogTitle, DialogContent, DialogActions,
-  TextField, MenuItem, Select, FormControl, InputLabel,
+  TextField, MenuItem, Select, FormControl, InputLabel, IconButton, Tooltip,
 } from '@mui/material';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { orderService } from '../services/orderService';
@@ -164,27 +164,29 @@ const Orders = ({ user }: any) => {
       ),
     },
     {
-      field: 'actions', headerName: '관리', width: 160,
-      renderCell: (params) => {
-        if (params.row.status === 'REQUESTED') {
-          return (
+      field: 'actions', headerName: '관리', width: 180,
+      renderCell: (params) => (
+        <Stack direction="row" alignItems="center" gap={0.5}>
+          {params.row.status === 'REQUESTED' && (
             <Button color="error" size="small" variant="outlined"
               onClick={() => handleCancel(params.id as number)} sx={{ borderRadius: 2 }}>
               취소
             </Button>
-          );
-        }
-        if (params.row.status === 'DRIVER_RECEIVED') {
-          return (
+          )}
+          {params.row.status === 'DRIVER_RECEIVED' && (
             <Button color="success" size="small" variant="contained"
               onClick={() => setScanning(true)} sx={{ borderRadius: 2 }}
               startIcon={<span>📷</span>}>
               QR 스캔
             </Button>
-          );
-        }
-        return null;
-      },
+          )}
+          <Tooltip title="삭제">
+            <IconButton size="small" color="error" onClick={() => handleCancel(params.id as number)}>
+              <IconifyIcon icon="mingcute:delete-2-line" width={18} />
+            </IconButton>
+          </Tooltip>
+        </Stack>
+      ),
     },
   ];
 
