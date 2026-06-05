@@ -11,6 +11,7 @@ import MenuSettingsDialog from '../components/MenuSettingsDialog';
 import { menuService } from '../services/menuService';
 import { salesService } from '../services/salesService';
 import { storeService } from '../services/storeService';
+import { orderService } from '../services/orderService';
 
 interface OrderItem {
   menuId: number;
@@ -308,7 +309,12 @@ const POS = ({ user }: any) => {
         change: received != null ? received - total : undefined,
       });
       setReceiptOpen(true);
-      if (storeId) loadSummary(storeId);
+      if (storeId) {
+        loadSummary(storeId);
+        // 결제 → 매출에 따른 식자재 소모는 서버에서 자동 차감됨.
+        // 부족분 AI 발주는 백그라운드로 트리거 (결제 흐름은 대기하지 않음)
+        orderService.reorderAfterSale(storeId).catch(() => {});
+      }
     } catch {
       flashErr('결제 처리 중 오류가 발생했습니다.');
     } finally {
@@ -478,7 +484,7 @@ const POS = ({ user }: any) => {
 
       {/* ══════════════ 주문 / 결제 뷰 ══════════════ */}
       {view === 'order' && selectedTable && (
-        <Box sx={{ flex: 1, minHeight: 0, display: 'flex', gap: 1.5 }}>
+        <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 1.5 }}>
           {/* 좌측: 메뉴 */}
           <Paper elevation={0} sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', borderRadius: 3, border: `1px solid ${theme.palette.divider}`, overflow: 'hidden' }}>
             {/* 카테고리 탭 */}
@@ -524,7 +530,7 @@ const POS = ({ user }: any) => {
           </Paper>
 
           {/* 우측: 주문 내역 + 기능 버튼 */}
-          <Paper elevation={0} sx={{ width: 380, flexShrink: 0, display: 'flex', flexDirection: 'column', borderRadius: 3, border: `1px solid ${theme.palette.divider}`, overflow: 'hidden' }}>
+          <Paper elevation={0} sx={{ width: { xs: '100%', md: 380 }, flexShrink: 0, maxHeight: { xs: '60vh', md: 'none' }, display: 'flex', flexDirection: 'column', borderRadius: 3, border: `1px solid ${theme.palette.divider}`, overflow: 'hidden' }}>
             {/* 헤더 */}
             <Box sx={{ p: 1.5, bgcolor: 'primary.dark', color: 'white' }}>
               <Stack direction="row" justifyContent="space-between" alignItems="center">

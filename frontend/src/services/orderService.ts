@@ -40,4 +40,8 @@ export const orderService = {
   autoOrder: async (storeId: number) => {
     return api.post(`/orders/auto/${storeId}`, {});
   },
+  // 결제 완료 후 호출 — 부족 식자재를 AI 예측 기반으로 발주에 자동 추가
+  reorderAfterSale: async (storeId: number) => {
+    return api.post(`/orders/reorder-after-sale/${storeId}`, {});
+  },
 };

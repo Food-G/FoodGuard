@@ -22,14 +22,15 @@ const MainLayout = ({ children, onLogout }: MainLayoutProps): ReactElement => {
           sx={{
             flexGrow: 1,
             width: 1,
-            pt: 4,
-            pr: { xs: 3, sm: 7 },
-            pb: 8,
-            pl: { xs: 3, sm: 7 },
+            minWidth: 0,
+            pt: { xs: 2, sm: 4 },
+            pr: { xs: 2, sm: 7 },
+            pb: { xs: 5, sm: 8 },
+            pl: { xs: 2, sm: 7 },
             overflow: 'auto',
           }}
         >
-          <Toolbar sx={{ height: 128 }} />
+          <Toolbar sx={{ height: { xs: 74, sm: 128 } }} />
           {children}
         </Box>
       </Box>

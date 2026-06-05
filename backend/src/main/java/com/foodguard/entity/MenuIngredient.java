@@ -34,6 +34,10 @@ public class MenuIngredient {
     @Column(nullable = false, length = 20)
     private String unit;
 
+    // 레시피 오차범위(%) — 조리 손실/편차 반영용. 소모 차감 시 (1 + tolerance/100) 적용
+    @Column(nullable = false, precision = 5, scale = 2)
+    private BigDecimal tolerance = BigDecimal.ZERO;
+
     @Column(name = "created_at", insertable = false, updatable = false)
     private LocalDateTime createdAt;
 }

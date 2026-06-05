@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import {
   Typography, Box, Paper, Button, CircularProgress, Chip, Stack, useTheme,
 } from '@mui/material';
-import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { orderService } from '../services/orderService';
 import IconifyIcon from '../components/base/IconifyIcon';
 import QrScanner from '../components/QrScanner';
@@ -106,52 +105,6 @@ const Orders = ({ user }: any) => {
     }
   };
 
-  const columns: GridColDef[] = [
-    { field: 'orderedAt', headerName: '발주 일시', width: 180 },
-    { field: 'name', headerName: '식자재명', flex: 1, minWidth: 160 },
-    {
-      field: 'quantity', headerName: '발주 수량', width: 150, align: 'right', headerAlign: 'right',
-      renderCell: (params) => (
-        <Typography fontWeight={600} fontSize={14}>
-          {params.value} <span style={{ color: '#888', fontWeight: 400 }}>{params.row.unit}</span>
-        </Typography>
-      ),
-    },
-    {
-      field: 'status', headerName: '상태', width: 110,
-      renderCell: (params) => (
-        <Chip
-          label={STATUS_LABEL[params.value] ?? params.value}
-          color={STATUS_COLOR[params.value] ?? 'default'}
-          size="small" variant="filled" sx={{ fontWeight: 700 }}
-        />
-      ),
-    },
-    {
-      field: 'actions', headerName: '관리', width: 160,
-      renderCell: (params) => {
-        if (params.row.status === 'REQUESTED') {
-          return (
-            <Button color="error" size="small" variant="outlined"
-              onClick={() => handleCancel(params.id as number)} sx={{ borderRadius: 2 }}>
-              취소
-            </Button>
-          );
-        }
-        if (params.row.status === 'DRIVER_RECEIVED') {
-          return (
-            <Button color="success" size="small" variant="contained"
-              onClick={() => setScanning(true)} sx={{ borderRadius: 2 }}
-              startIcon={<span>📷</span>}>
-              QR 스캔
-            </Button>
-          );
-        }
-        return null;
-      },
-    },
-  ];
-
   return (
     <Stack gap={3} sx={{ bgcolor: 'background.default' }}>
       <Stack direction="row" justifyContent="flex-end">
@@ -180,27 +133,89 @@ const Orders = ({ user }: any) => {
       )}
 
       <Paper sx={{ p: 3, border: `1px solid ${theme.palette.divider}`, borderRadius: 3 }}>
-        <Typography variant="h6" fontWeight={700} mb={2}>발주 내역</Typography>
-        <Box sx={{ height: 520 }}>
-          {loading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-              <CircularProgress color="primary" />
-            </Box>
-          ) : (
-            <DataGrid
-              rows={rows}
-              columns={columns}
-              disableRowSelectionOnClick
-              initialState={{ pagination: { paginationModel: { pageSize: 10 } } }}
-              pageSizeOptions={[10, 20]}
-              sx={{
-                border: 'none',
-                '& .MuiDataGrid-columnHeaders': { bgcolor: 'secondary.light', color: 'secondary.dark', fontWeight: 700 },
-              }}
-            />
-          )}
-        </Box>
-      </Paper>    </Stack>
+        <Stack direction="row" alignItems="center" justifyContent="space-between" mb={2}>
+          <Typography variant="h6" fontWeight={700}>발주 내역</Typography>
+          <Chip label={`총 ${rows.length}건`} size="small" color="primary" variant="outlined" />
+        </Stack>
+        {loading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200 }}>
+            <CircularProgress color="primary" />
+          </Box>
+        ) : rows.length === 0 ? (
+          <Stack alignItems="center" gap={1.5} py={6}>
+            <IconifyIcon icon="mingcute:inbox-line" width={44} color={theme.palette.text.disabled} />
+            <Typography color="text.secondary">진행 중인 발주가 없습니다.</Typography>
+          </Stack>
+        ) : (
+          // 슬라이드형 세로 스크롤 영역 (스크롤바 숨김)
+          <Box
+            sx={{
+              maxHeight: 560,
+              overflowY: 'auto',
+              pr: 0.5,
+              scrollbarWidth: 'none',                       // Firefox
+              msOverflowStyle: 'none',                      // IE/Edge
+              '&::-webkit-scrollbar': { display: 'none' },  // Chrome/Safari
+            }}
+          >
+            <Stack gap={1.2}>
+              {rows.map((row) => (
+                <Stack
+                  key={row.id}
+                  direction="row"
+                  alignItems="center"
+                  gap={2}
+                  sx={{
+                    p: 2,
+                    borderRadius: 2.5,
+                    border: `1px solid ${theme.palette.divider}`,
+                    transition: 'box-shadow .15s, border-color .15s',
+                    '&:hover': { boxShadow: theme.shadows[2], borderColor: theme.palette.primary.light },
+                  }}
+                >
+                  <Box
+                    sx={{
+                      width: 44, height: 44, flexShrink: 0, borderRadius: 2,
+                      bgcolor: 'secondary.light', color: 'secondary.dark',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}
+                  >
+                    <IconifyIcon icon="mingcute:package-2-line" width={22} />
+                  </Box>
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Typography fontWeight={700} noWrap>{row.name}</Typography>
+                    <Typography variant="caption" color="text.secondary">{row.orderedAt}</Typography>
+                  </Box>
+                  <Typography fontWeight={700} fontSize={15} sx={{ whiteSpace: 'nowrap' }}>
+                    {row.quantity} <Box component="span" sx={{ color: 'text.disabled', fontWeight: 400 }}>{row.unit}</Box>
+                  </Typography>
+                  <Chip
+                    label={STATUS_LABEL[row.status] ?? row.status}
+                    color={STATUS_COLOR[row.status] ?? 'default'}
+                    size="small" variant="filled" sx={{ fontWeight: 700, minWidth: 72 }}
+                  />
+                  <Box sx={{ width: 96, textAlign: 'right' }}>
+                    {row.status === 'REQUESTED' && (
+                      <Button color="error" size="small" variant="outlined"
+                        onClick={() => handleCancel(row.id as number)} sx={{ borderRadius: 2 }}>
+                        취소
+                      </Button>
+                    )}
+                    {row.status === 'DRIVER_RECEIVED' && (
+                      <Button color="success" size="small" variant="contained"
+                        onClick={() => setScanning(true)} sx={{ borderRadius: 2 }}
+                        startIcon={<IconifyIcon icon="mingcute:scan-line" width={16} />}>
+                        QR
+                      </Button>
+                    )}
+                  </Box>
+                </Stack>
+              ))}
+            </Stack>
+          </Box>
+        )}
+      </Paper>
+    </Stack>
   );
 };
 

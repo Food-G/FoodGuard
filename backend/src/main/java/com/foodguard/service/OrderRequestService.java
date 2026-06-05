@@ -21,11 +21,13 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.UUID;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -37,6 +39,7 @@ public class OrderRequestService {
     private final PredictionResultRepository predictionResultRepository;
     private final MenuIngredientRepository menuIngredientRepository;
     private final InventoryRepository inventoryRepository;
+    private final PredictionService predictionService;
 
     // 발주 요청
     public OrderRequest create(Long storeId, Long ingredientId, Double quantity) {
@@ -185,7 +188,8 @@ public class OrderRequestService {
                 Long ingId = mi.getIngredient().getId();
                 String baseUnit = mi.getIngredient().getUnit(); // kg, L, 개
                 String recipeUnit = mi.getUnit();               // g, ml, 개
-                double rawQty = mi.getQtyPerUnit().doubleValue() * entry.getValue();
+                double tol = mi.getTolerance() != null ? mi.getTolerance().doubleValue() : 0.0;
+                double rawQty = mi.getQtyPerUnit().doubleValue() * entry.getValue() * (1.0 + tol / 100.0);
                 double qty = convertToBaseUnit(rawQty, recipeUnit, baseUnit);
                 required.merge(ingId, qty, Double::sum);
                 ingName.putIfAbsent(ingId, mi.getIngredient().getName());
@@ -241,6 +245,40 @@ public class OrderRequestService {
             orders.add(create(storeId, ingId, qty));
         }
         return orders;
+    }
+
+    // ── 매출 후 자동 발주 (부족분을 AI 예측 기반으로 발주에 추가) ───────────────
+    // 1) AI 예측 갱신 → 2) AI 수요 기반 자동 발주 → 3) 예측이 없어 누락된 임계치 미만 식자재는 par까지 보충
+    @Transactional
+    public List<OrderRequest> reorderAfterSale(Long storeId) {
+        // 1) AI 서비스로 수요 예측 갱신 (best-effort: 실패해도 진행)
+        try {
+            predictionService.triggerPrediction(storeId);
+        } catch (Exception ignored) {
+        }
+
+        // 2) AI 예측 기반 자동 발주
+        List<OrderRequest> created = new ArrayList<>(autoOrder(storeId));
+
+        // 3) 폴백: 예측이 없어 커버되지 않은 '임계치 미만' 식자재는 목표 보유량(par)까지 발주
+        Set<Long> covered = new HashSet<>();
+        for (OrderRequest o : orderRequestRepository.findByStoreIdAndStatusIn(storeId, List.of("REQUESTED", "APPROVED"))) {
+            covered.add(o.getIngredient().getId());
+        }
+
+        for (Inventory inv : inventoryRepository.findByStoreId(storeId)) {
+            double cur = inv.getCurrentQty().doubleValue();
+            double min = inv.getMinThreshold() != null ? inv.getMinThreshold().doubleValue() : 0.0;
+            if (cur >= min) continue;                                  // 충분
+            if (covered.contains(inv.getIngredient().getId())) continue; // 이미 발주됨
+            double par = Math.max(min * 2, 1.0);                       // 목표 보유량
+            double qty = round1(par - cur);                            // 부족분(음수 재고면 그만큼 더)
+            if (qty <= 0) continue;
+            orderRequestRepository.deleteByStoreIdAndIngredientIdAndStatus(storeId, inv.getIngredient().getId(), "CANCELLED");
+            created.add(create(storeId, inv.getIngredient().getId(), qty));
+            covered.add(inv.getIngredient().getId());
+        }
+        return created;
     }
 
     // 레시피 소단위 → 발주 기준 단위 변환 (g→kg, ml→L)

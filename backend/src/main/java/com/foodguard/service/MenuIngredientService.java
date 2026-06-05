@@ -19,7 +19,7 @@ public class MenuIngredientService {
     private final MenuRepository menuRepository;
     private final IngredientRepository ingredientRepository;
 
-    public MenuIngredient add(Long menuId, Long ingredientId, Double qtyPerUnit, String unit) {
+    public MenuIngredient add(Long menuId, Long ingredientId, Double qtyPerUnit, String unit, Double tolerance) {
         Menu menu = menuRepository.findById(menuId)
                 .orElseThrow(() -> new RuntimeException("메뉴를 찾을 수 없습니다."));
         Ingredient ingredient = ingredientRepository.findById(ingredientId)
@@ -30,6 +30,7 @@ public class MenuIngredientService {
         mi.setIngredient(ingredient);
         mi.setQtyPerUnit(BigDecimal.valueOf(qtyPerUnit));
         mi.setUnit(unit);
+        mi.setTolerance(BigDecimal.valueOf(tolerance == null ? 0.0 : tolerance));
         return menuIngredientRepository.save(mi);
     }
 

@@ -112,12 +112,30 @@ const Topbar = ({ onLogout }: TopbarProps): ReactElement => {
         justifyContent="space-between"
         sx={{
           bgcolor: 'background.default',
-          height: 116,
+          height: { xs: 66, sm: 116 },
+          minHeight: { xs: 66 },
+          px: { xs: 1, sm: 2 },
           '& *:focus': { outline: 'none' },
         }}
       >
-        {/* FoodGuard 로고 + 현재 페이지 부제목 */}
-        <Stack direction="row" gap={1.5} alignItems="center" ml={2.5} flex="1 1 auto">
+        {/* 뒤로가기(메인) + FoodGuard 로고 + 현재 페이지 부제목 */}
+        <Stack direction="row" gap={{ xs: 0.8, sm: 1.5 }} alignItems="center" ml={{ xs: 0.5, sm: 2.5 }} flex="1 1 auto" minWidth={0}>
+          {location.pathname !== '/' && (
+            <IconButton
+              onClick={() => navigate('/')}
+              title="메인으로"
+              sx={{
+                flexShrink: 0,
+                border: '1px solid',
+                borderColor: 'divider',
+                borderRadius: 2,
+                color: 'text.primary',
+                '&:hover': { bgcolor: 'action.hover' },
+              }}
+            >
+              <IconifyIcon icon="mingcute:arrow-left-line" width={22} />
+            </IconButton>
+          )}
           <Typography
             variant="h5" fontWeight={800} color="primary.main"
             onClick={() => navigate('/')}
@@ -126,17 +144,17 @@ const Topbar = ({ onLogout }: TopbarProps): ReactElement => {
             FoodGuard
           </Typography>
           {subtitle && (
-            <>
+            <Stack direction="row" gap={1} alignItems="center" sx={{ display: { xs: 'none', sm: 'flex' }, minWidth: 0 }}>
               <Typography color="text.disabled" sx={{ fontSize: 18, lineHeight: 1 }}>·</Typography>
               <Typography variant="body1" color="text.secondary" fontWeight={500} noWrap>
                 {subtitle}
               </Typography>
-            </>
+            </Stack>
           )}
         </Stack>
 
         {/* 우측 알림 + 유저 */}
-        <Stack direction="row" gap={3.75} alignItems="center" justifyContent="flex-end" mr={3.75} flex="1 1 20%">
+        <Stack direction="row" gap={{ xs: 1.5, sm: 3.75 }} alignItems="center" justifyContent="flex-end" mr={{ xs: 1, sm: 3.75 }} flexShrink={0}>
           <Badge
             color="error"
             badgeContent={notifications.length > 0 ? notifications.length : undefined}

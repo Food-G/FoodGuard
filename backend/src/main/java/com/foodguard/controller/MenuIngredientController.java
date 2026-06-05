@@ -17,11 +17,13 @@ public class MenuIngredientController {
 
     @PostMapping
     public ResponseEntity<MenuIngredient> add(@RequestBody Map<String, Object> body) {
+        Object tol = body.get("tolerance");
         return ResponseEntity.ok(menuIngredientService.add(
                 Long.valueOf(body.get("menuId").toString()),
                 Long.valueOf(body.get("ingredientId").toString()),
                 Double.valueOf(body.get("qtyPerUnit").toString()),
-                body.get("unit").toString()
+                body.get("unit").toString(),
+                tol == null ? 0.0 : Double.valueOf(tol.toString())
         ));
     }
 
