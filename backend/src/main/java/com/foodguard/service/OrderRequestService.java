@@ -102,13 +102,10 @@ public class OrderRequestService {
         return orderRequestRepository.save(order);
     }
 
-    // 발주 취소 (REQUESTED 상태만 가능)
+    // 발주 취소/삭제 (모든 상태 가능)
     @Transactional
     public String cancel(Long id) {
         OrderRequest order = getById(id);
-        if (!"REQUESTED".equals(order.getStatus())) {
-            throw new RuntimeException("승인/처리된 발주는 취소할 수 없습니다. 현재 상태: " + order.getStatus());
-        }
         order.setStatus("CANCELLED");
         orderRequestRepository.save(order);
         return "발주 취소 완료";
