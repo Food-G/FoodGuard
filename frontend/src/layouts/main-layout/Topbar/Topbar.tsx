@@ -187,7 +187,8 @@ const Topbar = ({ onLogout }: TopbarProps): ReactElement => {
             max={9}
             sx={{ '& .MuiBadge-badge': { top: 6, right: 6, fontSize: 10, minWidth: 18, height: 18 } }}
           >
-            <IconButton sx={{ padding: 1 }} onClick={handleBellClick}>              <IconifyIcon icon="ph:bell-bold" width={29} height={32} />
+            <IconButton sx={{ padding: 1 }} onClick={handleBellClick}>
+              <IconifyIcon icon="ph:bell-bold" width={29} height={32} color="#111111" />
             </IconButton>
           </Badge>
           <UserDropdown onLogout={onLogout} />
@@ -245,17 +246,13 @@ const Topbar = ({ onLogout }: TopbarProps): ReactElement => {
                   {idx > 0 && <Divider />}
                   <ListItem
                     alignItems="flex-start"
+                    onMouseEnter={() => handleMarkRead(noti.id)}
                     sx={{
                       px: 2.5, py: 1.75,
-                      cursor: 'pointer',
+                      cursor: 'default',
                       '&:hover': { bgcolor: 'action.hover' },
                       bgcolor: 'primary.50',
                     }}
-                    secondaryAction={
-                      <IconButton size="small" onClick={() => handleMarkRead(noti.id)} sx={{ opacity: 0.5, '&:hover': { opacity: 1 } }}>
-                        <IconifyIcon icon="mingcute:close-line" width={14} />
-                      </IconButton>
-                    }
                   >
                     <ListItemIcon sx={{ minWidth: 36, mt: 0.5 }}>
                       <Box sx={{

@@ -6,6 +6,7 @@ import {
 } from '@mui/material';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { orderService } from '../services/orderService';
+import { notificationService } from '../services/notificationService';
 import { api } from '../services/api';
 import IconifyIcon from '../components/base/IconifyIcon';
 import QrScanner from '../components/QrScanner';
@@ -68,6 +69,10 @@ const Orders = ({ user }: any) => {
     if (!storeId) { if (!storeLoading) setLoading(false); return; }
     loadOrders(storeId).finally(() => setLoading(false));
     const timer = setInterval(() => loadOrders(storeId), 5000);
+    // 페이지 진입 시 ORDER 알림 모두 읽음 처리
+    notificationService.getUnread(storeId).then((data: any[]) => {
+      (data ?? []).filter((n) => n.type === 'ORDER').forEach((n) => notificationService.markAsRead(n.id).catch(() => {}));
+    }).catch(() => {});
     return () => clearInterval(timer);
   }, [storeId, storeLoading]);
 
