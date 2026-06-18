@@ -5,10 +5,9 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="5cf40e29-3cc9-4695-8ab3-20a40cad9768" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/정태현홈화면.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.claude/settings.local.json" beforeDir="false" afterPath="$PROJECT_DIR$/.claude/settings.local.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/FoodGuard_포트폴리오.pptx" beforeDir="false" afterPath="$PROJECT_DIR$/FoodGuard_포트폴리오.pptx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/generate_unified_portfolio.py" beforeDir="false" afterPath="$PROJECT_DIR$/generate_unified_portfolio.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/FoodGuard_포트폴리오.pptx" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

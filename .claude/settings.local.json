@@ -79,7 +79,10 @@
       "Bash(find . -iname \"*캡스톤*스크린*\")",
       "Bash(find . -iname \"*정량*기여도*\")",
       "Bash(find . -iname \"*임시*\")",
-      "Bash(git restore *)"
+      "Bash(git restore *)",
+      "Bash(py generate_jihyun_portfolio.py)",
+      "WebFetch(domain:www.youtube.com)",
+      "WebSearch"
     ]
   }
 }
