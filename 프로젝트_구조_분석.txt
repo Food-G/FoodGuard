@@ -1,0 +1,288 @@
+ㄷ================================================================================
+  FoodGuard 프로젝트 구조 분석 (jihwan 브랜치)
+  작성일: 2026-06-05
+================================================================================
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[ 1. 전체 파일 연결도 ]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+■ FRONTEND (React + TypeScript + Vite)
+─────────────────────────────────────
+frontend/src/
+├── main.tsx                          ← 앱 진입점
+│   └── App.tsx                       ← 라우팅 설정
+│       ├── pages/
+│       │   ├── Predictions.tsx       ★ AI 예측 핵심 페이지
+│       │   ├── Dashboard.tsx
+│       │   ├── Inventory.tsx
+│       │   ├── SalesEntry.tsx
+│       │   ├── MenuManagement.tsx
+│       │   └── Orders.tsx
+│       ├── layouts/
+│       │   ├── main-layout/
+│       │   └── auth-layout/
+│       ├── services/
+│       │   ├── api.ts                ← HTTP 기본 클라이언트 (공통)
+│       │   ├── predictionService.ts  ← 예측 API 호출
+│       │   ├── storeService.ts
+│       │   ├── authService.ts
+│       │   ├── menuService.ts
+│       │   ├── inventoryService.ts
+│       │   ├── orderService.ts
+│       │   └── salesService.ts
+│       └── hooks/
+│           └── useAuth.ts            ← 인증 상태 관리
+
+
+■ BACKEND (Spring Boot 3.x + Java 17)
+──────────────────────────────────────
+backend/src/main/java/com/foodguard/
+├── FoodguardApplication.java         ← 진입점
+├── controller/
+│   ├── PredictionController.java     ★ /api/predictions/* 엔드포인트
+│   ├── SalesDataController.java
+│   ├── MenuController.java
+│   ├── OrderRequestController.java
+│   └── InventoryController.java
+├── service/
+│   ├── PredictionService.java        ← AI 서비스 호출 (RestTemplate)
+│   ├── SalesDataService.java
+│   ├── MenuService.java
+│   └── OrderRequestService.java
+├── repository/
+│   ├── PredictionResultRepository.java  ← JPA (DB 접근)
+│   ├── SalesDataRepository.java
+│   ├── MenuRepository.java
+│   └── StoreRepository.java
+├── entity/
+│   ├── PredictionResult.java
+│   ├── SalesData.java
+│   ├── Menu.java
+│   └── Store.java
+├── config/
+│   ├── SecurityConfig.java
+│   ├── CorsConfig.java
+│   ├── WebSocketConfig.java
+│   └── AppConfig.java
+└── filter/
+    └── JwtFilter.java
+
+
+■ AI SERVICE (FastAPI + Python 3.11)
+─────────────────────────────────────
+ai-service/
+├── main.py                           ← FastAPI 진입점
+├── config.py                         ← 환경 설정 (DB_URL, KMA_API_KEY)
+├── database.py                       ← SQLAlchemy 세션
+├── routers/
+│   ├── prediction.py                 ★ /api/predict/* 엔드포인트
+│   └── training.py                   ← /api/train/* 엔드포인트
+├── services/
+│   ├── prediction_service.py         ← 예측 비즈니스 로직 (핵심)
+│   ├── data_service.py               ← DB 읽기/쓰기 (순수 SQL)
+│   └── weather_service.py            ← 기상청 API 연동
+├── ml/
+│   ├── demand_predictor.py           ← RandomForest 모델 학습/예측
+│   └── feature_engineering.py        ← 피처 생성 로직
+└── schemas/
+    └── schemas.py                    ← Pydantic 모델
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[ 2. 함수 흐름도 - 예측 실행 버튼 클릭 시 ]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+┌─────────────────────────────────────────────────────────┐
+│  STEP 1. FRONTEND - 사용자 입력                          │
+└─────────────────────────────────────────────────────────┘
+
+[사용자] 예측 실행 버튼 클릭
+    ↓
+Predictions.tsx
+    └── handleTrigger()
+        ├── storeId 확인
+        ├── setTriggering(true)
+        └── predictionService.trigger(storeId)
+                ↓
+            services/predictionService.ts
+                └── api.post('/predictions/{storeId}/trigger')
+                            ↓  HTTP POST 요청
+
+
+┌─────────────────────────────────────────────────────────┐
+│  STEP 2. BACKEND - 요청 수신 및 AI 서비스 호출           │
+└─────────────────────────────────────────────────────────┘
+
+PredictionController.java
+    └── triggerPrediction()  [@PostMapping("/{storeId}/trigger")]
+        ↓
+PredictionService.java
+    └── triggerPrediction(storeId)
+        └── RestTemplate.postForObject(
+                "http://localhost:8000/api/predict/store/{storeId}"
+            )
+                    ↓  HTTP POST 요청
+
+
+┌─────────────────────────────────────────────────────────┐
+│  STEP 3. AI SERVICE - 예측 실행                          │
+└─────────────────────────────────────────────────────────┘
+
+routers/prediction.py
+    └── trigger_store_prediction()  [POST /api/predict/store/{store_id}]
+        ↓
+services/prediction_service.py
+    └── predict_and_save_store(db, store_id)
+        │
+        ├── [1] data_service.get_active_menus(db, store_id)
+        │       └── SELECT * FROM MENU WHERE store_id=? AND is_active=1
+        │
+        ├── [2] data_service.get_store_region(db, store_id)
+        │       └── SELECT region FROM STORE WHERE store_id=?
+        │
+        ├── [3] weather_service.fetch_forecast_weather(region, api_key, days=7)
+        │       ├── _fetch_short_term()   ← 기상청 단기예보 API
+        │       └── _fetch_mid_term()     ← 기상청 중기예보 API
+        │       반환: DataFrame[날짜, 최고기온, 최저기온, 강수량, ...]
+        │
+        └── [4] 메뉴별 반복 처리:
+                predict_and_save_menu(db, store_id, menu_id, ...)
+                    │
+                    ├── [4-1] data_service.get_sales_data(db, store_id, menu_id)
+                    │           └── SELECT sales_date, SUM(quantity)
+                    │               FROM SALES_DATA WHERE store_id=?, menu_id=?
+                    │           반환: DataFrame[날짜, 판매량]
+                    │
+                    ├── [4-2] weather_service.fetch_historical_weather(lat, lon)
+                    │           └── Open-Meteo Archive API (과거 날씨 데이터)
+                    │
+                    ├── [4-3] DemandPredictor.fit(sales_df, weather_df)
+                    │           └── ml/demand_predictor.py
+                    │               ├── feature_engineering.build_features()
+                    │               │   ├── add_date_features()
+                    │               │   │   (요일, 월, 주차, 주말여부 등)
+                    │               │   ├── add_lag_features()
+                    │               │   │   (lag_1, lag_7, lag_14)
+                    │               │   └── add_rolling_features()
+                    │               │       (rolling_mean_7, rolling_mean_14, ...)
+                    │               ├── 날씨 피처 병합
+                    │               │   (최고기온, 최저기온, 강수량, 비/더위/추위 여부)
+                    │               └── RandomForestRegressor 학습 (n_estimators=200)
+                    │
+                    ├── [4-4] DemandPredictor.predict(days=7, forecast_df)
+                    │           └── ml/demand_predictor.py
+                    │               └── 7일간 반복:
+                    │                   ├── make_future_feature_row()  ← 미래 피처 생성
+                    │                   ├── model.predict(X)           ← 예측값 계산
+                    │                   └── confidence 계산
+                    │                       (R²×85% - 예측일×1.5%, 최소 15%)
+                    │
+                    └── [4-5] data_service.save_predictions_bulk()
+                                ├── DELETE FROM PREDICTION_RESULT
+                                │   WHERE target_date >= CURDATE()
+                                └── INSERT INTO PREDICTION_RESULT
+                                    (store_id, menu_id, target_date,
+                                     predicted_qty, confidence, model_version)
+
+
+┌─────────────────────────────────────────────────────────┐
+│  STEP 4. FRONTEND - 결과 화면 업데이트                   │
+└─────────────────────────────────────────────────────────┘
+
+handleTrigger() 완료 후
+    └── loadData(storeId)
+        ├── predictionService.getByStore(storeId)
+        │       └── GET /api/predictions/{storeId}
+        │           → PredictionController.getPredictions()
+        │               → PredictionService.getPredictions()
+        │                   → DB에서 예측 결과 조회
+        │
+        └── predictionService.getSummary(storeId)
+                └── GET /api/predictions/{storeId}/summary
+                    → PredictionController.getSummary()
+                        → PredictionService.getSummary()
+                            → 요약 통계 반환
+
+화면 렌더링:
+    ├── 예측 차트 (echarts)
+    ├── 예측 상세 테이블
+    ├── AI 분석 리포트
+    └── 순환 경제 행동 지침
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[ 3. 데이터베이스 테이블 구조 ]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+TiDB Cloud (MySQL 호환)
+
+  MENU
+  ├── menu_id, menu_name, category, price
+  ├── store_id, is_active
+  └── 용도: 활성 메뉴 목록 조회
+
+  SALES_DATA
+  ├── id, store_id, menu_id
+  ├── sales_date, quantity, is_deleted
+  └── 용도: 예측 모델 학습 (과거 판매 이력)
+
+  STORE
+  ├── store_id, region, owner_id
+  └── 용도: 지역명 조회 (날씨 API 좌표 변환용)
+
+  PREDICTION_RESULT
+  ├── prediction_id, store_id, menu_id
+  ├── target_date, predicted_qty, confidence
+  ├── model_version, created_at
+  └── 용도: 예측 결과 저장
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[ 4. 판매 데이터 수에 따른 예측 모델 전략 ]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  데이터 수    모델                    신뢰도
+  ─────────────────────────────────────────────────────
+  7개 미만    예측 불가                0%
+  7 ~ 14개   단순 요일 평균            최대 30% (일별 감소)
+  15 ~ 29개  RandomForest             최대 40% (일별 감소)
+  30개 이상   RandomForest + 날씨 피처  R²×85% (최대 95%)
+
+  신뢰도 감소 공식: 예측일이 멀수록 하루당 -1.5%, 최소 15%
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[ 5. 피처 엔지니어링 상세 ]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  입력 데이터:
+    - 판매 이력: (날짜, 판매량)
+    - 과거 날씨: (날짜, 최고기온, 최저기온, 강수량, ...)
+    - 예보 날씨: (날짜, 최고기온, 최저기온, 강수량, ...)
+
+  생성 피처:
+    1) 날짜 피처 (7개)
+       day_of_week, day_of_month, month, week_of_year
+       is_weekend, is_holiday, is_monday/friday/saturday/sunday
+
+    2) 시계열 피처 (6개)
+       lag_1, lag_7, lag_14       ← 과거 판매량 참조
+       rolling_mean_7, rolling_mean_14, rolling_std_7
+
+    3) 날씨 피처 (6개)
+       temp_max, temp_min, precipitation
+       is_rainy, is_hot, is_cold
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[ 6. 서비스 포트 정리 ]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Frontend    http://localhost:5173   (Vite 개발 서버)
+  Backend     http://localhost:8080   (Spring Boot)
+  AI Service  http://localhost:8000   (FastAPI)
+  Database    TiDB Cloud              (MySQL 호환, 외부 접속)
+
+================================================================================

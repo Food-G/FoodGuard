@@ -1,0 +1,230 @@
+================================================================================
+  Claude에게 FoodGuard 프로젝트를 설명하기 위한 프롬프트
+  (복사해서 Claude 채팅에 그대로 붙여넣기)
+================================================================================
+
+아래 내용을 복사해서 Claude 채팅창에 붙여넣으세요.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[프롬프트 시작]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+나는 지금 "FoodGuard"라는 캡스톤 디자인 프로젝트를 진행 중이야.
+이 프로젝트의 전체 구조와 코드를 네가 이해할 수 있도록 설명할게.
+앞으로 이 프로젝트에 대한 질문이나 코드 작업을 요청할 거야.
+
+────────────────────────────────────────────────────────────────────────────────
+■ 프로젝트 개요
+────────────────────────────────────────────────────────────────────────────────
+
+프로젝트명: FoodGuard
+목적: 식당/프랜차이즈 매장의 음식 수요를 AI로 예측하여 식재료 낭비를 줄이고
+      탄소 절감에 기여하는 시스템
+GitHub: https://github.com/Food-G/Test-Repository
+
+주요 기능:
+- 메뉴별 7일치 판매량 AI 예측 (RandomForest + 날씨 데이터)
+- 판매 기록 입력 및 통계
+- 재고 관리 및 발주 요청
+- POS 시스템 연동
+- 배송 기사 위치 추적 (WebSocket)
+- 역할 기반 접근 제어 (점주 / 본사 관리자 / 배송기사)
+
+────────────────────────────────────────────────────────────────────────────────
+■ 기술 스택
+────────────────────────────────────────────────────────────────────────────────
+
+Frontend:
+  - React 18 + TypeScript
+  - Material-UI (MUI) v5
+  - ECharts (차트 시각화)
+  - Fetch API 기반 커스텀 HTTP 클라이언트
+  - 실행 포트: localhost:5173
+
+Backend:
+  - Spring Boot 3.x + Java 17
+  - Spring Data JPA + Hibernate
+  - Spring Security + JWT (HS256) 인증
+  - WebSocket (STOMP) - 실시간 알림/위치 추적
+  - Gradle 빌드
+  - 실행 포트: localhost:8080
+
+AI Service:
+  - FastAPI (Python 3.11)
+  - scikit-learn (RandomForestRegressor)
+  - pandas, numpy
+  - joblib (모델 저장/로드)
+  - SQLAlchemy (DB 접근)
+  - 날씨 API: Open-Meteo (과거), 기상청 공공API (예보)
+  - 실행 포트: localhost:8000
+
+Database:
+  - MySQL (TiDB Cloud 호환)
+  - Spring Boot → JPA로 접근
+  - AI Service → 순수 SQL (SQLAlchemy)로 직접 접근
+
+────────────────────────────────────────────────────────────────────────────────
+■ 전체 아키텍처
+────────────────────────────────────────────────────────────────────────────────
+
+[사용자 브라우저]
+      ↕ HTTP (REST API)
+[Frontend - React :5173]
+      ↕ HTTP (REST API + JWT)
+[Backend - Spring Boot :8080]
+      ↕ HTTP (REST API)
+[AI Service - FastAPI :8000]
+      ↕ SQL
+[Database - MySQL (TiDB Cloud)]
+
+- Frontend와 Backend는 JWT Bearer Token으로 인증
+- Backend가 AI Service를 RestTemplate으로 호출 (중계 역할)
+- AI Service는 DB에 직접 접근해서 판매 데이터 읽고 예측 결과 저장
+
+────────────────────────────────────────────────────────────────────────────────
+■ 폴더 구조
+────────────────────────────────────────────────────────────────────────────────
+
+Test-Repository/
+├── frontend/                  ← React 앱
+│   └── src/
+│       ├── pages/             ← 화면 페이지들
+│       ├── services/          ← API 호출 함수들
+│       ├── hooks/             ← useAuth 등 커스텀 훅
+│       ├── components/        ← 재사용 컴포넌트
+│       └── theme/             ← MUI 테마 설정
+│
+├── backend/                   ← Spring Boot 앱
+│   └── src/main/java/com/foodguard/
+│       ├── controller/        ← REST API 엔드포인트 (11개)
+│       ├── service/           ← 비즈니스 로직 (9개)
+│       ├── repository/        ← JPA Repository (9개)
+│       ├── entity/            ← DB 테이블 매핑 (10개)
+│       ├── dto/               ← 요청/응답 객체
+│       ├── config/            ← Security, CORS, WebSocket 설정
+│       ├── filter/            ← JwtFilter
+│       └── util/              ← JwtUtil
+│
+└── ai-service/                ← FastAPI 앱
+    ├── routers/               ← API 라우터 (prediction, training)
+    ├── services/              ← 비즈니스 로직 (prediction, data, weather)
+    ├── ml/                    ← ML 모델 (demand_predictor, feature_engineering)
+    └── schemas/               ← Pydantic 모델
+
+────────────────────────────────────────────────────────────────────────────────
+■ 핵심 기능 흐름 - AI 예측 실행
+────────────────────────────────────────────────────────────────────────────────
+
+1. 사용자가 Predictions.tsx에서 "AI 예측 실행" 버튼 클릭
+2. predictionService.trigger(storeId) → POST /api/predictions/{storeId}/trigger
+3. Backend PredictionController → PredictionService.triggerPrediction()
+4. RestTemplate으로 AI Service 호출 → POST http://localhost:8000/api/predict/store/{storeId}
+5. AI Service에서:
+   a. DB에서 활성 메뉴 목록 조회
+   b. 매장 지역 정보 조회
+   c. 기상청 API로 7일 예보 데이터 수집
+   d. 메뉴별 반복:
+      - DB에서 과거 판매 데이터 조회
+      - Open-Meteo에서 과거 날씨 데이터 조회
+      - RandomForest 모델 학습 (날짜/시계열/날씨 피처)
+      - 7일치 수요 예측 + 신뢰도 계산
+      - DB(PREDICTION_RESULT 테이블)에 결과 저장
+6. Frontend에서 예측 결과 재조회 후 차트/테이블로 시각화
+
+────────────────────────────────────────────────────────────────────────────────
+■ DB 주요 테이블
+────────────────────────────────────────────────────────────────────────────────
+
+USER            : 사용자 (OWNER / HQ_ADMIN / DELIVERY_DRIVER)
+STORE           : 매장 (USER 소속)
+MENU            : 메뉴 (STORE 소속, is_active 플래그)
+SALES_DATA      : 판매 기록 (is_deleted로 Soft Delete)
+PREDICTION_RESULT : AI 예측 결과 (target_date, predicted_qty, confidence)
+INVENTORY       : 재고
+ORDER_REQUEST   : 발주 요청
+NOTIFICATION    : 알림
+INGREDIENT      : 식재료
+MENU_INGREDIENT : 메뉴-식재료 관계 (N:M)
+
+────────────────────────────────────────────────────────────────────────────────
+■ AI 예측 모델 상세
+────────────────────────────────────────────────────────────────────────────────
+
+모델: RandomForestRegressor (scikit-learn)
+  - n_estimators=200, max_depth=8, min_samples_leaf=2
+
+데이터 수에 따른 전략:
+  - 7개 미만   : 예측 불가 (0%)
+  - 7~29개    : MINIMAL_FEATURE (8개 피처)
+  - 30개 이상  : FULL_FEATURE (14개 피처) + 날씨 데이터
+
+생성 피처:
+  - 날짜: day_of_week, month, is_weekend, is_holiday 등
+  - 시계열: lag_1, lag_7, lag_14, rolling_mean_7, rolling_mean_14
+  - 날씨: temp_max, temp_min, precipitation, is_rainy, is_hot, is_cold
+
+신뢰도 계산:
+  - 기본값 = R² 점수 × 85%
+  - 예측값이 과거 평균 ±2σ 이내면 +10%
+  - 예측일 멀수록 하루당 -1.5% 감소
+  - 최소 15%, 최대 95%
+
+모델 저장: joblib → trained_models/store_{id}_menu_{id}.joblib
+
+────────────────────────────────────────────────────────────────────────────────
+■ 주요 API 엔드포인트
+────────────────────────────────────────────────────────────────────────────────
+
+Backend (Spring Boot :8080):
+  POST /api/auth/login                       로그인
+  POST /api/auth/signup                      회원가입
+  POST /api/predictions/{storeId}/trigger    AI 예측 실행
+  GET  /api/predictions/{storeId}            예측 결과 조회
+  GET  /api/predictions/{storeId}/summary    예측 요약
+  POST /api/sales                            판매 등록
+  GET  /api/sales/{storeId}/range            기간별 판매 조회
+  GET  /api/menus/{storeId}                  메뉴 조회
+  GET  /api/stores                           매장 목록
+
+AI Service (FastAPI :8000):
+  POST /api/predict/store/{store_id}                   전체 메뉴 예측
+  POST /api/predict/store/{store_id}/menu/{menu_id}    특정 메뉴 예측
+  GET  /api/predict/store/{store_id}                   저장된 예측 조회
+  POST /api/train/store/{store_id}                     모델 재학습
+
+────────────────────────────────────────────────────────────────────────────────
+■ 인증 방식
+────────────────────────────────────────────────────────────────────────────────
+
+- 로그인 시 서버에서 JWT(HS256) 토큰 발급
+- 클라이언트는 localStorage에 저장
+- 모든 API 요청 헤더에 Authorization: Bearer {token} 포함
+- Backend JwtFilter에서 매 요청마다 토큰 검증
+- JWT payload에 email, role, userId 포함
+
+────────────────────────────────────────────────────────────────────────────────
+■ 브랜치 구조
+────────────────────────────────────────────────────────────────────────────────
+
+main/master  : 기준 브랜치
+dev          : 통합 개발 브랜치
+jhy          : 팀원 개인 브랜치
+jihwan       : 팀원 개인 브랜치 (분석 HTML 파일 포함)
+junho        : 팀원 개인 브랜치 (최신 AI 모델 업데이트)
+HYEON/hyeon  : 팀원 개인 브랜치
+
+이 프로젝트를 이해했으면 "이해했어"라고 말해줘.
+이후에 코드 수정, 버그 수정, 기능 추가, 설명 요청 등을 할 거야.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[프롬프트 끝]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+TIP:
+- 위 프롬프트를 먼저 붙여넣어서 Claude가 "이해했어"라고 하면
+  그 다음부터 구체적인 질문이나 작업 요청을 하면 돼.
+- 예: "jihwan 브랜치의 prediction_service.py 코드 리뷰해줘"
+- 예: "프론트엔드에서 예측 신뢰도를 색상으로 구분해서 표시하고 싶어"
+- 예: "날씨 API 연동이 실패했을 때 fallback 처리 추가해줘"
+
+================================================================================
