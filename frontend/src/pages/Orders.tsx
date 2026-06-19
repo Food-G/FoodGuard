@@ -1,9 +1,13 @@
 import { useEffect, useState } from 'react';
 import {
   Typography, Box, Paper, Button, CircularProgress, Chip, Stack, useTheme,
+  Dialog, DialogTitle, DialogContent, DialogActions,
+  TextField, MenuItem, Select, FormControl, InputLabel, IconButton, Tooltip,
 } from '@mui/material';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { orderService } from '../services/orderService';
+import { notificationService } from '../services/notificationService';
+import { api } from '../services/api';
 import IconifyIcon from '../components/base/IconifyIcon';
 import QrScanner from '../components/QrScanner';
 import { useMyStore } from '../hooks/useMyStore';
@@ -39,6 +43,10 @@ const Orders = ({ user }: any) => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [scanning, setScanning] = useState(false);
+  const [orderDialog, setOrderDialog] = useState(false);
+  const [ingredients, setIngredients] = useState<any[]>([]);
+  const [orderForm, setOrderForm] = useState({ ingredientId: '', quantity: '' });
+  const [submitting, setSubmitting] = useState(false);
 
   const loadOrders = async (sid: number) => {
     try {
@@ -62,6 +70,10 @@ const Orders = ({ user }: any) => {
     if (!storeId) { if (!storeLoading) setLoading(false); return; }
     loadOrders(storeId).finally(() => setLoading(false));
     const timer = setInterval(() => loadOrders(storeId), 5000);
+    // 페이지 진입 시 ORDER 알림 모두 읽음 처리
+    notificationService.getUnread(storeId).then((data: any[]) => {
+      (data ?? []).filter((n) => n.type === 'ORDER').forEach((n) => notificationService.markAsRead(n.id).catch(() => {}));
+    }).catch(() => {});
     return () => clearInterval(timer);
   }, [storeId, storeLoading]);
   const handleOwnerQrScan = async (qrData: string) => {
@@ -84,6 +96,29 @@ const Orders = ({ user }: any) => {
       label: `${r.name} ${r.quantity}${r.unit}`,
     }));
 
+  const openOrderDialog = async () => {
+    if (!ingredients.length) {
+      const data = await api.get('/ingredients').catch(() => []);
+      setIngredients(data ?? []);
+    }
+    setOrderForm({ ingredientId: '', quantity: '' });
+    setOrderDialog(true);
+  };
+
+  const handleOrderSubmit = async () => {
+    if (!storeId || !orderForm.ingredientId || !orderForm.quantity) return;
+    setSubmitting(true);
+    try {
+      await orderService.create({ storeId, ingredientId: Number(orderForm.ingredientId), quantity: Number(orderForm.quantity) });
+      setSuccess('발주 신청이 완료되었습니다.');
+      setOrderDialog(false);
+      await loadOrders(storeId);
+    } catch {
+      setError('발주 신청에 실패했습니다.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
   const handleCancel = async (id: number) => {
     if (!await confirm('발주를 취소하시겠습니까?')) return;
     try {
@@ -138,33 +173,43 @@ const Orders = ({ user }: any) => {
       ),
     },
     {
-      field: 'actions', headerName: '관리', width: 160,
-      renderCell: (params) => {
-        if (params.row.status === 'REQUESTED') {
-          return (
+      field: 'actions', headerName: '관리', width: 180,
+      renderCell: (params) => (
+        <Stack direction="row" alignItems="center" gap={0.5}>
+          {params.row.status === 'REQUESTED' && (
             <Button color="error" size="small" variant="outlined"
               onClick={() => handleCancel(params.id as number)} sx={{ borderRadius: 2 }}>
               취소
             </Button>
-          );
-        }
-        if (params.row.status === 'DRIVER_RECEIVED') {
-          return (
+          )}
+          {params.row.status === 'DRIVER_RECEIVED' && (
             <Button color="success" size="small" variant="contained"
               onClick={() => setScanning(true)} sx={{ borderRadius: 2 }}
               startIcon={<span>📷</span>}>
               QR 스캔
             </Button>
-          );
-        }
-        return null;
-      },
+          )}
+          <Tooltip title="삭제">
+            <IconButton size="small" color="error" onClick={() => handleCancel(params.id as number)}>
+              <IconifyIcon icon="mingcute:delete-2-line" width={18} />
+            </IconButton>
+          </Tooltip>
+        </Stack>
+      ),
     },
   ];
 
   return (
     <Stack gap={3} sx={{ bgcolor: 'background.default' }}>
-      <Stack direction="row" justifyContent="flex-end">
+      <Stack direction="row" justifyContent="flex-end" gap={2}>
+        <Button
+          variant="outlined"
+          startIcon={<IconifyIcon icon="mingcute:add-circle-line" />}
+          onClick={openOrderDialog}
+          sx={{ px: 3, py: 1.5, borderRadius: 3 }}
+        >
+          발주 신청
+        </Button>
         <Button
           variant="contained"
           startIcon={ordering
@@ -177,6 +222,48 @@ const Orders = ({ user }: any) => {
           {ordering ? '발주 등록 중...' : 'AI 예측 기반 자동 발주'}
         </Button>
       </Stack>
+
+      <Dialog open={orderDialog} onClose={() => setOrderDialog(false)} maxWidth="xs" fullWidth>
+        <DialogTitle fontWeight={700}>발주 신청</DialogTitle>
+        <DialogContent>
+          <Stack gap={2.5} mt={1}>
+            <FormControl fullWidth size="small">
+              <InputLabel>식자재 선택</InputLabel>
+              <Select
+                label="식자재 선택"
+                value={orderForm.ingredientId}
+                onChange={e => setOrderForm(f => ({ ...f, ingredientId: e.target.value }))}
+              >
+                {ingredients.map((ing: any) => (
+                  <MenuItem key={ing.id} value={ing.id}>
+                    {ing.name} ({ing.unit})
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <TextField
+              label="수량"
+              type="number"
+              size="small"
+              value={orderForm.quantity}
+              onChange={e => setOrderForm(f => ({ ...f, quantity: e.target.value }))}
+              inputProps={{ min: 0.1, step: 0.1 }}
+              fullWidth
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setOrderDialog(false)}>취소</Button>
+          <Button
+            variant="contained"
+            onClick={handleOrderSubmit}
+            disabled={submitting || !orderForm.ingredientId || !orderForm.quantity}
+            startIcon={submitting ? <CircularProgress size={14} color="inherit" /> : null}
+          >
+            신청
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <AlertMessages error={error} success={success}
         onClearError={() => setError('')} onClearSuccess={() => setSuccess('')} />

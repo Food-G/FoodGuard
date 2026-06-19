@@ -1,6 +1,9 @@
 import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import { Box, Typography, Badge } from '@mui/material';
 import IconifyIcon from '../components/base/IconifyIcon';
+import { useMyStore } from '../hooks/useMyStore';
+import { notificationService } from '../services/notificationService';
 
 interface TileProps {
   title: string;
@@ -92,7 +95,23 @@ const ADMIN_TILES: TileProps[] = [
 
 const Dashboard = ({ user }: any) => {
   const role = user?.role || 'OWNER';
-  const tiles = role === 'HQ_ADMIN' ? ADMIN_TILES : OWNER_TILES;
+  const { storeId } = useMyStore(user);
+  const [orderBadge, setOrderBadge] = useState(0);
+
+  useEffect(() => {
+    if (!storeId) return;
+    const fetch_ = () =>
+      notificationService.getUnread(storeId)
+        .then((data: any[]) => setOrderBadge((data ?? []).filter((n) => n.type === 'ORDER').length))
+        .catch(() => {});
+    fetch_();
+    const t = setInterval(fetch_, 30000);
+    return () => clearInterval(t);
+  }, [storeId]);
+
+  const tiles = role === 'HQ_ADMIN' ? ADMIN_TILES : OWNER_TILES.map((tile) =>
+    tile.path === '/orders' ? { ...tile, badge: orderBadge } : tile
+  );
 
   return (
     <Box>

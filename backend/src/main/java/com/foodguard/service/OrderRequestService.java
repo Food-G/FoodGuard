@@ -41,6 +41,7 @@ public class OrderRequestService {
     private final MenuIngredientRepository menuIngredientRepository;
     private final InventoryRepository inventoryRepository;
     private final ObjectMapper objectMapper;
+    private final NotificationService notificationService;
 
     // 발주 요청 생성
     @Transactional
@@ -88,6 +89,10 @@ public class OrderRequestService {
         if ("APPROVED".equals(status) && !"APPROVED".equals(prev)) {
             order.setApprovedAt(LocalDateTime.now());
             order.setDeliveryToken(UUID.randomUUID().toString().replace("-", ""));
+            notificationService.create(order.getStore().getId(),
+                String.format("발주 승인: %s %s%s 승인되었습니다.", order.getIngredient().getName(),
+                    order.getOrderedQty().toPlainString(), order.getIngredient().getUnit()),
+                "ORDER");
         }
 
         if ("DONE".equals(status) && !"DONE".equals(prev)) {
@@ -218,6 +223,10 @@ public class OrderRequestService {
             order.setDeliveryGroupToken(UUID.randomUUID().toString().replace("-", ""));
         }
         orderRequestRepository.save(order);
+        notificationService.create(order.getStore().getId(),
+            String.format("발송완료: %s %s%s 배달 출발", order.getIngredient().getName(),
+                order.getOrderedQty().toPlainString(), order.getIngredient().getUnit()),
+            "ORDER");
 
         String qrJson = String.format(
             "{\"orderId\":%d,\"token\":\"%s\",\"expiryDate\":\"%s\"}",
