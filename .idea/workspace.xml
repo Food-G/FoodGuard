@@ -5,19 +5,17 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="5cf40e29-3cc9-4695-8ab3-20a40cad9768" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.claude/settings.local.json" beforeDir="false" afterPath="$PROJECT_DIR$/.claude/settings.local.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ai-model-comparison.html" beforeDir="false" afterPath="$PROJECT_DIR$/ai-model-comparison.html" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/controller/DeliveryController.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/controller/DeliveryController.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/controller/OrderRequestController.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/controller/OrderRequestController.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/service/OrderRequestService.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/service/OrderRequestService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/config/SecurityConfig.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/config/SecurityConfig.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/controller/IngredientController.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/controller/IngredientController.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/entity/Ingredient.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/entity/Ingredient.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/repository/IngredientRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/repository/IngredientRepository.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/service/IngredientService.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/service/IngredientService.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/App.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/App.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/components/QrScanner.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/components/QrScanner.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/pages/DeliveryDriverGroup.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/pages/DeliveryDriverGroup.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/pages/Ingredients.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/pages/Ingredients.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/pages/Inventory.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/pages/Inventory.tsx" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/frontend/src/pages/Orders.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/pages/Orders.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/pages/admin/AdminOrders.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/pages/admin/AdminOrders.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/pages/admin/StoreManagement.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/pages/admin/StoreManagement.tsx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/src/services/orderService.ts" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/services/orderService.ts" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/frontend/vite.config.ts" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/vite.config.ts" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -74,7 +72,7 @@
     "RunOnceActivity.git.unshallow": "true",
     "RunOnceActivity.typescript.service.memoryLimit.init": "true",
     "codeWithMe.voiceChat.enabledByDefault": "false",
-    "com.google.cloudcode.ide_session_index": "20260605_0003",
+    "com.google.cloudcode.ide_session_index": "20260619_0001",
     "git-widget-placeholder": "jihwan",
     "kotlin-language-version-configured": "true",
     "last_opened_file_path": "C:/Test-Repository",

@@ -48,9 +48,8 @@ const Inventory = ({ user }: any) => {
       setStoreId(sid);
       loadInventory(sid);
       menuService.getByStore(sid).then((m: any[]) => setMenus(m ?? []));
+      loadAllIngredients(sid);
     }).catch(console.error);
-
-    loadAllIngredients();
   }, [user]);
 
   const loadInventory = (sid: number) => {
@@ -122,9 +121,9 @@ const Inventory = ({ user }: any) => {
     }
   };
 
-  const loadAllIngredients = async () => {
+  const loadAllIngredients = async (sid: number) => {
     try {
-      const data = await api.get('/ingredients');
+      const data = await api.get(`/ingredients?storeId=${sid}`);
       setAllIngredients(data ?? []);
     } catch {
       setError('식자재 목록을 불러오지 못했습니다.');

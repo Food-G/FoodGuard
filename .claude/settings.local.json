@@ -49,7 +49,8 @@
       "Bash(xargs grep -l -i \"delivery\\\\|driver\\\\|gps\\\\|location\")",
       "Bash(xargs grep -l -i \"inspection\\\\|inspect\\\\|delivery\\\\|status\")",
       "Bash(xargs grep -i \"REQUESTED\\\\|APPROVED\\\\|DONE\\\\|HQ_SENT\\\\|DRIVER_RECEIVED\\\\|IN_DELIVERY\\\\|DELIVERED\")",
-      "Bash(xargs ls -lh)"
+      "Bash(xargs ls -lh)",
+      "Bash(venv\\\\Scripts\\\\python.exe insert_dummy_sales.py)"
     ]
   }
 }

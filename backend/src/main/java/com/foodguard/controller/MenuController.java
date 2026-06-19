@@ -18,11 +18,12 @@ public class MenuController {
 
     @PostMapping
     public ResponseEntity<Menu> create(@RequestBody Map<String, Object> body) {
+        String category = body.get("category") != null ? body.get("category").toString() : null;
         return ResponseEntity.ok(menuService.create(
                 Long.parseLong(body.get("storeId").toString()),
                 body.get("menuName").toString(),
                 Integer.parseInt(body.get("price").toString()),
-                body.get("category").toString()
+                category
         ));
     }
 
@@ -34,11 +35,12 @@ public class MenuController {
     @PutMapping("/{id}")
     public ResponseEntity<Menu> update(@PathVariable Long id,
                                        @RequestBody Map<String, Object> body) {
+        String category = body.get("category") != null ? body.get("category").toString() : null;
         return ResponseEntity.ok(menuService.update(
                 id,
                 body.get("menuName").toString(),
                 Integer.parseInt(body.get("price").toString()),
-                body.get("category").toString()
+                category
         ));
     }
 

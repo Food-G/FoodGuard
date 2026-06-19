@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>jihwan — FoodGuard 포트폴리오</title>
+  <style>
+    :root {
+      --bg: #0d0f14;
+      --surface: #161920;
+      --surface2: #1e2230;
+      --border: #2a2f42;
+      --accent: #4f8ef7;
+      --accent2: #7c5cfc;
+      --green: #34d399;
+      --yellow: #fbbf24;
+      --text: #e8eaf0;
+      --muted: #8892aa;
+      --radius: 12px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', 'Apple SD Gothic Neo', sans-serif;
+      line-height: 1.65;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── LAYOUT ── */
+    .container { max-width: 900px; margin: 0 auto; padding: 0 24px; }
+
+    section { padding: 80px 0; border-bottom: 1px solid var(--border); }
+    section:last-child { border-bottom: none; }
+
+    h2 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 36px;
+    }
+
+    h3 { font-size: 1.15rem; font-weight: 600; margin-bottom: 8px; }
+
+    /* ── HERO ── */
+    .hero {
+      padding: 100px 0 80px;
+      border-bottom: 1px solid var(--border);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: -120px; right: -160px;
+      width: 500px; height: 500px;
+      background: radial-gradient(circle, rgba(79,142,247,.12) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .badge {
+      display: inline-block;
+      font-size: .75rem;
+      font-weight: 600;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--accent);
+      background: rgba(79,142,247,.12);
+      border: 1px solid rgba(79,142,247,.3);
+      padding: 4px 12px;
+      border-radius: 20px;
+      margin-bottom: 20px;
+    }
+
+    .hero h1 {
+      font-size: clamp(2.2rem, 6vw, 3.6rem);
+      font-weight: 800;
+      line-height: 1.15;
+      margin-bottom: 16px;
+      background: linear-gradient(135deg, #e8eaf0 30%, #8892aa);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero-sub {
+      font-size: 1.05rem;
+      color: var(--muted);
+      max-width: 520px;
+      margin-bottom: 36px;
+    }
+
+    .stats-row {
+      display: flex;
+      gap: 32px;
+      flex-wrap: wrap;
+    }
+
+    .stat {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .stat-value {
+      font-size: 1.8rem;
+      font-weight: 800;
+      color: var(--text);
+      line-height: 1.1;
+    }
+
+    .stat-value span { color: var(--accent); }
+
+    .stat-label {
+      font-size: .78rem;
+      color: var(--muted);
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      margin-top: 4px;
+    }
+
+    /* ── PROJECT INTRO ── */
+    .project-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px 32px;
+      margin-bottom: 20px;
+    }
+
+    .project-card p {
+      color: var(--muted);
+      font-size: .95rem;
+      margin-top: 8px;
+    }
+
+    .tech-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    .pill {
+      font-size: .78rem;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 6px;
+      background: var(--surface2);
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+
+    .pill.fe  { color: #61dafb; border-color: rgba(97,218,251,.25); background: rgba(97,218,251,.06); }
+    .pill.be  { color: #f89820; border-color: rgba(248,152,32,.25); background: rgba(248,152,32,.06); }
+    .pill.ai  { color: #a78bfa; border-color: rgba(167,139,250,.25); background: rgba(167,139,250,.06); }
+    .pill.db  { color: var(--green); border-color: rgba(52,211,153,.25); background: rgba(52,211,153,.06); }
+
+    /* ── FEATURES ── */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 16px;
+    }
+
+    .feature-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      transition: border-color .2s, transform .2s;
+    }
+
+    .feature-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-2px);
+    }
+
+    .feature-icon {
+      font-size: 1.6rem;
+      margin-bottom: 12px;
+    }
+
+    .feature-card h3 { font-size: 1rem; margin-bottom: 8px; }
+
+    .feature-card p {
+      font-size: .85rem;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .feature-card ul {
+      list-style: none;
+      margin-top: 10px;
+    }
+
+    .feature-card ul li {
+      font-size: .82rem;
+      color: var(--muted);
+      padding: 3px 0;
+      padding-left: 14px;
+      position: relative;
+    }
+
+    .feature-card ul li::before {
+      content: '›';
+      position: absolute;
+      left: 0;
+      color: var(--accent);
+    }
+
+    /* ── ARCH ── */
+    .arch-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    @media (max-width: 640px) {
+      .arch-row { grid-template-columns: 1fr; }
+      .stats-row { gap: 20px; }
+    }
+
+    .arch-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      text-align: center;
+    }
+
+    .arch-card .arch-label {
+      font-size: .7rem;
+      font-weight: 700;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .arch-card .arch-name {
+      font-size: .95rem;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    .arch-card.fe .arch-name { color: #61dafb; }
+    .arch-card.be .arch-name { color: #f89820; }
+    .arch-card.ai .arch-name { color: #a78bfa; }
+
+    .arch-card .arch-stack {
+      font-size: .78rem;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    /* ── AI SECTION ── */
+    .ai-flow {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px 32px;
+      margin-bottom: 20px;
+    }
+
+    .flow-steps {
+      display: flex;
+      align-items: flex-start;
+      gap: 0;
+      margin-top: 20px;
+      flex-wrap: wrap;
+    }
+
+    .flow-step {
+      flex: 1;
+      min-width: 120px;
+      text-align: center;
+    }
+
+    .flow-step-box {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 8px;
+      font-size: .78rem;
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    .flow-arrow {
+      display: flex;
+      align-items: center;
+      padding: 0 6px;
+      color: var(--muted);
+      font-size: 1.1rem;
+      margin-top: 18px;
+    }
+
+    .model-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      font-size: .85rem;
+    }
+
+    .model-table th {
+      text-align: left;
+      padding: 10px 14px;
+      background: var(--surface2);
+      color: var(--muted);
+      font-size: .75rem;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .model-table td {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text);
+    }
+
+    .model-table tr:last-child td { border-bottom: none; }
+
+    .conf-bar {
+      display: inline-block;
+      height: 6px;
+      border-radius: 3px;
+      vertical-align: middle;
+      margin-right: 8px;
+    }
+
+    /* ── CONTRIBUTION SUMMARY ── */
+    .contrib-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 16px;
+      margin-top: 8px;
+    }
+
+    .contrib-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      text-align: center;
+    }
+
+    .contrib-num {
+      font-size: 2rem;
+      font-weight: 800;
+      color: var(--accent);
+    }
+
+    .contrib-desc {
+      font-size: .8rem;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    /* ── SKILLS ── */
+    .skills-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 16px;
+    }
+
+    .skill-group {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px 24px;
+    }
+
+    .skill-group-title {
+      font-size: .78rem;
+      font-weight: 700;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 14px;
+    }
+
+    .skill-list { list-style: none; }
+
+    .skill-list li {
+      font-size: .88rem;
+      color: var(--text);
+      padding: 5px 0;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .skill-list li:last-child { border-bottom: none; }
+
+    .skill-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      padding: 48px 0;
+      text-align: center;
+      color: var(--muted);
+      font-size: .85rem;
+    }
+
+    /* ── PROGRESS BAR ── */
+    .contribution-bar {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px 28px;
+      margin-top: 20px;
+    }
+
+    .bar-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: .82rem;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .bar-label strong { color: var(--text); }
+
+    .bar-track {
+      height: 8px;
+      background: var(--surface);
+      border-radius: 4px;
+      margin-bottom: 14px;
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      height: 100%;
+      border-radius: 4px;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+    }
+
+    .note {
+      font-size: .78rem;
+      color: var(--muted);
+      margin-top: 8px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── HERO ── -->
+<section class="hero">
+  <div class="container">
+    <div class="badge">Portfolio · 2026</div>
+    <h1>김지환 (jihwan)</h1>
+    <p class="hero-sub">
+      컴퓨터공학과<br>
+      Spring Boot · React · Python ML · 시스템 설계
+    </p>
+    <div class="stats-row">
+      <div class="stat">
+        <div class="stat-value"><span>30</span></div>
+        <div class="stat-label">Commits</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value"><span>+27,683</span></div>
+        <div class="stat-label">Lines Added</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value">172 <span style="font-size:1rem;color:var(--muted)">+</span> 159</div>
+        <div class="stat-label">Front · Back 파일</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value"><span>1위</span></div>
+        <div class="stat-label">팀 내 기여도</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── PROJECT INTRO ── -->
+<section>
+  <div class="container">
+    <h2>Project — FoodGuard</h2>
+    <div class="project-card">
+      <h3>AI 수요예측 기반 소상공인 음식점 통합 관리 플랫폼</h3>
+      <p>
+        음식점의 매출·재고·발주·배달·폐기를 하나의 플랫폼으로 통합하고,
+        기상청 API와 ML 수요예측 모델로 식자재 발주량을 자동 추천해
+        폐기와 품절을 동시에 줄이는 풀스택 서비스입니다.
+        2026년 1학기 캡스톤 프로젝트 (컴퓨터공학과 1조, 4인 팀).
+      </p>
+      <div class="tech-pills">
+        <span class="pill fe">React</span>
+        <span class="pill fe">TypeScript</span>
+        <span class="pill fe">Vite</span>
+        <span class="pill fe">MUI</span>
+        <span class="pill be">Spring Boot</span>
+        <span class="pill be">Java 17</span>
+        <span class="pill be">JPA</span>
+        <span class="pill be">JWT</span>
+        <span class="pill ai">Python</span>
+        <span class="pill ai">FastAPI</span>
+        <span class="pill ai">RandomForest</span>
+        <span class="pill ai">기상청 API</span>
+        <span class="pill db">TiDB Cloud</span>
+        <span class="pill db">MySQL</span>
+      </div>
+    </div>
+
+    <div class="arch-row">
+      <div class="arch-card fe">
+        <div class="arch-label">Frontend</div>
+        <div class="arch-name">React + TypeScript</div>
+        <div class="arch-stack">Vite · MUI · React Router<br>포트 5173</div>
+      </div>
+      <div class="arch-card be">
+        <div class="arch-label">Backend</div>
+        <div class="arch-name">Spring Boot 3.x</div>
+        <div class="arch-stack">JPA · JWT · Gradle<br>포트 8080</div>
+      </div>
+      <div class="arch-card ai">
+        <div class="arch-label">AI Service</div>
+        <div class="arch-name">Python FastAPI</div>
+        <div class="arch-stack">RandomForest · 기상청 API<br>포트 8000</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── MY ROLE ── -->
+<section>
+  <div class="container">
+    <h2>My Role — 프로젝트 리드 · 풀스택</h2>
+    <div class="features-grid">
+
+      <div class="feature-card">
+        <div class="feature-icon">🏗️</div>
+        <h3>프로젝트 기반 구축</h3>
+        <p>팀 내 최초 세팅 담당. 전체 폴더 구조 설계 및 초기 ERD 구현.</p>
+        <ul>
+          <li>프론트엔드 디렉토리 구성 및 라우팅 설계</li>
+          <li>팀 협업 브랜치 전략 수립</li>
+        </ul>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">🔐</div>
+        <h3>인증 시스템</h3>
+        <p>Spring Security + JWT 기반 회원가입·로그인 전체 구현.</p>
+        <ul>
+          <li>JWT 토큰 발급 · 검증 · 만료 처리</li>
+          <li>DB 저장 회원가입 (BCrypt 암호화)</li>
+          <li>OWNER / HQ_ADMIN 역할 분기 라우팅</li>
+          <li>프론트 Protected Route 구현</li>
+        </ul>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">📊</div>
+        <h3>매출 CRUD · 통계</h3>
+        <p>매출 데이터 입력부터 통계 조회까지 전체 레이어 구현.</p>
+        <ul>
+          <li>SalesData 엔티티 · Repository · Service · Controller</li>
+          <li>매출 입력 · 수정 · 삭제 API</li>
+          <li>매출 원화 축약 표기 (억/만 단위)</li>
+          <li>SalesStats 페이지 (차트 연동)</li>
+        </ul>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">🤖</div>
+        <h3>AI 수요예측 모델</h3>
+        <p>기상청 API 연동 + RandomForest 기반 7일 발주량 예측.</p>
+        <ul>
+          <li>기상청 단기·중기예보 API 키 발급 및 연동</li>
+          <li>RandomForest 학습 파이프라인 직접 구현</li>
+          <li>데이터 양별 3단계 전략 (30개↑ RF / 7~29개 평균 / 미달 불가)</li>
+          <li>예측 신뢰도 자동 계산 (R² × 85%, 일당 1.5% decay)</li>
+          <li>AI 예측 기반 발주 추천 UI</li>
+        </ul>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">🚚</div>
+        <h3>배달 시스템</h3>
+        <p>QR 시스템을 통해 본사 → 배달 기사 → 점주로 이어지는 책임소재 문제를 명확히 해결.</p>
+        <ul>
+          <li>배달 기사 전용 웹 페이지 (DeliveryDriver / DeliveryDriverGroup)</li>
+          <li>QR 코드 스캔으로 배달 기사 신원 확인 및 배달 수락</li>
+          <li>단계별 상태 전환으로 본사·기사·점주 간 책임 구간 명확화</li>
+        </ul>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">🛡️</div>
+        <h3>관리자(Admin) 기능</h3>
+        <p>HQ_ADMIN 전용 페이지 및 전체 시스템 관리 기능 구현.</p>
+        <ul>
+          <li>Admin 대시보드 페이지</li>
+          <li>가맹점 관리 (StoreManagement)</li>
+          <li>AdminOrders — 전체 주문 현황 조회</li>
+          <li>Stats 페이지 — 전사 통계 시각화</li>
+        </ul>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ── AI DEEP DIVE ── -->
+<section>
+  <div class="container">
+    <h2>Technical Deep Dive — AI 수요예측</h2>
+    <div class="ai-flow">
+      <h3>예측 파이프라인</h3>
+      <div class="flow-steps">
+        <div class="flow-step">
+          <div class="flow-step-box">기상청 API<br><span style="font-size:.7rem;color:var(--muted)">단기·중기예보</span></div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-step-box">SALES_DATA<br><span style="font-size:.7rem;color:var(--muted)">판매 이력 조회</span></div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-step-box">Feature<br>Engineering<br><span style="font-size:.7rem;color:var(--muted)">날짜·날씨·lag</span></div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-step-box">RandomForest<br><span style="font-size:.7rem;color:var(--muted)">학습 · 예측</span></div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step">
+          <div class="flow-step-box">7일 발주량<br><span style="font-size:.7rem;color:var(--muted)">+ 신뢰도</span></div>
+        </div>
+      </div>
+    </div>
+
+    <table class="model-table">
+      <thead>
+        <tr>
+          <th>데이터 수</th>
+          <th>전략</th>
+          <th>신뢰도 상한</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>&lt; 7개</td>
+          <td>예측 불가 (0 반환)</td>
+          <td><span class="conf-bar" style="width:0px;background:#6b7280"></span>0%</td>
+        </tr>
+        <tr>
+          <td>7 ~ 29개</td>
+          <td>요일별 평균 단순 예측</td>
+          <td><span class="conf-bar" style="width:40px;background:var(--yellow)"></span>40%</td>
+        </tr>
+        <tr>
+          <td>≥ 30개</td>
+          <td>RandomForest (날씨 6개 피처 포함)</td>
+          <td><span class="conf-bar" style="width:80px;background:var(--green)"></span>최대 95%</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p class="note" style="margin-top:16px">날씨 피처: temp_max · temp_min · precipitation · is_rainy · is_hot · is_cold | 예측 신뢰도는 예측일마다 1.5% 감소 (최소 15%)</p>
+  </div>
+</section>
+
+<!-- ── CONTRIBUTION SUMMARY ── -->
+<section>
+  <div class="container">
+    <h2>Contribution Summary</h2>
+    <div class="contrib-row">
+      <div class="contrib-card">
+        <div class="contrib-num">30</div>
+        <div class="contrib-desc">총 커밋 수<br>(팀 내 1위)</div>
+      </div>
+      <div class="contrib-card">
+        <div class="contrib-num">+27,683</div>
+        <div class="contrib-desc">추가 코드 라인<br>(팀 전체의 51%)</div>
+      </div>
+      <div class="contrib-card">
+        <div class="contrib-num">172</div>
+        <div class="contrib-desc">Frontend 파일<br>(React · TypeScript)</div>
+      </div>
+      <div class="contrib-card">
+        <div class="contrib-num">159</div>
+        <div class="contrib-desc">Backend 파일<br>(Spring Boot · Java)</div>
+      </div>
+    </div>
+
+    <div class="contribution-bar">
+      <div class="bar-label"><strong>jihwan</strong><span>+27,683 lines (51%)</span></div>
+      <div class="bar-track"><div class="bar-fill" style="width:51%"></div></div>
+
+      <div class="bar-label"><strong>junho</strong><span>+14,553 lines (27%)</span></div>
+      <div class="bar-track"><div class="bar-fill" style="width:27%;background:linear-gradient(90deg,#f89820,#fbbf24)"></div></div>
+
+      <div class="bar-label"><strong>hyeon</strong><span>+7,773 lines (14%)</span></div>
+      <div class="bar-track"><div class="bar-fill" style="width:14%;background:linear-gradient(90deg,#34d399,#6ee7b7)"></div></div>
+
+      <div class="bar-label"><strong>jhy</strong><span>+4,095 lines (8%)</span></div>
+      <div class="bar-track"><div class="bar-fill" style="width:8%;background:linear-gradient(90deg,#a78bfa,#c4b5fd)"></div></div>
+
+      <p class="note">※ node_modules · 빌드 파일 · 이미지 등 자동생성 파일 제외한 순수 코드 라인 기준</p>
+    </div>
+  </div>
+</section>
+
+<!-- ── SKILLS ── -->
+<section>
+  <div class="container">
+    <h2>Skills</h2>
+    <div class="skills-grid">
+
+      <div class="skill-group">
+        <div class="skill-group-title">Frontend</div>
+        <ul class="skill-list">
+          <li><span class="skill-dot" style="background:#61dafb"></span>React 18</li>
+          <li><span class="skill-dot" style="background:#61dafb"></span>TypeScript</li>
+          <li><span class="skill-dot" style="background:#61dafb"></span>Vite</li>
+          <li><span class="skill-dot" style="background:#61dafb"></span>MUI (Material UI)</li>
+          <li><span class="skill-dot" style="background:#61dafb"></span>React Router v6</li>
+        </ul>
+      </div>
+
+      <div class="skill-group">
+        <div class="skill-group-title">Backend</div>
+        <ul class="skill-list">
+          <li><span class="skill-dot" style="background:#f89820"></span>Spring Boot 3.x</li>
+          <li><span class="skill-dot" style="background:#f89820"></span>Java 17</li>
+          <li><span class="skill-dot" style="background:#f89820"></span>Spring Security · JWT</li>
+          <li><span class="skill-dot" style="background:#f89820"></span>JPA / Hibernate</li>
+          <li><span class="skill-dot" style="background:#f89820"></span>Gradle</li>
+        </ul>
+      </div>
+
+      <div class="skill-group">
+        <div class="skill-group-title">AI / Data</div>
+        <ul class="skill-list">
+          <li><span class="skill-dot" style="background:#a78bfa"></span>Python 3.11</li>
+          <li><span class="skill-dot" style="background:#a78bfa"></span>FastAPI</li>
+          <li><span class="skill-dot" style="background:#a78bfa"></span>scikit-learn (RandomForest)</li>
+          <li><span class="skill-dot" style="background:#a78bfa"></span>pandas · numpy</li>
+          <li><span class="skill-dot" style="background:#a78bfa"></span>기상청 공공 API</li>
+        </ul>
+      </div>
+
+      <div class="skill-group">
+        <div class="skill-group-title">DB / Infra</div>
+        <ul class="skill-list">
+          <li><span class="skill-dot" style="background:#34d399"></span>MySQL / TiDB Cloud</li>
+          <li><span class="skill-dot" style="background:#34d399"></span>Git · GitHub</li>
+          <li><span class="skill-dot" style="background:#34d399"></span>REST API 설계</li>
+          <li><span class="skill-dot" style="background:#34d399"></span>카카오 주소 API</li>
+          <li><span class="skill-dot" style="background:#34d399"></span>QR 코드 연동</li>
+        </ul>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ── FOOTER ── -->
+<footer>
+  <div class="container">
+    <p style="margin-bottom:6px">김지환 (jihwan) — 컴퓨터공학과</p>
+    <p style="color:#525a72">FoodGuard · 캡스톤 디자인 2026.06 · Git 브랜치 커밋 이력 기반</p>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -80,7 +80,7 @@ const Orders = ({ user }: any) => {
   const driversReceivedQrCodes = rows
     .filter((r: any) => r.status === 'DRIVER_RECEIVED' && r.qrToken)
     .map((r: any) => ({
-      data: `${window.location.origin}/driver/scan?token=${r.qrToken}`,
+      data: `${window.location.origin}/owner/scan?token=${r.qrToken}`,
       label: `${r.name} ${r.quantity}${r.unit}`,
     }));
 
