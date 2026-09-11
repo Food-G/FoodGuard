@@ -67,7 +67,7 @@ def save_predictions_bulk(
     store_id: int,
     menu_id: int,
     predictions: list[dict],
-    model_version: str = "rf_v1.0",
+    model_version: str = "xgb_weather_v1.0",
 ) -> None:
     """
     PREDICTION_RESULT 테이블에 예측값 저장.
@@ -86,14 +86,15 @@ def save_predictions_bulk(
         db.execute(
             text(
                 "INSERT INTO PREDICTION_RESULT "
-                "(store_id, menu_id, target_date, predicted_qty, confidence, model_version) "
-                "VALUES (:sid, :mid, :tdate, :qty, :conf, :ver)"
+                "(store_id, menu_id, target_date, predicted_qty, recommended_order_qty, confidence, model_version) "
+                "VALUES (:sid, :mid, :tdate, :qty, :rec_qty, :conf, :ver)"
             ),
             {
                 "sid": store_id,
                 "mid": menu_id,
                 "tdate": p["date"],
                 "qty": p["predicted_qty"],
+                "rec_qty": p["recommended_order_qty"],
                 "conf": p["confidence"],
                 "ver": model_version,
             },
@@ -116,7 +117,7 @@ def get_saved_predictions(db: Session, store_id: int) -> list[dict]:
     rows = db.execute(
         text(
             "SELECT pr.prediction_id, pr.menu_id, m.menu_name, "
-            "       pr.target_date, pr.predicted_qty, pr.confidence, "
+            "       pr.target_date, pr.predicted_qty, pr.recommended_order_qty, pr.confidence, "
             "       pr.model_version, pr.created_at "
             "FROM PREDICTION_RESULT pr "
             "JOIN MENU m ON pr.menu_id = m.menu_id "
@@ -132,9 +133,10 @@ def get_saved_predictions(db: Session, store_id: int) -> list[dict]:
             "menu_name": r[2],
             "prediction_date": str(r[3]),
             "predicted_qty": int(r[4]),
-            "confidence": float(r[5]) if r[5] else 0.0,
-            "model_version": r[6],
-            "created_at": str(r[7]),
+            "recommended_order_qty": int(r[5]) if r[5] is not None else int(r[4]),
+            "confidence": float(r[6]) if r[6] else 0.0,
+            "model_version": r[7],
+            "created_at": str(r[8]),
         }
         for r in rows
     ]

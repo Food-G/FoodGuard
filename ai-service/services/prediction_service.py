@@ -20,7 +20,7 @@ from services.weather_service import (
     get_coords,
 )
 
-MODEL_VERSION = "rf_weather_v1.0"
+MODEL_VERSION = "xgb_weather_v1.0"
 
 
 def predict_and_save_store(db: Session, store_id: int) -> dict:
@@ -130,7 +130,7 @@ def train_store_models(db: Session, store_id: int) -> dict[int, float]:
 
         if predictor.is_trained:
             predictor.save()
-            scores[menu_id] = round(predictor.score * 100, 1)
+            scores[menu_id] = round(predictor.score, 1)  # score는 이미 0~100 스케일 (wMAPE 기반)
         else:
             scores[menu_id] = 0.0
 

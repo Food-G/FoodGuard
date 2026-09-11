@@ -34,6 +34,9 @@ public class PredictionResult {
     @Column(name = "predicted_qty", nullable = false)
     private Integer predictedQty;
 
+    @Column(name = "recommended_order_qty")
+    private Integer recommendedOrderQty;
+
     @Column(precision = 5, scale = 2)
     private BigDecimal confidence;
 

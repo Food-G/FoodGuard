@@ -15,6 +15,7 @@ public class PredictionResultDto {
     private final String menuName;
     private final LocalDate predictionDate;
     private final Integer predictedQty;
+    private final Integer recommendedOrderQty;
     private final BigDecimal confidence;
     private final String modelVersion;
     private final LocalDateTime createdAt;
@@ -25,6 +26,7 @@ public class PredictionResultDto {
         this.menuName = pr.getMenu().getMenuName();
         this.predictionDate = pr.getPredictionDate();
         this.predictedQty = pr.getPredictedQty();
+        this.recommendedOrderQty = pr.getRecommendedOrderQty();
         this.confidence = pr.getConfidence();
         this.modelVersion = pr.getModelVersion();
         this.createdAt = pr.getCreatedAt();

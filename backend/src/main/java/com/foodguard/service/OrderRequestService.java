@@ -147,10 +147,11 @@ public class OrderRequestService {
             return List.of();
         }
 
-        // 메뉴별 7일 예측량 합산
+        // 메뉴별 7일 추천 발주량(안전재고 반영) 합산 — recommendedOrderQty가 없는 구 데이터는 predictedQty로 대체
         Map<Long, Integer> menuTotal = new LinkedHashMap<>();
         for (PredictionResult p : predictions) {
-            menuTotal.merge(p.getMenu().getId(), p.getPredictedQty(), Integer::sum);
+            Integer qty = p.getRecommendedOrderQty() != null ? p.getRecommendedOrderQty() : p.getPredictedQty();
+            menuTotal.merge(p.getMenu().getId(), qty, Integer::sum);
         }
 
         // 식자재별 총 필요량 계산 (레시피 소단위 → 발주 기준 단위로 변환)
