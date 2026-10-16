@@ -55,6 +55,7 @@ def trigger_menu_prediction(
             PredictionItem(
                 prediction_date=p["date"],
                 predicted_qty=p["predicted_qty"],
+                recommended_order_qty=p["recommended_order_qty"],
                 confidence=p["confidence"],
             )
             for p in raw_preds
@@ -85,6 +86,7 @@ def get_store_predictions(store_id: int, db: Session = Depends(get_db)):
             PredictionItem(
                 prediction_date=r["prediction_date"],
                 predicted_qty=r["predicted_qty"],
+                recommended_order_qty=r["recommended_order_qty"],
                 confidence=r["confidence"],
             )
         )

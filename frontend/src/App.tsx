@@ -22,6 +22,8 @@ import DeliveryDriver from './pages/DeliveryDriver';
 import DeliveryDriverGroup from './pages/DeliveryDriverGroup';
 import WastePrediction from './pages/WastePrediction';
 import DonationHistory from './pages/DonationHistory';
+import ScanComplete from './pages/ScanComplete';
+import OwnerScanComplete from './pages/OwnerScanComplete';
 import { useAuth } from './hooks/useAuth';
 import { ConfirmProvider } from './hooks/useConfirm';
 
@@ -49,6 +51,8 @@ function App() {
             <Route path="/login" element={<PublicRoute><Login onLogin={login} /></PublicRoute>} />
             <Route path="/signup" element={<PublicRoute><Signup /></PublicRoute>} />
             <Route path="/driver/group/:groupToken" element={<DeliveryDriverGroup />} />
+            <Route path="/driver/scan" element={<ScanComplete />} />
+            <Route path="/owner/scan" element={<OwnerScanComplete />} />
             <Route path="/driver/:token" element={<DeliveryDriver />} />
 
             <Route path="/" element={
@@ -65,7 +69,7 @@ function App() {
 
             <Route path="/ingredients" element={
               <ProtectedRoute role="OWNER">
-                <Ingredients />
+                <Ingredients user={user} />
               </ProtectedRoute>
             } />
 

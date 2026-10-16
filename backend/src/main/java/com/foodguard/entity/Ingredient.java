@@ -25,6 +25,10 @@ public class Ingredient {
     @Column(length = 50)
     private String category;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "store_id")
+    private Store store;
+
     @Column(name = "created_at", insertable = false, updatable = false)
     private LocalDateTime createdAt;
 }

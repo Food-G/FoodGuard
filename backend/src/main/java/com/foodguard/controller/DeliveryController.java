@@ -84,12 +84,14 @@ public class DeliveryController {
         if (orders.isEmpty()) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
 
         OrderRequest first = orders.get(0);
+        String baseUrl = ""; // 프론트에서 URL 구성
         List<Map<String, Object>> items = orders.stream().map(o -> {
             Map<String, Object> item = new LinkedHashMap<>();
             item.put("orderId", o.getId());
             item.put("ingredientName", o.getIngredient().getName());
             item.put("quantity", o.getOrderedQty());
             item.put("unit", o.getIngredient().getUnit());
+            item.put("qrToken", o.getQrToken()); // 스캔 검수용
             return item;
         }).collect(Collectors.toList());
 

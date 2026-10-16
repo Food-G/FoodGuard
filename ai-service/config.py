@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     MIN_DATA_POINTS_MID: int = 15  # 중간 피처셋 전환 기준
     MIN_DATA_POINTS_FULL: int = 30 # 전체 피처셋 전환 기준
     KMA_API_KEY: str = ""  # data.go.kr 기상청 API 키
+    COST_RATIO: float = 0.4  # 원가 데이터 미보유로 인한 근사치: 원가 ≈ 판매가의 40%
 
     model_config = {"env_file": ".env"}
 

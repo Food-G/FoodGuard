@@ -5,6 +5,7 @@ from pydantic import BaseModel
 class PredictionItem(BaseModel):
     prediction_date: date
     predicted_qty: int
+    recommended_order_qty: int
     confidence: float
 
 

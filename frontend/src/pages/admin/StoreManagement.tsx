@@ -4,10 +4,12 @@ import {
   Typography, Box, Paper, Grid, Stack, useTheme,
   TextField, InputAdornment, Popover,
   CircularProgress, Alert, Chip, Divider, Button, Tab, Tabs,
+  Dialog, DialogTitle, DialogContent, DialogActions,
 } from '@mui/material';
 import { storeService } from '../../services/storeService';
 import { orderService } from '../../services/orderService';
 import IconifyIcon from '../../components/base/IconifyIcon';
+import QrCodeDisplay from '../../components/QrCodeDisplay';
 
 declare global {
   interface Window {
@@ -280,6 +282,10 @@ const StoreManagement = () => {
   const [detailTab, setDetailTab] = useState(0);
   const [pendingOrders, setPendingOrders] = useState<any[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
+  const [hqSendTarget, setHqSendTarget] = useState<number | null>(null);
+  const [hqSendName, setHqSendName] = useState('');
+  const [expiryDateInput, setExpiryDateInput] = useState('');
+  const [qrData, setQrData] = useState<{ data: string; name: string } | null>(null);
   const [pendingStoreIds, setPendingStoreIds] = useState<Set<number>>(new Set());
   const [showPendingOnly, setShowPendingOnly] = useState(false);
   const scriptLoaded = useRef(false);
@@ -303,10 +309,11 @@ const StoreManagement = () => {
       .finally(() => setLoading(false));
     loadPostcodeScript();
 
+    const ACTIVE = new Set(['REQUESTED', 'APPROVED', 'HQ_SENT', 'DRIVER_RECEIVED']);
     const loadPendingStores = () =>
       orderService.getAll().then((orders: any[]) => {
         const ids = new Set<number>(
-          (orders ?? []).filter((o: any) => o.status === 'REQUESTED').map((o: any) => o.store?.id).filter(Boolean)
+          (orders ?? []).filter((o: any) => ACTIVE.has(o.status)).map((o: any) => o.store?.id).filter(Boolean)
         );
         setPendingStoreIds(ids);
       }).catch(() => {});
@@ -315,17 +322,23 @@ const StoreManagement = () => {
     return () => clearInterval(timer);
   }, []);
 
+  const ACTIVE_STATUSES = new Set(['REQUESTED', 'APPROVED', 'HQ_SENT', 'DRIVER_RECEIVED']);
+
+  const reloadOrders = (storeId: number) => {
+    setOrdersLoading(true);
+    orderService.getByStore(storeId)
+      .then((orders: any[]) =>
+        setPendingOrders((orders ?? []).filter((o: any) => ACTIVE_STATUSES.has(o.status)))
+      )
+      .catch(() => {})
+      .finally(() => setOrdersLoading(false));
+  };
+
   useEffect(() => {
     setEditMode(false);
     setDetailTab(0);
     if (!selectedStore?.id) return;
-    setOrdersLoading(true);
-    orderService.getByStore(selectedStore.id)
-      .then((orders: any[]) =>
-        setPendingOrders((orders ?? []).filter((o: any) => o.status === 'REQUESTED'))
-      )
-      .catch(() => {})
-      .finally(() => setOrdersLoading(false));
+    reloadOrders(selectedStore.id);
   }, [selectedStore?.id]);
 
   const filtered = stores.filter((s: any) => {
@@ -431,11 +444,7 @@ const StoreManagement = () => {
         <CascadingRegionFilter value={regionFilter} onChange={setRegionFilter} />
         <Chip
           icon={<IconifyIcon icon="mingcute:alert-fill" width={14} />}
-          label={
-            showPendingOnly
-              ? `발주 대기 ${pendingStoreIds.size}곳`
-              : `발주 대기 ${pendingStoreIds.size}곳`
-          }
+          label={`진행 중 발주 ${pendingStoreIds.size}곳${showPendingOnly ? ' ✓' : ''}`}
           color="warning"
           variant={showPendingOnly ? 'filled' : 'outlined'}
           clickable
@@ -568,10 +577,13 @@ const StoreManagement = () => {
                   <Tab label="가맹점 정보" />
                   <Tab label={
                     <Stack direction="row" gap={0.75} alignItems="center">
-                      발주 대기
-                      {pendingOrders.length > 0 && (
-                        <Chip label={pendingOrders.length} color="warning" size="small"
-                          sx={{ height: 18, fontSize: 10, fontWeight: 700 }} />
+                      발주 현황
+                      {pendingOrders.filter(o => o.status === 'REQUESTED').length > 0 && (
+                        <Chip
+                          label={pendingOrders.filter(o => o.status === 'REQUESTED').length}
+                          color="warning" size="small"
+                          sx={{ height: 18, fontSize: 10, fontWeight: 700 }}
+                        />
                       )}
                     </Stack>
                   } />
@@ -661,48 +673,84 @@ const StoreManagement = () => {
                     ) : pendingOrders.length === 0 ? (
                       <Stack alignItems="center" justifyContent="center" gap={1.5} sx={{ pt: 6 }}>
                         <IconifyIcon icon="mingcute:check-circle-fill" color={theme.palette.success.main} width={44} />
-                        <Typography color="text.secondary" fontWeight={600}>대기 중인 발주가 없습니다.</Typography>
+                        <Typography color="text.secondary" fontWeight={600}>진행 중인 발주가 없습니다.</Typography>
                       </Stack>
                     ) : (
                       <Stack gap={1.5}>
-                        {pendingOrders.map((order: any) => (
-                          <Paper key={order.id} variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
-                            <Stack direction="row" justifyContent="space-between" alignItems="center">
-                              <Box>
-                                <Typography fontWeight={700} fontSize={14}>
-                                  {order.ingredient?.name ?? '-'}
-                                </Typography>
-                                <Typography variant="caption" color="text.secondary">
-                                  {order.orderedQty ?? order.quantity} {order.ingredient?.unit ?? ''} · {order.orderedAt ? new Date(order.orderedAt).toLocaleDateString() : '-'}
-                                </Typography>
-                              </Box>
-                              <Stack direction="row" gap={1}>
-                                <Button size="small" variant="contained" color="primary"
-                                  onClick={async () => {
-                                    try {
-                                      await orderService.approve(order.id);
-                                      setPendingOrders(prev => prev.filter(o => o.id !== order.id));
-                                      setSuccess('발주가 승인되었습니다.');
-                                    } catch { setError('승인에 실패했습니다.'); }
-                                  }}
-                                  sx={{ borderRadius: 2, fontSize: 12 }}>
-                                  승인
-                                </Button>
-                                <Button size="small" variant="outlined" color="error"
-                                  onClick={async () => {
-                                    try {
-                                      await orderService.updateStatus(order.id, 'REJECTED');
-                                      setPendingOrders(prev => prev.filter(o => o.id !== order.id));
-                                      setSuccess('발주가 거절되었습니다.');
-                                    } catch { setError('거절에 실패했습니다.'); }
-                                  }}
-                                  sx={{ borderRadius: 2, fontSize: 12 }}>
-                                  거절
-                                </Button>
+                        {pendingOrders.map((order: any) => {
+                          const driverUrl = order.deliveryGroupToken
+                            ? `${window.location.origin}/driver/group/${order.deliveryGroupToken}`
+                            : null;
+                          const statusColor: Record<string, any> = {
+                            REQUESTED: 'warning', APPROVED: 'info',
+                            HQ_SENT: 'primary', DRIVER_RECEIVED: 'secondary',
+                          };
+                          const statusLabel: Record<string, string> = {
+                            REQUESTED: '승인 대기', APPROVED: '발송 필요',
+                            HQ_SENT: '배달중', DRIVER_RECEIVED: '배송완료',
+                          };
+                          return (
+                            <Paper key={order.id} variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
+                              <Stack direction="row" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={1}>
+                                <Box>
+                                  <Stack direction="row" gap={1} alignItems="center">
+                                    <Typography fontWeight={700} fontSize={14}>
+                                      {order.ingredient?.name ?? '-'}
+                                    </Typography>
+                                    <Chip
+                                      label={statusLabel[order.status] ?? order.status}
+                                      color={statusColor[order.status] ?? 'default'}
+                                      size="small" sx={{ height: 20, fontSize: 10, fontWeight: 700 }}
+                                    />
+                                  </Stack>
+                                  <Typography variant="caption" color="text.secondary">
+                                    {order.orderedQty ?? order.quantity} {order.ingredient?.unit ?? ''} · {order.orderedAt ? new Date(order.orderedAt).toLocaleDateString() : '-'}
+                                  </Typography>
+                                </Box>
+                                <Stack direction="row" gap={1}>
+                                  {order.status === 'REQUESTED' && (
+                                    <>
+                                      <Button size="small" variant="contained" color="primary"
+                                        onClick={async () => {
+                                          try {
+                                            await orderService.approve(order.id);
+                                            reloadOrders(selectedStore.id);
+                                            setSuccess('발주가 승인되었습니다.');
+                                          } catch { setError('승인에 실패했습니다.'); }
+                                        }}
+                                        sx={{ borderRadius: 2, fontSize: 12 }}>승인</Button>
+                                      <Button size="small" variant="outlined" color="error"
+                                        onClick={async () => {
+                                          try {
+                                            await orderService.updateStatus(order.id, 'REJECTED');
+                                            reloadOrders(selectedStore.id);
+                                            setSuccess('발주가 거절되었습니다.');
+                                          } catch { setError('거절에 실패했습니다.'); }
+                                        }}
+                                        sx={{ borderRadius: 2, fontSize: 12 }}>거절</Button>
+                                    </>
+                                  )}
+                                  {order.status === 'APPROVED' && (
+                                    <Button size="small" variant="contained" color="success"
+                                      onClick={() => { setHqSendTarget(order.id); setHqSendName(order.ingredient?.name ?? '식자재'); setExpiryDateInput(''); }}
+                                      sx={{ borderRadius: 2, fontSize: 12 }}>발송 검수완료 →</Button>
+                                  )}
+                                  {order.status === 'HQ_SENT' && driverUrl && (
+                                    <Button size="small" variant="outlined" color="secondary"
+                                      onClick={() => { navigator.clipboard.writeText(driverUrl); setSuccess('배달기사 링크가 복사되었습니다.'); }}
+                                      sx={{ borderRadius: 2, fontSize: 12 }}>
+                                      <IconifyIcon icon="mingcute:link-line" width={14} />
+                                      &nbsp;링크 복사
+                                    </Button>
+                                  )}
+                                  {order.status === 'DRIVER_RECEIVED' && (
+                                    <Chip label="가맹점주 검수 대기" size="small" color="warning" variant="outlined" sx={{ fontWeight: 600 }} />
+                                  )}
+                                </Stack>
                               </Stack>
-                            </Stack>
-                          </Paper>
-                        ))}
+                            </Paper>
+                          );
+                        })}
                       </Stack>
                     )}
                   </>
@@ -712,6 +760,54 @@ const StoreManagement = () => {
           )}
         </Grid>
       </Grid>
+      {/* 유통기한 입력 다이얼로그 */}
+      <Dialog open={hqSendTarget !== null} onClose={() => { setHqSendTarget(null); setExpiryDateInput(''); }} maxWidth="xs" fullWidth>
+        <DialogTitle>발송 검수 완료 — {hqSendName}</DialogTitle>
+        <DialogContent>
+          <Stack gap={2} pt={1}>
+            <Typography variant="body2" color="text.secondary">
+              유통기한을 입력하면 QR 코드가 생성됩니다. (선택 사항)
+            </Typography>
+            <TextField
+              label="유통기한" type="date" value={expiryDateInput}
+              onChange={(e) => setExpiryDateInput(e.target.value)}
+              InputLabelProps={{ shrink: true }} fullWidth size="small"
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => { setHqSendTarget(null); setExpiryDateInput(''); }}>취소</Button>
+          <Button variant="contained" color="success" onClick={async () => {
+            if (hqSendTarget === null) return;
+            try {
+              const result = await orderService.hqSend(hqSendTarget, expiryDateInput || undefined);
+              setSuccess('발송 검수가 완료되었습니다.');
+              setHqSendTarget(null);
+              setExpiryDateInput('');
+              if (result?.qrToken) {
+                const qrUrl = `${window.location.origin}/driver/scan?token=${result.qrToken}`;
+                setQrData({ data: qrUrl, name: hqSendName });
+              }
+              reloadOrders(selectedStore.id);
+            } catch {
+              setError('발송 검수 처리에 실패했습니다.');
+              setHqSendTarget(null);
+            }
+          }}>
+            발송 검수완료
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* QR 코드 표시 */}
+      {qrData && (
+        <QrCodeDisplay
+          data={qrData.data}
+          title={`${qrData.name} QR 코드`}
+          subtitle="이 QR 코드를 패키지에 부착하세요"
+          onClose={() => setQrData(null)}
+        />
+      )}
     </Stack>
   );
 };

@@ -81,7 +81,7 @@ ai-service/
 ├── main.py                      # FastAPI 진입점
 ├── config.py                    # 환경설정 (.env: DB_URL, KMA_API_KEY)
 ├── ml/
-│   ├── demand_predictor.py      # RandomForest 모델 (학습/예측)
+│   ├── demand_predictor.py      # XGBoost 점 추정 모델 + quantile(안전재고) 모델 (학습/예측)
 │   └── feature_engineering.py  # 피처 생성 (날짜 + 날씨 + lag/rolling)
 ├── services/
 │   ├── prediction_service.py   # 예측 비즈니스 로직
@@ -98,8 +98,8 @@ POST /api/predict/store/{id}
   → 기상청 단기예보(1~3일) + 중기예보(4~7일) 조회
   → SALES_DATA에서 판매 이력 조회
   → Open-Meteo로 과거 날씨 조회 (학습용)
-  → RandomForest 학습 → 7일 예측
-  → PREDICTION_RESULT 테이블 저장
+  → XGBoost 점 추정 모델 + quantile 모델(안전재고) 학습 → 7일 예측
+  → PREDICTION_RESULT 테이블 저장 (predicted_qty + recommended_order_qty)
 ```
 
 ### DB 테이블 (AI 서비스 접근)
@@ -109,13 +109,17 @@ POST /api/predict/store/{id}
 - `PREDICTION_RESULT` — 쓰기 (예측 결과 저장)
 
 ### 모델 전략
-| 데이터 수 | 전략 | 신뢰도 |
+| 데이터 수 | 전략 | 피처셋 |
 |---|---|---|
-| < 7개 | 예측 불가 (0 반환) | 0% |
-| 7~29개 | 요일 평균 단순 예측 | 40% ~ 31% (decay) |
-| ≥ 30개 | RandomForest (날씨 피처 포함) | R²×85% (최대 95%) |
+| < 7개 | 예측 불가 (0 반환) | — |
+| 7~14개 | 요일 평균 + 요일별 경험적 분위수(안전재고) | — |
+| 15~29개 | XGBoost | MID_FEATURE_COLS |
+| ≥ 30개 | XGBoost (날씨 피처 포함) | FULL_FEATURE_COLS + 날씨 6종 |
 
-신뢰도는 예측일이 멀수록 하루당 1.5% 감소 (최소 15%).
+신뢰도(confidence)는 R² 대신 **wMAPE** 기반: `clip(100 - wMAPE, 15, 95)`. 예측일이 멀수록 하루당 1.5% 감소 (최소 15%).
+
+### 안전재고 (recommended_order_qty)
+품절비용 vs 폐기비용의 뉴스벤더 모델(critical fractile)로 목표 분위수를 정한 XGBoost quantile 모델(`objective="reg:quantileerror"`)로 산출. 원가 데이터가 DB에 없어 `COST_RATIO=0.4`(판매가의 40%)로 근사, critical fractile = `1 - COST_RATIO = 0.6`. 자세한 배경은 `ai-service/PROJECT_STATUS.md` 참조.
 
 ### 날씨 피처 (6개)
 `temp_max`, `temp_min`, `precipitation`, `is_rainy`, `is_hot`, `is_cold`

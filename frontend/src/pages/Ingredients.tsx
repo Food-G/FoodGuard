@@ -7,12 +7,14 @@ import {
 import IconifyIcon from '../components/base/IconifyIcon';
 import { api } from '../services/api';
 import { useConfirm } from '../hooks/useConfirm';
+import { useMyStore } from '../hooks/useMyStore';
 
 const UNIT_OPTIONS = ['kg', 'L', '개'];
 
-const Ingredients = () => {
+const Ingredients = ({ user }: any) => {
   const theme = useTheme();
   const confirm = useConfirm();
+  const { storeId, storeLoading } = useMyStore(user);
 
   const [allIngredients, setAllIngredients] = useState<any[]>([]);
   const [error, setError] = useState('');
@@ -26,12 +28,12 @@ const Ingredients = () => {
   const [editUnitAnchor, setEditUnitAnchor] = useState<HTMLElement | null>(null);
 
   useEffect(() => {
-    loadAllIngredients();
-  }, []);
+    if (storeId) loadAllIngredients(storeId);
+  }, [storeId]);
 
-  const loadAllIngredients = async () => {
+  const loadAllIngredients = async (sid: number) => {
     try {
-      const data = await api.get('/ingredients');
+      const data = await api.get(`/ingredients?storeId=${sid}`);
       setAllIngredients(data ?? []);
     } catch {
       setError('식자재 목록을 불러오지 못했습니다.');
@@ -40,15 +42,15 @@ const Ingredients = () => {
 
   const handleCreateIngredient = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!ingForm.name || !ingForm.unit) return;
+    if (!ingForm.name || !ingForm.unit || !storeId) return;
     setIngSubmitting(true);
     setError('');
     try {
-      await api.post('/ingredients', ingForm);
+      await api.post('/ingredients', { ...ingForm, storeId });
       setSuccess('식자재가 등록되었습니다.');
       setIngForm({ name: '', unit: '' });
       setShowIngForm(false);
-      await loadAllIngredients();
+      await loadAllIngredients(storeId);
     } catch {
       setError('식자재 등록에 실패했습니다.');
     } finally {
@@ -68,7 +70,7 @@ const Ingredients = () => {
       });
       setSuccess('식자재가 수정되었습니다.');
       setEditingIng(null);
-      await loadAllIngredients();
+      if (storeId) await loadAllIngredients(storeId);
     } catch {
       setError('식자재 수정에 실패했습니다.');
     } finally {
@@ -81,7 +83,7 @@ const Ingredients = () => {
     try {
       await api.delete(`/ingredients/${id}`);
       setSuccess('식자재가 삭제되었습니다.');
-      await loadAllIngredients();
+      if (storeId) await loadAllIngredients(storeId);
     } catch {
       setError('식자재 삭제에 실패했습니다.');
     }

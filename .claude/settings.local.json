@@ -82,7 +82,8 @@
       "Bash(git restore *)",
       "Bash(py generate_jihyun_portfolio.py)",
       "WebFetch(domain:www.youtube.com)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(venv\\\\Scripts\\\\python.exe insert_dummy_sales.py)"
     ]
   }
 }

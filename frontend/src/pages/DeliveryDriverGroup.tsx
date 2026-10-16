@@ -35,18 +35,35 @@ const DeliveryDriverGroup = () => {
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { loadInfo(); }, [groupToken]);
+  useEffect(() => {
+    loadInfo();
+    const timer = setInterval(loadInfo, 5000);
+    return () => clearInterval(timer);
+  }, [groupToken]);
 
   const handleQrScan = async (qrData: string) => {
     setScanning(false);
     try {
-      const result = await orderService.scanQr(qrData);
-      setScanSuccess(`${result.ingredientName} 수령 확인 완료`);
+      const tokenMatch = qrData.match(/[?&]token=([^&]+)/);
+      const result = tokenMatch
+        ? await orderService.scanQrByDriver(decodeURIComponent(tokenMatch[1]))
+        : await orderService.scanQr(qrData);
+      setScanSuccess(result.alreadyProcessed
+        ? `${result.ingredientName} - 이미 수령 확인 완료`
+        : `${result.ingredientName} 수령 확인 완료`);
       loadInfo();
     } catch {
       setError('QR 스캔 처리에 실패했습니다.');
     }
   };
+
+  // 그룹 내 각 품목의 QR 코드 (qrToken이 있는 것만)
+  const displayQrCodes = (info?.items ?? [])
+    .filter((item: any) => item.qrToken)
+    .map((item: any) => ({
+      data: `${window.location.origin}/driver/scan?token=${item.qrToken}`,
+      label: `${item.ingredientName} ${item.quantity}${item.unit}`,
+    }));
 
   if (loading) return (
     <Box sx={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -183,6 +200,7 @@ const DeliveryDriverGroup = () => {
             title="배달기사 검수 QR 스캔"
             onScan={handleQrScan}
             onClose={() => setScanning(false)}
+            displayQrCodes={displayQrCodes}
           />
         )}
 

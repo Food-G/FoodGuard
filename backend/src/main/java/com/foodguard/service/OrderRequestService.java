@@ -147,10 +147,11 @@ public class OrderRequestService {
             return List.of();
         }
 
-        // 메뉴별 7일 예측량 합산
+        // 메뉴별 7일 추천 발주량(안전재고 반영) 합산 — recommendedOrderQty가 없는 구 데이터는 predictedQty로 대체
         Map<Long, Integer> menuTotal = new LinkedHashMap<>();
         for (PredictionResult p : predictions) {
-            menuTotal.merge(p.getMenu().getId(), p.getPredictedQty(), Integer::sum);
+            Integer qty = p.getRecommendedOrderQty() != null ? p.getRecommendedOrderQty() : p.getPredictedQty();
+            menuTotal.merge(p.getMenu().getId(), qty, Integer::sum);
         }
 
         // 식자재별 총 필요량 계산 (레시피 소단위 → 발주 기준 단위로 변환)
@@ -238,6 +239,7 @@ public class OrderRequestService {
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("order", order);
         result.put("qrData", qrData);
+        result.put("qrToken", order.getQrToken());
         return result;
     }
 
@@ -281,6 +283,97 @@ public class OrderRequestService {
         } catch (Exception e) {
             throw new RuntimeException("QR 코드를 읽을 수 없습니다.", e);
         }
+    }
+
+    // URL QR 토큰 직접 처리 (네이티브 카메라 스캔용)
+    @Transactional
+    public Map<String, Object> processQrScanByToken(String token) {
+        OrderRequest order = orderRequestRepository.findByQrToken(token)
+                .orElseThrow(() -> new RuntimeException("유효하지 않은 QR 코드입니다."));
+
+        String previousStatus = order.getStatus();
+        if ("HQ_SENT".equals(order.getStatus())) {
+            order.setStatus("DRIVER_RECEIVED");
+            order.setDriverReceivedAt(LocalDateTime.now());
+            orderRequestRepository.save(order);
+        } else if ("DRIVER_RECEIVED".equals(order.getStatus())) {
+            order.setStatus("DONE");
+            order.setOwnerReceivedAt(LocalDateTime.now());
+            orderRequestRepository.save(order);
+            applyInventory(order);
+        } else {
+            throw new RuntimeException("이미 처리됐거나 처리할 수 없는 상태입니다. 현재 상태: " + order.getStatus());
+        }
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("orderId", order.getId());
+        result.put("previousStatus", previousStatus);
+        result.put("newStatus", order.getStatus());
+        result.put("ingredientName", order.getIngredient().getName());
+        result.put("quantity", order.getOrderedQty());
+        result.put("unit", order.getIngredient().getUnit());
+        result.put("storeName", order.getStore().getStoreName());
+        result.put("expiryDate", order.getExpiryDate());
+        return result;
+    }
+
+    // 배달기사 전용 QR 스캔 — HQ_SENT→DRIVER_RECEIVED만 처리 (중복 스캔 안전)
+    @Transactional
+    public Map<String, Object> driverQrScan(String token) {
+        OrderRequest order = orderRequestRepository.findByQrToken(token)
+                .orElseThrow(() -> new RuntimeException("유효하지 않은 QR 코드입니다."));
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("orderId", order.getId());
+        result.put("ingredientName", order.getIngredient().getName());
+        result.put("quantity", order.getOrderedQty());
+        result.put("unit", order.getIngredient().getUnit());
+        result.put("storeName", order.getStore().getStoreName());
+        result.put("expiryDate", order.getExpiryDate());
+
+        if ("HQ_SENT".equals(order.getStatus())) {
+            order.setStatus("DRIVER_RECEIVED");
+            order.setDriverReceivedAt(LocalDateTime.now());
+            orderRequestRepository.save(order);
+            result.put("previousStatus", "HQ_SENT");
+            result.put("newStatus", "DRIVER_RECEIVED");
+            result.put("alreadyProcessed", false);
+        } else {
+            result.put("previousStatus", order.getStatus());
+            result.put("newStatus", order.getStatus());
+            result.put("alreadyProcessed", true);
+        }
+        return result;
+    }
+
+    // 가맹점주 전용 QR 스캔 — DRIVER_RECEIVED→DONE+재고 처리만 담당
+    @Transactional
+    public Map<String, Object> ownerQrScan(String token) {
+        OrderRequest order = orderRequestRepository.findByQrToken(token)
+                .orElseThrow(() -> new RuntimeException("유효하지 않은 QR 코드입니다."));
+
+        if ("DONE".equals(order.getStatus())) {
+            throw new RuntimeException("이미 처리된 발주입니다.");
+        }
+        if (!"DRIVER_RECEIVED".equals(order.getStatus())) {
+            throw new RuntimeException("배달기사 수령 확인 후에만 검수할 수 있습니다. 현재 상태: " + order.getStatus());
+        }
+
+        order.setStatus("DONE");
+        order.setOwnerReceivedAt(LocalDateTime.now());
+        orderRequestRepository.save(order);
+        applyInventory(order);
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("orderId", order.getId());
+        result.put("previousStatus", "DRIVER_RECEIVED");
+        result.put("newStatus", "DONE");
+        result.put("ingredientName", order.getIngredient().getName());
+        result.put("quantity", order.getOrderedQty());
+        result.put("unit", order.getIngredient().getUnit());
+        result.put("storeName", order.getStore().getStoreName());
+        result.put("expiryDate", order.getExpiryDate());
+        return result;
     }
 
     // 2단계: 배달기사 수령 확인 (HQ_SENT → DRIVER_RECEIVED)

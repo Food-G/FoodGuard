@@ -34,6 +34,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/delivery/**").permitAll()
                         .requestMatchers("/api/orders/scan").permitAll()
+                        .requestMatchers("/api/orders/driver-scan").permitAll()
+                        .requestMatchers("/api/orders/owner-scan").permitAll()
                         .requestMatchers("/ws/**").permitAll()
                         .requestMatchers("/error").permitAll()
                         .anyRequest().authenticated()

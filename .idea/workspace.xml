@@ -7,7 +7,15 @@
     <list default="true" id="5cf40e29-3cc9-4695-8ab3-20a40cad9768" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.claude/settings.local.json" beforeDir="false" afterPath="$PROJECT_DIR$/.claude/settings.local.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/FoodGuard_포트폴리오.pptx" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/config/SecurityConfig.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/config/SecurityConfig.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/controller/IngredientController.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/controller/IngredientController.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/entity/Ingredient.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/entity/Ingredient.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/repository/IngredientRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/repository/IngredientRepository.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/service/IngredientService.java" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/main/java/com/foodguard/service/IngredientService.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/App.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/App.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/pages/Ingredients.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/pages/Ingredients.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/pages/Inventory.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/pages/Inventory.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/pages/Orders.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/pages/Orders.tsx" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -64,24 +72,27 @@
     "RunOnceActivity.git.unshallow": "true",
     "RunOnceActivity.typescript.service.memoryLimit.init": "true",
     "codeWithMe.voiceChat.enabledByDefault": "false",
-    "com.google.cloudcode.ide_session_index": "20260515_0002",
-    "git-widget-placeholder": "jhy",
+    "com.google.cloudcode.ide_session_index": "20260619_0001",
+    "git-widget-placeholder": "jihwan",
     "kotlin-language-version-configured": "true",
-    "last_opened_file_path": "C:/capston/Test-Repository",
+    "last_opened_file_path": "C:/Test-Repository",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.tslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
     "node.js.selected.package.tslint": "(autodetect)",
     "nodejs_package_manager_path": "npm",
-    "settings.editor.selected.configurable": "reference.settings.ide.settings.web.browsers",
+    "settings.editor.selected.configurable": "project.propCompiler",
     "ts.external.directory.path": "C:\\Test-Repository\\frontend\\node_modules\\typescript\\lib",
     "vue.rearranger.settings.migration": "true"
   }
 }]]></component>
-  <component name="RecentsManager">
-    <key name="CopyFile.RECENT_KEYS">
-      <recent name="C:\capston\Test-Repository" />
-    </key>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-jdk-30f59d01ecdd-37e91769500f-intellij.indexing.shared.core-IU-261.24374.151" />
+        <option value="bundled-js-predefined-d6986cc7102b-31caf2ab9e3c-JavaScript-IU-261.24374.151" />
+      </set>
+    </attachedChunks>
   </component>
   <component name="TaskManager">
     <task active="true" id="Default" summary="Default task">
@@ -103,6 +114,9 @@
       <workItem from="1778199613717" duration="9000" />
       <workItem from="1778199642131" duration="3000" />
       <workItem from="1778199653834" duration="3000" />
+      <workItem from="1779427747803" duration="1047000" />
+      <workItem from="1779431707833" duration="516000" />
+      <workItem from="1779432240451" duration="2075000" />
     </task>
     <servers />
   </component>
@@ -117,8 +131,24 @@
     </option>
   </component>
   <component name="Vcs.Log.Tabs.Properties">
+    <option name="OPEN_GENERIC_TABS">
+      <map>
+        <entry key="2df4bb68-a4e0-4cf0-949b-3ceaf261be7d" value="TOOL_WINDOW" />
+      </map>
+    </option>
     <option name="TAB_STATES">
       <map>
+        <entry key="2df4bb68-a4e0-4cf0-949b-3ceaf261be7d">
+          <value>
+            <State>
+              <option name="CUSTOM_BOOLEAN_PROPERTIES">
+                <map>
+                  <entry key="Show.Git.Branches" value="true" />
+                </map>
+              </option>
+            </State>
+          </value>
+        </entry>
         <entry key="MAIN">
           <value>
             <State>
@@ -127,7 +157,7 @@
                   <entry key="branch">
                     <value>
                       <list>
-                        <option value="dev2" />
+                        <option value="origin/jihwan" />
                       </list>
                     </value>
                   </entry>
