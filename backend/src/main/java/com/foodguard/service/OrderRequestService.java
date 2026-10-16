@@ -13,6 +13,7 @@ import com.foodguard.repository.MenuIngredientRepository;
 import com.foodguard.repository.OrderRequestRepository;
 import com.foodguard.repository.PredictionResultRepository;
 import com.foodguard.repository.StoreRepository;
+import com.foodguard.util.UnitConverter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -95,10 +96,10 @@ public class OrderRequestService {
             Optional<Inventory> existing = inventoryRepository
                     .findByStoreIdAndIngredientId(storeId, ingId);
             Inventory inv = existing.orElse(new Inventory());
-            double currentQty = existing.map(i -> i.getCurrentQty().doubleValue()).orElse(0.0);
             inv.setStore(store);
             inv.setIngredient(ingredient);
-            inv.setQuantity(round1(currentQty + qty));
+            // 발주 합계를 그대로 '설정' 한다 (가산하면 반복 호출 시 재고가 배로 늘어남)
+            inv.setQuantity(qty);
             inv.setMinThreshold(inv.getMinThreshold() != null ? inv.getMinThreshold() : BigDecimal.ZERO);
             inv.setUnit(ingredient.getUnit());
             result.add(inventoryRepository.save(inv));
@@ -106,9 +107,19 @@ public class OrderRequestService {
         return result;
     }
 
+    // 허용된 발주 상태값 — 프론트엔드(AdminOrders)가 실제로 사용하는 전체 어휘
+    // REQUESTED(승인대기) → APPROVED(발송필요) → HQ_SENT(배송중) → DRIVER_RECEIVED(점주 검수대기) → DONE(완료)
+    // 이탈 경로: REJECTED(본사 거절), CANCELLED(점주 취소)
+    private static final Set<String> VALID_STATUSES = Set.of(
+            "REQUESTED", "APPROVED", "HQ_SENT", "DRIVER_RECEIVED",
+            "DONE", "REJECTED", "CANCELLED");
+
     // 발주 상태 변경 — DONE 전환 시 재고 자동 반영
     @Transactional
     public OrderRequest updateStatus(Long id, String status) {
+        if (!VALID_STATUSES.contains(status)) {
+            throw new IllegalStateException("알 수 없는 발주 상태입니다: " + status);
+        }
         OrderRequest order = orderRequestRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("발주 요청을 찾을 수 없습니다."));
         String prev = order.getStatus();
@@ -148,11 +159,12 @@ public class OrderRequestService {
     }
 
     // 발주 취소 (삭제 대신 CANCELLED 상태로 변경 — recommend 중복 방지 및 이력 보존)
+    // 취소 불가 시 IllegalStateException — 컨트롤러가 400 으로 변환한다 (성공/실패를 상태코드로 구분)
     public String cancel(Long id) {
         OrderRequest order = orderRequestRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("발주 요청을 찾을 수 없습니다."));
         if (!order.getStatus().equals("REQUESTED")) {
-            return "승인된 발주는 취소할 수 없습니다.";
+            throw new IllegalStateException("승인된 발주는 취소할 수 없습니다.");
         }
         order.setStatus("CANCELLED");
         orderRequestRepository.save(order);
@@ -190,7 +202,7 @@ public class OrderRequestService {
                 String recipeUnit = mi.getUnit();               // g, ml, 개
                 double tol = mi.getTolerance() != null ? mi.getTolerance().doubleValue() : 0.0;
                 double rawQty = mi.getQtyPerUnit().doubleValue() * entry.getValue() * (1.0 + tol / 100.0);
-                double qty = convertToBaseUnit(rawQty, recipeUnit, baseUnit);
+                double qty = UnitConverter.toBaseUnit(rawQty, recipeUnit, baseUnit);
                 required.merge(ingId, qty, Double::sum);
                 ingName.putIfAbsent(ingId, mi.getIngredient().getName());
                 ingUnit.putIfAbsent(ingId, baseUnit);
@@ -279,13 +291,6 @@ public class OrderRequestService {
             covered.add(inv.getIngredient().getId());
         }
         return created;
-    }
-
-    // 레시피 소단위 → 발주 기준 단위 변환 (g→kg, ml→L)
-    private double convertToBaseUnit(double qty, String recipeUnit, String baseUnit) {
-        if ("g".equals(recipeUnit) && "kg".equals(baseUnit)) return qty / 1000.0;
-        if ("ml".equals(recipeUnit) && "L".equals(baseUnit)) return qty / 1000.0;
-        return qty;
     }
 
     private double round1(double v) {

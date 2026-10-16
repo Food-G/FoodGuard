@@ -42,6 +42,28 @@ public class JwtUtil {
                 .getSubject();
     }
 
+    // 토큰에서 사용자 id 추출 — 없으면 null (매장 소유권 검사에 사용)
+    public Long getUserId(String token) {
+        Object id = Jwts.parserBuilder()
+                .setSigningKey(key)
+                .build()
+                .parseClaimsJws(token)
+                .getBody()
+                .get("id");
+        return id instanceof Number n ? n.longValue() : null;
+    }
+
+    // 토큰에서 역할(role) 추출 — 없으면 null
+    public String getRole(String token) {
+        Object role = Jwts.parserBuilder()
+                .setSigningKey(key)
+                .build()
+                .parseClaimsJws(token)
+                .getBody()
+                .get("role");
+        return role != null ? role.toString() : null;
+    }
+
     // 토큰 유효성 검사
     public boolean validateToken(String token) {
         try {

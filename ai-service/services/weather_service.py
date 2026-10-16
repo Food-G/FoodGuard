@@ -4,11 +4,14 @@
 - 예보 (예측용): 기상청 공공데이터포털 단기/중기예보 API
 """
 
+import logging
 from datetime import date, datetime, timedelta
 from typing import Optional
 
 import pandas as pd
 import requests
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # 공통
@@ -42,10 +45,17 @@ _DEFAULT_COORDS = (37.5665, 126.9780)  # 서울
 
 def get_coords(region: Optional[str]) -> tuple[float, float]:
     if not region:
+        logger.warning("매장 region 이 비어 있어 기본 좌표(서울)를 사용합니다.")
         return _DEFAULT_COORDS
     for key, coords in _OPENMETEO_COORDS.items():
         if key in region:
             return coords
+    # 조용히 서울로 넘어가면 지방 매장의 날씨 피처가 잘못 학습된다
+    logger.warning(
+        "region=%r 이 알려진 시·도(%s) 중 어느 것과도 매칭되지 않아 "
+        "기본 좌표(서울)를 사용합니다.",
+        region, ", ".join(_OPENMETEO_COORDS),
+    )
     return _DEFAULT_COORDS
 
 

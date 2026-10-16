@@ -1,5 +1,6 @@
 """수요 예측 비즈니스 로직."""
 
+import logging
 from datetime import date
 from typing import Optional
 
@@ -12,6 +13,7 @@ from services.data_service import (
     get_active_menus,
     get_sales_data,
     get_store_region,
+    get_store_sales_start_date,
     save_predictions_bulk,
 )
 from services.weather_service import (
@@ -19,6 +21,8 @@ from services.weather_service import (
     fetch_historical_weather,
     get_coords,
 )
+
+logger = logging.getLogger(__name__)
 
 MODEL_VERSION = "rf_weather_v1.0"
 
@@ -43,12 +47,22 @@ def predict_and_save_store(db: Session, store_id: int) -> dict:
     # Open-Meteo 좌표 (과거 날씨 학습용)
     lat, lon = get_coords(region)
 
+    # 과거 날씨는 매장 전체 기간에 대해 1회만 조회해서 모든 메뉴가 공유한다
+    # (예전에는 메뉴마다 같은 구간을 반복 호출했다)
+    hist_weather_df: Optional[pd.DataFrame] = None
+    start_date = get_store_sales_start_date(db, store_id)
+    if start_date is not None:
+        hist = fetch_historical_weather(lat, lon, start_date, date.today())
+        if not hist.empty:
+            hist_weather_df = hist
+
     results = {}
     for menu in menus:
         menu_id = menu["menu_id"]
         predictions = predict_and_save_menu(
             db, store_id, menu_id,
             lat=lat, lon=lon, forecast_df=forecast_df,
+            hist_weather_df=hist_weather_df,
         )
         results[menu_id] = predictions
 
@@ -63,10 +77,12 @@ def predict_and_save_menu(
     lat: float | None = None,
     lon: float | None = None,
     forecast_df: Optional[pd.DataFrame] = None,
+    hist_weather_df: Optional[pd.DataFrame] = None,
 ) -> list[dict]:
     """
     특정 메뉴 예측 수행 후 DB 저장.
     lat/lon/forecast_df 미제공 시 내부에서 직접 날씨 API를 호출한다.
+    hist_weather_df 를 넘기면 과거 날씨 API 호출을 건너뛴다 (매장 단위 호출 공유).
     반환: prediction dict list
     """
     if days is None:
@@ -82,21 +98,25 @@ def predict_and_save_menu(
     sales_df = get_sales_data(db, store_id, menu_id)
 
     # Open-Meteo로 과거 날씨 조회 (모델 학습에 날씨 패턴 반영)
-    weather_df: Optional[pd.DataFrame] = None
-    if not sales_df.empty:
+    weather_df: Optional[pd.DataFrame] = hist_weather_df
+    if weather_df is None and not sales_df.empty:
         start_date = sales_df["ds"].min()
         hist = fetch_historical_weather(lat, lon, start_date, date.today())
         if not hist.empty:
             weather_df = hist
 
     predictor = DemandPredictor.load(store_id, menu_id)
-    if predictor is None:
-        predictor = DemandPredictor(store_id, menu_id)
 
-    predictor.fit(sales_df, weather_df=weather_df)
-
-    if predictor.is_trained:
-        predictor.save()
+    # 저장된 모델이 지금과 같은 판매 이력으로 학습돼 있으면 재학습을 건너뛴다
+    # (예전에는 load 직후 무조건 fit 해서 모델 캐시가 무의미했다)
+    if predictor is not None and predictor.is_trained and predictor.matches_history(sales_df):
+        logger.info("store=%s menu=%s: 저장된 모델 재사용 (재학습 생략)", store_id, menu_id)
+    else:
+        if predictor is None:
+            predictor = DemandPredictor(store_id, menu_id)
+        predictor.fit(sales_df, weather_df=weather_df)
+        if predictor.is_trained:
+            predictor.save()
 
     predictions = predictor.predict(
         days=days,

@@ -20,7 +20,13 @@ public class NotificationService {
     public Notification create(Long storeId, String message, String type) {
         Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new RuntimeException("가맹점을 찾을 수 없습니다."));
+        // NOTIFICATION.user_id 는 NOT NULL — 매장 소유 점주를 수신자로 지정한다
+        if (store.getUser() == null) {
+            throw new RuntimeException("가맹점에 소유 점주가 없어 알림을 생성할 수 없습니다.");
+        }
+
         Notification notification = new Notification();
+        notification.setUser(store.getUser());
         notification.setStore(store);
         notification.setMessage(message);
         notification.setType(type);

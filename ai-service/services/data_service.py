@@ -102,6 +102,18 @@ def save_predictions_bulk(
     db.commit()
 
 
+def get_store_sales_start_date(db: Session, store_id: int):
+    """매장 전체(모든 메뉴)의 가장 이른 판매일. 날씨를 매장당 1회만 조회하기 위해 사용."""
+    row = db.execute(
+        text(
+            "SELECT MIN(sales_date) FROM SALES_DATA "
+            "WHERE store_id = :sid AND is_deleted = 0"
+        ),
+        {"sid": store_id},
+    ).fetchone()
+    return row[0] if row and row[0] else None
+
+
 def get_store_region(db: Session, store_id: int) -> str | None:
     """매장의 지역명 반환 (날씨 API 좌표 조회용)."""
     row = db.execute(

@@ -10,6 +10,7 @@ import com.foodguard.repository.MenuIngredientRepository;
 import com.foodguard.repository.MenuRepository;
 import com.foodguard.repository.SalesDataRepository;
 import com.foodguard.repository.StoreRepository;
+import com.foodguard.util.UnitConverter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -56,7 +57,7 @@ public class SalesDataService {
             double tol = mi.getTolerance() != null ? mi.getTolerance().doubleValue() : 0.0;
             double consumeRecipeUnit = mi.getQtyPerUnit().doubleValue() * saleQty * (1.0 + tol / 100.0);
             String baseUnit = mi.getIngredient().getUnit();   // kg / L / 개
-            double consumeBase = convertToBaseUnit(consumeRecipeUnit, mi.getUnit(), baseUnit);
+            double consumeBase = UnitConverter.toBaseUnit(consumeRecipeUnit, mi.getUnit(), baseUnit);
 
             Inventory inv = inventoryRepository
                     .findByStoreIdAndIngredientId(store.getId(), mi.getIngredient().getId())
@@ -75,13 +76,6 @@ public class SalesDataService {
             inv.setUpdatedAt(LocalDateTime.now());
             inventoryRepository.save(inv);
         }
-    }
-
-    // 레시피 소단위 → 식자재 기준 단위 변환 (g→kg, ml→L, 개→개)
-    private double convertToBaseUnit(double qty, String recipeUnit, String baseUnit) {
-        if ("g".equals(recipeUnit) && "kg".equals(baseUnit)) return qty / 1000.0;
-        if ("ml".equals(recipeUnit) && "L".equals(baseUnit)) return qty / 1000.0;
-        return qty;
     }
 
     private double round2(double v) {

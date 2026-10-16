@@ -110,6 +110,23 @@ class DemandPredictor:
         self.is_trained = True
         return self
 
+    def matches_history(self, df: pd.DataFrame) -> bool:
+        """저장된 모델이 학습한 이력과 주어진 판매 데이터가 같은지 판정.
+
+        같으면 재학습 없이 그대로 예측에 쓸 수 있다 (행 수 + 마지막 날짜 + 합계 비교).
+        """
+        if self._history is None or df is None or df.empty:
+            return False
+        if len(self._history) != len(df):
+            return False
+
+        cur = pd.to_datetime(df["ds"]).dt.date.max()
+        saved = pd.to_datetime(self._history["ds"]).dt.date.max()
+        if cur != saved:
+            return False
+
+        return float(df["y"].sum()) == float(self._history["y"].sum())
+
     # ------------------------------------------------------------------
     # Prediction
     # ------------------------------------------------------------------

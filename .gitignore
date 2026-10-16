@@ -22,3 +22,4 @@ ai-service/trained_models/*.joblib
 .idea/
 *.iml
 .DS_Store
+**/__pycache__/
