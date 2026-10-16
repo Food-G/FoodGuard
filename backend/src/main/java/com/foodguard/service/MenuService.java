@@ -33,6 +33,12 @@ public class MenuService {
         return menuRepository.findByStoreIdAndIsActiveTrue(storeId);
     }
 
+    // 메뉴 단건 조회
+    public Menu getById(Long menuId) {
+        return menuRepository.findById(menuId)
+                .orElseThrow(() -> new RuntimeException("메뉴를 찾을 수 없습니다."));
+    }
+
     // 메뉴 수정
     public Menu update(Long menuId, String menuName, Integer price, String category) {
         Menu menu = menuRepository.findById(menuId)

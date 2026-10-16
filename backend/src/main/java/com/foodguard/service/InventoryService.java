@@ -41,6 +41,13 @@ public class InventoryService {
         return inventoryRepository.findByStoreId(storeId);
     }
 
+    // 재고 단건 조회
+    @Transactional(readOnly = true)
+    public Inventory getById(Long id) {
+        return inventoryRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("재고를 찾을 수 없습니다."));
+    }
+
     // 재고 수량 수정
     @Transactional
     public Inventory update(Long id, Double quantity) {

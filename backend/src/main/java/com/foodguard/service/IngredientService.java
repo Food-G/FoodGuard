@@ -41,6 +41,12 @@ public class IngredientService {
         return ingredientRepository.findByStoreIdIncludingLegacy(storeId);
     }
 
+    // 식자재 단건 조회
+    public Ingredient getById(Long id) {
+        return ingredientRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("식자재를 찾을 수 없습니다."));
+    }
+
     // 식자재 수정
     @Transactional
     public Ingredient update(Long id, String name, String category, String unit) {

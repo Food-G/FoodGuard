@@ -82,4 +82,9 @@ public class DonationService {
     public List<DonationRecord> getByStore(Long storeId) {
         return donationRecordRepository.findByStoreIdOrderByCreatedAtDesc(storeId);
     }
+
+    public DonationRecord getById(Long donationId) {
+        return donationRecordRepository.findById(donationId)
+                .orElseThrow(() -> new RuntimeException("기부 기록을 찾을 수 없습니다."));
+    }
 }

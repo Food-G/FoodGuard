@@ -23,3 +23,10 @@ ai-service/trained_models/*.joblib
 *.iml
 .DS_Store
 *.log
+
+# ── 로컬 비밀 설정 (커밋 금지) ──────────────
+application-local.properties
+application-local.yml
+.env
+.env.*
+!.env.example

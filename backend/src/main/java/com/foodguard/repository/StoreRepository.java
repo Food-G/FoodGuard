@@ -6,4 +6,5 @@ import java.util.List;
 
 public interface StoreRepository extends JpaRepository<Store, Long> {
     List<Store> findByUserId(Long userId);
+    boolean existsByIdAndUserId(Long id, Long userId);
 }

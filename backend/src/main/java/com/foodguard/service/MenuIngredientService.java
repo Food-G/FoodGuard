@@ -35,6 +35,11 @@ public class MenuIngredientService {
     public List<MenuIngredient> getByMenu(Long menuId) {        return menuIngredientRepository.findByMenuId(menuId);
     }
 
+    public MenuIngredient getById(Long id) {
+        return menuIngredientRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("메뉴 재료 정보를 찾을 수 없습니다."));
+    }
+
     public void delete(Long id) {
         menuIngredientRepository.deleteById(id);
     }}

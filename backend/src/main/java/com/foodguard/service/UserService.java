@@ -21,6 +21,10 @@ public class UserService {
 
     // 회원가입
     public String signup(SignupRequest request) {
+        // 본사 관리자(HQ_ADMIN)는 자가 가입 불가 — 점주만 가입 가능
+        if (!"OWNER".equals(request.getRole())) {
+            throw new RuntimeException("점주 계정만 가입할 수 있습니다.");
+        }
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new RuntimeException("이미 존재하는 이메일입니다.");
         }
