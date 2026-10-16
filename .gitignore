@@ -2,7 +2,7 @@
 backend/build/
 backend/out/
 backend/.gradle/
-backend/src/main/resources/application.properties
+backend/.env
 
 # ── Frontend (React) ───────────────────────
 frontend/node_modules/
@@ -10,7 +10,16 @@ frontend/dist/
 frontend/.env
 frontend/.env.local
 
+# ── AI Service (Python) ────────────────────
+ai-service/venv/
+ai-service/__pycache__/
+ai-service/**/__pycache__/
+ai-service/*.pyc
+ai-service/.env
+ai-service/trained_models/*.joblib
+
 # ── 공통 ───────────────────────────────────
 .idea/
 *.iml
 .DS_Store
+*.log

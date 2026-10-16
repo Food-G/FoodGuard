@@ -17,14 +17,17 @@ public class AuthController {
     // 회원가입 API
     @PostMapping("/signup")
     public ResponseEntity<String> signup(@RequestBody SignupRequest request) {
-        String result = userService.signup(request);
-        return ResponseEntity.ok(result);
+        return ResponseEntity.ok(userService.signup(request));
     }
 
     // 로그인 API
     @PostMapping("/login")
     public ResponseEntity<String> login(@RequestBody LoginRequest request) {
-        String result = userService.login(request);
-        return ResponseEntity.ok(result);
-    }
+        try {
+            String token = userService.login(request);
+            return ResponseEntity.ok(token);
+        } catch (Exception e) {
+            String errorMessage = e.getMessage() != null ? e.getMessage() : e.toString();
+            return ResponseEntity.status(401).body(errorMessage);
+        }    }
 }

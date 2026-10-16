@@ -8,10 +8,11 @@ import com.foodguard.repository.SalesDataRepository;
 import com.foodguard.repository.StoreRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -22,8 +23,8 @@ public class SalesDataService {
     private final MenuRepository menuRepository;
 
     // 매출 등록
-    public SalesData create(Long storeId, Long menuId,
-                            Integer quantity, Integer totalPrice, LocalDate saleDate) {
+    @Transactional
+    public SalesData create(Long storeId, Long menuId, Integer quantity, LocalDate saleDate) {
         Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new RuntimeException("가맹점을 찾을 수 없습니다."));
         Menu menu = menuRepository.findById(menuId)
@@ -33,7 +34,6 @@ public class SalesDataService {
         sales.setStore(store);
         sales.setMenu(menu);
         sales.setQuantity(quantity);
-        sales.setTotalPrice(totalPrice);
         sales.setSaleDate(saleDate);
         return salesDataRepository.save(sales);
     }
@@ -50,11 +50,11 @@ public class SalesDataService {
     }
 
     // Soft Delete (실제 삭제 X, 삭제 표시만)
+    @Transactional
     public String delete(Long id) {
         SalesData sales = salesDataRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("매출 데이터를 찾을 수 없습니다."));
         sales.setIsDeleted(true);
-        sales.setDeletedAt(LocalDateTime.now());
         salesDataRepository.save(sales);
         return "매출 데이터 삭제 완료";
     }

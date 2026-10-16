@@ -19,15 +19,16 @@ public class IngredientController {
     @PostMapping
     public ResponseEntity<Ingredient> create(@RequestBody Map<String, Object> body) {
         return ResponseEntity.ok(ingredientService.create(
+                Long.parseLong(body.get("storeId").toString()),
                 body.get("name").toString(),
-                body.get("category").toString(),
+                body.getOrDefault("category", "").toString(),
                 body.get("unit").toString()
         ));
     }
 
     @GetMapping
-    public ResponseEntity<List<Ingredient>> getAll() {
-        return ResponseEntity.ok(ingredientService.getAll());
+    public ResponseEntity<List<Ingredient>> getByStore(@RequestParam Long storeId) {
+        return ResponseEntity.ok(ingredientService.getByStore(storeId));
     }
 
     @PutMapping("/{id}")
@@ -36,11 +37,10 @@ public class IngredientController {
         return ResponseEntity.ok(ingredientService.update(
                 id,
                 body.get("name").toString(),
-                body.get("category").toString(),
+                body.getOrDefault("category", "").toString(),
                 body.get("unit").toString()
         ));
     }
-
     @DeleteMapping("/{id}")
     public ResponseEntity<String> delete(@PathVariable Long id) {
         return ResponseEntity.ok(ingredientService.delete(id));

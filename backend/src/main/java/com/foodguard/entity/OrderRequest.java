@@ -1,33 +1,72 @@
 package com.foodguard.entity;
 
-import jakarta.persistence.*;
-import lombok.Getter;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import jakarta.persistence.*;import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "order_request")
-@Getter @Setter @NoArgsConstructor
+@Table(name = "ORDER_REQUEST")
+@Getter @Setter
+@NoArgsConstructor
 public class OrderRequest {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "order_id")
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "store_id", nullable = false)
     private Store store;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "ingredient_id", nullable = false)
     private Ingredient ingredient;
 
     @Column(nullable = false)
-    private Double quantity;             // 발주 수량
+    private String status;
 
-    @Column(nullable = false)
-    private String status = "PENDING";  // PENDING / APPROVED / DONE
+    @Column(name = "ordered_qty", nullable = false, precision = 10, scale = 2)
+    private BigDecimal orderedQty;
 
-    private LocalDateTime orderedAt = LocalDateTime.now();
+    @Transient
+    private Double quantity;
+
+    @Column(name = "ordered_at")
+    private LocalDateTime orderedAt;
+
+    @Column(name = "approved_at")
+    private LocalDateTime approvedAt;
+
+    @Column(name = "delivery_token", length = 64)
+    private String deliveryToken;
+
+    @Column(name = "delivery_group_token", length = 64)
+    private String deliveryGroupToken;
+
+    @Column(name = "hq_sent_at")
+    private LocalDateTime hqSentAt;
+
+    @Column(name = "driver_received_at")
+    private LocalDateTime driverReceivedAt;
+
+    @Column(name = "owner_received_at")
+    private LocalDateTime ownerReceivedAt;
+
+    @Column(name = "expiry_date")
+    private LocalDate expiryDate;
+
+    @Column(name = "qr_token", length = 64)
+    private String qrToken;
+
+    @Column(name = "updated_at", insertable = false, updatable = false)
+    private LocalDateTime updatedAt;
+
+    public void setQuantity(Double quantity) {
+        this.quantity = quantity;
+        this.orderedQty = BigDecimal.valueOf(quantity);
+    }
 }

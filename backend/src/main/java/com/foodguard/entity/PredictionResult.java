@@ -1,34 +1,48 @@
 package com.foodguard.entity;
 
-import jakarta.persistence.*;
-import lombok.Getter;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import jakarta.persistence.*;import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import java.time.LocalDate;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.LocalDate;
 
 @Entity
-@Table(name = "prediction_result")
-@Getter @Setter @NoArgsConstructor
+@Table(name = "PREDICTION_RESULT")
+@Getter @Setter
+@NoArgsConstructor
 public class PredictionResult {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "prediction_id")
     private Long id;
 
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "store_id", nullable = false)
     private Store store;
 
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "menu_id", nullable = false)
     private Menu menu;
 
-    @Column(nullable = false)
-    private Integer predictedQty;        // AI 예측 판매량
+    @Column(name = "target_date", nullable = false)
+    private LocalDate predictionDate; // targetDate에서 복구
 
-    @Column(nullable = false)
-    private LocalDate predictionDate;    // 예측 날짜
+    @Column(name = "predicted_qty", nullable = false)
+    private Integer predictedQty;
 
-    private LocalDateTime createdAt = LocalDateTime.now();
+    @Column(name = "recommended_order_qty")
+    private Integer recommendedOrderQty;
+
+    @Column(precision = 5, scale = 2)
+    private BigDecimal confidence;
+
+    @Column(name = "model_version", length = 50)
+    private String modelVersion;
+
+    @Column(name = "created_at", insertable = false, updatable = false)
+    private LocalDateTime createdAt;
 }

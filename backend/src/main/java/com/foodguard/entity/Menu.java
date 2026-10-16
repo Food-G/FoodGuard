@@ -1,30 +1,40 @@
 package com.foodguard.entity;
 
-import jakarta.persistence.*;
-import lombok.Getter;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import jakarta.persistence.*;import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "menu")
-@Getter @Setter @NoArgsConstructor
+@Table(name = "MENU")
+@Getter @Setter
+@NoArgsConstructor
 public class Menu {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "menu_id")
     private Long id;
 
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "store_id", nullable = false)
-    private Store store;                  // 가맹점 연결
+    private Store store;
+
+    @Column(name = "menu_name", nullable = false, length = 100)
+    private String menuName;
+
+    @Column(length = 50)
+    private String category;
+
+    @Column(name = "is_active", nullable = false)
+    private boolean isActive = true;
 
     @Column(nullable = false)
-    private String menuName;              // 메뉴 이름
+    private Integer price = 0;
 
-    @Column(nullable = false)
-    private Integer price;                // 가격
+    @Column(name = "created_at", insertable = false, updatable = false)
+    private LocalDateTime createdAt;
 
-    private String category;             // 카테고리 (메인/사이드/음료)
-
-    private Boolean isActive = true;     // 판매 여부
+    public void setIsActive(boolean isActive) { this.isActive = isActive; }
 }

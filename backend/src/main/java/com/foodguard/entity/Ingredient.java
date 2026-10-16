@@ -4,20 +4,31 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "ingredient")
-@Getter @Setter @NoArgsConstructor
+@Table(name = "INGREDIENT")
+@Getter @Setter
+@NoArgsConstructor
 public class Ingredient {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "ingredient_id")
     private Long id;
 
-    @Column(nullable = false)
-    private String name;                 // 식자재 이름 (ex: 돼지고기)
+    @Column(name = "ingredient_name", nullable = false, length = 100)
+    private String name;
 
-    private String category;            // 분류 (육류/채소/소스 등)
+    @Column(nullable = false, length = 20)
+    private String unit;
 
-    private String unit;                // 단위 (kg, 개, L)
+    @Column(length = 50)
+    private String category;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "store_id")
+    private Store store;
+
+    @Column(name = "created_at", insertable = false, updatable = false)
+    private LocalDateTime createdAt;
 }

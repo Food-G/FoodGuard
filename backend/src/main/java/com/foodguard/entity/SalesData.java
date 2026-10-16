@@ -1,39 +1,48 @@
 package com.foodguard.entity;
 
-import jakarta.persistence.*;
-import lombok.Getter;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import jakarta.persistence.*;import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalDate;
 
 @Entity
-@Table(name = "sales_data")
-@Getter @Setter @NoArgsConstructor
+@Table(name = "SALES_DATA")
+@Getter @Setter
+@NoArgsConstructor
 public class SalesData {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "sales_id")
     private Long id;
 
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "store_id", nullable = false)
     private Store store;
 
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "menu_id", nullable = false)
     private Menu menu;
 
-    @Column(nullable = false)
-    private Integer quantity;            // 판매 수량
+    @Column(name = "sales_date", nullable = false)
+    private LocalDate saleDate;
 
     @Column(nullable = false)
-    private Integer totalPrice;          // 총 매출 금액
+    private Integer quantity;
 
-    @Column(nullable = false)
-    private LocalDate saleDate;          // 판매 날짜
+    @Column(name = "is_deleted", nullable = false)
+    private boolean isDeleted = false;
 
-    private Boolean isDeleted = false;   // Soft Delete 지원
+    @Column(name = "created_at", insertable = false, updatable = false)
+    private LocalDateTime createdAt;
 
-    private LocalDateTime deletedAt;     // 삭제 시각
+    @Column(name = "updated_at", insertable = false, updatable = false)
+    private LocalDateTime updatedAt;
+    
+    public void setIsDeleted(boolean isDeleted) {
+        this.isDeleted = isDeleted;
+    }
 }
