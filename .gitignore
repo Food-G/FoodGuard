@@ -17,9 +17,13 @@ ai-service/**/__pycache__/
 ai-service/*.pyc
 ai-service/.env
 ai-service/trained_models/*.joblib
+ai-service/.pytest_cache/
 
 # ── 공통 ───────────────────────────────────
 .idea/
 *.iml
 .DS_Store
 *.log
+
+# ── 로컬 환경변수 정리 파일 (비밀값 포함) ───────
+FoodGuard_env.txt

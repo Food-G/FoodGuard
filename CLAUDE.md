@@ -80,6 +80,8 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 ai-service/
 ├── main.py                      # FastAPI 진입점
 ├── config.py                    # 환경설정 (.env: DB_URL, KMA_API_KEY)
+├── backtest.py                  # rolling-origin 백테스트 (모델 vs 베이스라인 3종, wMAPE·MASE)
+├── tests/                       # pytest (requirements-dev.txt)
 ├── ml/
 │   ├── demand_predictor.py      # XGBoost 점 추정 모델 + quantile(안전재고) 모델 (학습/예측)
 │   └── feature_engineering.py  # 피처 생성 (날짜 + 날씨 + lag/rolling)
@@ -96,7 +98,7 @@ ai-service/
 ```
 POST /api/predict/store/{id}
   → 기상청 단기예보(1~3일) + 중기예보(4~7일) 조회
-  → SALES_DATA에서 판매 이력 조회
+  → SALES_DATA에서 판매 이력 조회 → 매장 영업일 달력으로 정렬 (판매 없는 영업일 0, 휴무·미입력일 제외, 품절일 표시)
   → Open-Meteo로 과거 날씨 조회 (학습용)
   → XGBoost 점 추정 모델 + quantile 모델(안전재고) 학습 → 7일 예측
   → PREDICTION_RESULT 테이블 저장 (predicted_qty + recommended_order_qty)
@@ -106,15 +108,22 @@ POST /api/predict/store/{id}
 - `MENU` — 읽기 (활성 메뉴 목록)
 - `SALES_DATA` — 읽기 (판매 이력, 학습 데이터)
 - `STORE` — 읽기 (region 컬럼으로 날씨 좌표 조회)
+- `SALES_DAY_FLAG` — 읽기 (휴무·품절 기록: 휴무일은 학습 제외·예측 0, 품절일은 학습 정답에서 제외)
 - `PREDICTION_RESULT` — 쓰기 (예측 결과 저장)
 
-### 모델 전략
+### 모델 전략 (`DemandPredictor.fit`, 영업일 행 수 기준)
 | 데이터 수 | 전략 | 피처셋 |
 |---|---|---|
-| < 7개 | 예측 불가 (0 반환) | — |
-| 7~14개 | 요일 평균 + 요일별 경험적 분위수(안전재고) | — |
+| 0개 | 0 반환 | — |
+| 1~6개 | 요일 평균 + 요일별 경험적 분위수(안전재고) | — |
+| 7~14개 | XGBoost | MINIMAL_FEATURE_COLS |
 | 15~29개 | XGBoost | MID_FEATURE_COLS |
-| ≥ 30개 | XGBoost (날씨 피처 포함) | FULL_FEATURE_COLS + 날씨 6종 |
+| ≥ 30개 | XGBoost | FULL_FEATURE_COLS |
+
+과거 날씨가 조회되면 모든 XGBoost 단계에 날씨 6종이 추가된다. lag 피처(`lag_7`, `lag_14`)는 행 위치가 아니라 **달력 기준 같은 요일** 값이며(`feature_engineering.weekday_lag`), 7일 앞을 한 모델로 예측하므로 `lag_1`은 쓰지 않는다.
+
+### 성능 검증 (백테스트)
+`ai-service`에서 `python backtest.py --synthetic` 또는 `python backtest.py --db --step 7`. 모델 변경 시 계절 나이브·요일 평균(4주)·이동평균(7일) 대비 wMAPE·MASE와 추천 발주량 커버리지(목표 60%)를 함께 확인한다.
 
 신뢰도(confidence)는 R² 대신 **wMAPE** 기반: `clip(100 - wMAPE, 15, 95)`. 예측일이 멀수록 하루당 1.5% 감소 (최소 15%).
 
@@ -126,8 +135,13 @@ POST /api/predict/store/{id}
 
 ### 환경변수 (.env)
 ```
+# ai-service/.env
 DB_URL=mysql+pymysql://...
 KMA_API_KEY=기상청_공공데이터_API_키
+
+# backend/.env (application.properties 가 spring.config.import 로 읽음, 커밋 금지)
+DB_PASSWORD=...
+JWT_SECRET=...
 ```
 
 ---

@@ -43,13 +43,29 @@ public class OrderRequestService {
     private final ObjectMapper objectMapper;
     private final NotificationService notificationService;
 
-    // 발주 요청 생성
+    // 발주 요청 생성 (점주 직접 입력) — 그 시점의 AI 추천량을 함께 남긴다
     @Transactional
     public OrderRequest create(Long storeId, Long ingredientId, Double quantity) {
+        return create(storeId, ingredientId, quantity, null, "MANUAL");
+    }
+
+    // recommendedQty 가 null 이면 현재 추천 목록에서 찾는다 (추천에 없던 식자재는 0)
+    private OrderRequest create(Long storeId, Long ingredientId, Double quantity,
+                                Double recommendedQty, String orderSource) {
         Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new RuntimeException("가맹점을 찾을 수 없습니다."));
         Ingredient ingredient = ingredientRepository.findById(ingredientId)
                 .orElseThrow(() -> new RuntimeException("식자재를 찾을 수 없습니다."));
+
+        // 매장·식자재를 먼저 읽은 뒤 recommend()를 불러야 한다. 순서가 바뀌면 store가 지연로딩 프록시로 잡혀
+        // 응답 JSON 직렬화가 실패한다 (ByteBuddyInterceptor)
+        if (recommendedQty == null) {
+            recommendedQty = recommend(storeId).stream()
+                    .filter(r -> ((Number) r.get("ingredientId")).longValue() == ingredientId)
+                    .mapToDouble(r -> ((Number) r.get("orderQty")).doubleValue())
+                    .findFirst()
+                    .orElse(0.0);
+        }
 
         OrderRequest order = new OrderRequest();
         order.setStore(store);
@@ -57,6 +73,8 @@ public class OrderRequestService {
         order.setOrderedQty(BigDecimal.valueOf(quantity));
         order.setStatus("REQUESTED");
         order.setOrderedAt(LocalDateTime.now());
+        order.setRecommendedQty(BigDecimal.valueOf(recommendedQty));
+        order.setOrderSource(orderSource);
         return orderRequestRepository.save(order);
     }
 
@@ -466,7 +484,7 @@ public class OrderRequestService {
         for (Map<String, Object> rec : recs) {
             Long ingId = ((Number) rec.get("ingredientId")).longValue();
             Double qty = ((Number) rec.get("orderQty")).doubleValue();
-            ids.add(create(storeId, ingId, qty).getId());
+            ids.add(create(storeId, ingId, qty, qty, "AUTO").getId());
         }
         return ids;
     }
