@@ -18,8 +18,8 @@ sequenceDiagram
     PC->>PS: triggerPrediction(storeId)
     PS->>SDR: findByStore(storeId)
     SDR-->>PS: List<SalesData>
-    PS->>RT: POST http://ai-service:8000/predict/{storeId}
-    RT->>AI: { store_id, sales_data[] }
+    PS->>RT: POST http://localhost:8000/api/predict/store/{storeId}
+    RT->>AI: (본문 없음 — AI 서비스가 DB에서 직접 판매 이력 조회)
 
     AI->>AI: feature_engineering()<br/>(lag, rolling_mean, day_of_week, weather)
     alt data >= 30 rows
@@ -87,7 +87,7 @@ sequenceDiagram
     FE->>ORC: GET /api/orders/recommend/{storeId}
     ORC->>ORS: recommend(storeId)
 
-    ORS->>PRR: findByStore(storeId, tomorrow)
+    ORS->>PRR: findByStore(storeId, today 이후)
     PRR-->>ORS: List<PredictionResult>
 
     loop 각 예측 메뉴
@@ -95,7 +95,7 @@ sequenceDiagram
         MIR-->>ORS: List<MenuIngredient>
 
         loop 각 식재료
-            ORS->>ORS: required = predictedQty × qtyPerUnit
+            ORS->>ORS: required = predictedQty × qtyPerUnit × (1+tolerance%) → 기준단위 변환
             ORS->>INV: findByStoreAndIngredient(storeId, ingredientId)
             INV-->>ORS: currentQty
             ORS->>ORR: findPendingByStoreAndIngredient(storeId, ingredientId)
@@ -109,7 +109,7 @@ sequenceDiagram
     FE-->>Owner: 발주 추천 표시
 ```
 
-## 4. 발주 수령 → 재고 자동 반영 흐름
+## 4. 발주 수령(DONE) → 재고 자동 반영 흐름
 
 ```mermaid
 sequenceDiagram
@@ -120,16 +120,16 @@ sequenceDiagram
     participant ORR as OrderRequestRepository
     participant INV as InventoryRepository
 
-    Owner->>FE: 발주 수령 처리 (status → RECEIVED)
-    FE->>ORC: PUT /api/orders/{id}/status { status: "RECEIVED" }
-    ORC->>ORS: updateStatus(id, "RECEIVED")
+    Owner->>FE: 발주 수령 처리 (status → DONE)
+    FE->>ORC: PUT /api/orders/{id}/status { status: "DONE" }
+    ORC->>ORS: updateStatus(id, "DONE")
     ORS->>ORR: findById(id)
     ORR-->>ORS: OrderRequest
 
-    ORS->>ORS: orderRequest.setStatus("RECEIVED")
+    ORS->>ORS: orderRequest.setStatus("DONE")
     ORS->>ORR: save(orderRequest)
 
-    alt status == "RECEIVED"
+    alt status == "DONE" (이전 상태가 DONE 이 아닐 때만)
         ORS->>INV: findByStoreAndIngredient(storeId, ingredientId)
         INV-->>ORS: Inventory
         ORS->>ORS: inventory.currentQty += orderedQty

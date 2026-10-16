@@ -17,7 +17,7 @@ graph TB
 
     subgraph AI["Python AI Service<br/>FastAPI / localhost:8000"]
         direction TB
-        AIROUTE["Endpoints<br/>POST /predict/{store_id}<br/>POST /predict-all"]
+        AIROUTE["Endpoints<br/>POST /api/predict/store/{store_id}<br/>POST /api/predict/store/{id}/menu/{id}<br/>POST /api/train/store/{store_id}"]
         FEAT["Feature Engineering<br/>day_of_week, is_weekend<br/>lag_1/7/14, rolling_mean<br/>holiday (KR)"]
         MODEL["RandomForest Predictor<br/>≥30 data: full model<br/>7-29 data: minimal model<br/><7 data: simple avg"]
         WEATHER["Weather Service<br/>Open-Meteo (historical)<br/>KMA API (forecast)"]
@@ -32,7 +32,7 @@ graph TB
     CTR --> SVC
     SVC --> REPO
     REPO -->|"JDBC / JPA"| TABLES
-    SVC -->|"POST /predict/{storeId}"| RT
+    SVC -->|"POST /api/predict/store/{storeId}"| RT
     RT -->|"HTTP"| AIROUTE
     AIROUTE --> FEAT
     FEAT --> MODEL
@@ -56,4 +56,7 @@ graph TB
 - **Role-Based Access**: JWT claim의 `role` 필드로 OWNER/HQ_ADMIN 분기
 - **AI 트리거 방식**: Backend → Python 동기 HTTP 호출 후 결과를 DB에 직접 저장
 - **주문 추천**: PredictionResult → MenuIngredient → (예측 필요량 - 현재재고 - 발주중) = 권장 발주량
-- **주문 수령 자동화**: OrderRequest status = RECEIVED → Inventory.currentQty 자동 증가
+- **권한 검사**: `@EnableMethodSecurity` + `@PreAuthorize("hasRole('HQ_ADMIN')")` 로 본사 전용 API 보호
+- **주문 수령 자동화**: OrderRequest status = **DONE** → Inventory.currentQty 자동 증가
+- **판매 시 재고 차감**: SalesData 등록 → 레시피(MenuIngredient) × 판매량 × (1+tolerance%) 만큼 Inventory 차감
+- **모델 캐시**: 저장된 모델의 학습 이력이 현재 판매 데이터와 동일하면 재학습을 건너뛴다
