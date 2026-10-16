@@ -152,8 +152,16 @@ class DemandPredictor:
         history_working = self._history.copy()
         predictions = []
 
-        for i in range(1, days + 1):
-            target = last_date + timedelta(days=i)
+        # 예측 대상은 항상 '내일부터 days 일'이다. 판매 이력이 오늘보다 오래 끊겨 있으면
+        # 그 사이를 모델 자신의 예측으로 이어 붙이며(lag 피처 유지) 굴려 나가되 저장은 하지 않는다.
+        # 예전에는 마지막 판매일 다음날부터 예측해서, 데이터가 끊기면 예측이 전부 과거 날짜가 됐다.
+        first_target = max(last_date, date.today()) + timedelta(days=1)
+        total_steps = (first_target - last_date).days + days - 1
+
+        for step in range(1, total_steps + 1):
+            target = last_date + timedelta(days=step)
+            # 실제 판매에서 몇 번째 날인지 (이어 붙인 구간이 길수록 신뢰도가 떨어진다)
+            i = step
 
             weather_row = None
             if forecast_df is not None and not forecast_df.empty:
@@ -170,13 +178,14 @@ class DemandPredictor:
             # 예측일이 멀수록 신뢰도 감소 (1일차: 0%, 7일차: -9%)
             confidence = round(max(15.0, confidence - (i - 1) * CONFIDENCE_DECAY_PER_DAY), 2)
 
-            predictions.append(
-                {
-                    "date": target,
-                    "predicted_qty": pred_qty,
-                    "confidence": confidence,
-                }
-            )
+            if target >= first_target:
+                predictions.append(
+                    {
+                        "date": target,
+                        "predicted_qty": pred_qty,
+                        "confidence": confidence,
+                    }
+                )
 
             new_row = pd.DataFrame({"ds": [target], "y": [float(pred_qty)]})
             history_working = pd.concat([history_working, new_row], ignore_index=True)
@@ -191,8 +200,10 @@ class DemandPredictor:
         overall_mean = float(df["y"].mean()) if len(df) > 0 else 0.0
 
         predictions = []
-        for i in range(1, days + 1):
-            target = last_date + timedelta(days=i)
+        first_target = max(last_date, date.today()) + timedelta(days=1)
+        for k in range(days):
+            target = first_target + timedelta(days=k)
+            i = (target - last_date).days
             dow = target.weekday()
             qty = max(0, round(dow_mean.get(dow, overall_mean)))
             confidence = round(max(15.0, 40.0 - (i - 1) * CONFIDENCE_DECAY_PER_DAY), 2)

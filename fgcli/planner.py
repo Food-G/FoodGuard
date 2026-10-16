@@ -12,7 +12,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
-from datetime import date
+from datetime import date, timedelta
 from typing import Any
 
 from fgcli.client import FoodGuardClient
@@ -22,6 +22,7 @@ STOCKOUT_COVER_DAYS = 2.0   # 재고로 버틸 수 있는 날이 이보다 적�
 WASTE_COVER_RATIO = 2.0     # 재고가 예측 기간 소요량의 이 배수를 넘으면 폐기 위험
 MIN_PREDICTION_DAYS = 3     # 예측이 이보다 짧게 남았으면 '오래됨'
 CROSSCHECK_TOL = 0.11       # round1 누적 오차를 감안한 서버 대조 허용치
+RECENT_SALES_DAYS = 14      # 이 기간에 판매 기록이 없으면 예측 근거가 오래된 것
 
 PENDING_STATUSES = ("REQUESTED", "APPROVED")
 
@@ -55,6 +56,9 @@ def _get(client: FoodGuardClient, path: str) -> Any:
 def observe(client: FoodGuardClient, store_id: int) -> dict:
     """기존 읽기 API 만으로 판단에 필요한 상태를 모은다."""
     menus = _get(client, f"/api/menus/{store_id}")
+    end = date.today()
+    start = end - timedelta(days=RECENT_SALES_DAYS)
+    recent_sales = _get(client, f"/api/sales/{store_id}/range?start={start}&end={end}")
     recipes = {}
     for m in menus:
         recipes[m["id"]] = [
@@ -92,6 +96,7 @@ def observe(client: FoodGuardClient, store_id: int) -> dict:
             if o.get("status") in PENDING_STATUSES
         ],
         "serverRecommend": _get(client, f"/api/orders/recommend/{store_id}"),
+        "recentSalesDays": len({s.get("saleDate") for s in recent_sales}),
     }
 
 
@@ -119,6 +124,11 @@ def build_plan(obs: dict, today: date | None = None) -> dict:
                          "message": f"남은 예측이 {horizon}일뿐입니다 ({dates[0]}~{dates[-1]}). 재예측을 권장합니다."})
     else:
         freshness = "fresh"
+
+    if obs.get("recentSalesDays") == 0:
+        warnings.append({"type": "sales_stale",
+                         "message": f"최근 {RECENT_SALES_DAYS}일 판매 기록이 없습니다. 예측이 오래된 판매 패턴을 이어 붙인 값이라 "
+                                    "신뢰도가 낮습니다. 소량·단기 발주를 권합니다."})
 
     # 메뉴별 예측 합계
     menu_total: dict[int, int] = {}

@@ -58,6 +58,11 @@ class PlannerTest(unittest.TestCase):
         self.assertFalse(p["crosscheck"]["match"])
         self.assertIn("crosscheck_mismatch", [w["type"] for w in p["warnings"]])
 
+    def test_최근_판매가_없으면_경고(self):
+        types = [w["type"] for w in build_plan(obs(recentSalesDays=0), TODAY)["warnings"]]
+        self.assertIn("sales_stale", types)
+        self.assertNotIn("sales_stale", [w["type"] for w in build_plan(obs(), TODAY)["warnings"]])
+
     def test_예측없으면_발주안_없음(self):
         p = build_plan(obs(predictions=[], serverRecommend=[]), TODAY)
         self.assertEqual(p["items"], [])
