@@ -2,6 +2,7 @@
 
 from datetime import date, datetime
 from sqlalchemy import text
+from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.orm import Session
 import pandas as pd
 
@@ -19,26 +20,102 @@ def get_active_menus(db: Session, store_id: int) -> list[dict]:
     return [{"menu_id": r[0], "menu_name": r[1], "category": r[2], "price": r[3]} for r in rows]
 
 
-def get_sales_data(db: Session, store_id: int, menu_id: int) -> pd.DataFrame:
-    """특정 매장/메뉴의 판매 이력 반환 (is_deleted=0 만)."""
+def build_daily_calendar(
+    sales: pd.DataFrame,
+    store_open_dates: set[date],
+    closed_dates: set[date],
+    sold_out_dates: set[date],
+) -> pd.DataFrame:
+    """
+    메뉴 판매 이력(판매 있는 날만)을 매장 영업일 달력으로 정렬한다.
+    - 범위: 메뉴 첫 판매일 ~ 매장 마지막 영업일
+    - 영업일 = 매장에 판매가 1건이라도 있는 날 - 휴무 등록일. 영업일에 이 메뉴 판매가 없으면 0
+    - 매장 전체 판매가 없는 날(휴무·미입력)은 0이 아니라 행을 빼서 학습에서 제외한다
+      (lag 는 feature_engineering.weekday_lag 가 달력 기준으로 계산하므로 행이 빠져도 어긋나지 않음)
+    - sold_out: 품절 등록일 (판매량 < 실제 수요였을 수 있음)
+    """
+    if sales.empty:
+        return pd.DataFrame(columns=["ds", "y", "sold_out"])
+
+    first = sales["ds"].min()
+    days = sorted(d for d in store_open_dates if d >= first and d not in closed_dates)
+    qty = dict(zip(sales["ds"], sales["y"]))
+    return pd.DataFrame({
+        "ds": days,
+        "y": [float(qty.get(d, 0.0)) for d in days],
+        "sold_out": [int(d in sold_out_dates) for d in days],
+    })
+
+
+def _flag_dates(db: Session, store_id: int, flag_type: str, menu_id: int | None = None) -> set[date]:
+    """SALES_DAY_FLAG(휴무·품절 기록) 날짜 집합."""
+    sql = "SELECT flag_date FROM SALES_DAY_FLAG WHERE store_id = :sid AND flag_type = :ftype"
+    params = {"sid": store_id, "ftype": flag_type}
+    if menu_id is not None:
+        sql += " AND menu_id = :mid"
+        params["mid"] = menu_id
+    try:
+        rows = db.execute(text(sql), params).fetchall()
+    except ProgrammingError:
+        # 테이블은 백엔드(JPA ddl-auto)가 만든다. 새 백엔드가 아직 한 번도 안 떴으면 기록 없음으로 본다
+        db.rollback()
+        return set()
+    return {pd.to_datetime(r[0]).date() for r in rows}
+
+
+def get_closed_dates(db: Session, store_id: int) -> set[date]:
+    return _flag_dates(db, store_id, "CLOSED")
+
+
+def get_all_sales_data(db: Session) -> dict[tuple[int, int], pd.DataFrame]:
+    """
+    전체 매장×메뉴의 일별 판매 이력 (글로벌 모델 학습용, 키: (store_id, menu_id)).
+    각 값은 is_deleted=0 만, 영업일 달력 기준(build_daily_calendar), 컬럼: ds, y, sold_out
+    """
     rows = db.execute(
         text(
-            "SELECT sales_date, SUM(quantity) as qty "
+            "SELECT store_id, menu_id, sales_date, SUM(quantity) as qty "
             "FROM SALES_DATA "
-            "WHERE store_id = :sid AND menu_id = :mid AND is_deleted = 0 "
-            "GROUP BY sales_date "
-            "ORDER BY sales_date ASC"
-        ),
-        {"sid": store_id, "mid": menu_id},
+            "WHERE is_deleted = 0 "
+            "GROUP BY store_id, menu_id, sales_date"
+        )
     ).fetchall()
-
     if not rows:
-        return pd.DataFrame(columns=["ds", "y"])
+        return {}
 
-    df = pd.DataFrame(rows, columns=["ds", "y"])
-    df["ds"] = pd.to_datetime(df["ds"]).dt.date
-    df["y"] = df["y"].astype(float)
-    return df
+    sales = pd.DataFrame(rows, columns=["store_id", "menu_id", "ds", "y"])
+    sales["ds"] = pd.to_datetime(sales["ds"]).dt.date
+    sales["y"] = sales["y"].astype(float)
+    # 매장에 판매가 1건이라도 있는 날 (휴무 등록일은 build_daily_calendar 가 뺀다)
+    store_open = {int(sid): set(g) for sid, g in sales.groupby("store_id")["ds"]}
+
+    try:
+        flags = db.execute(
+            text("SELECT store_id, menu_id, flag_type, flag_date FROM SALES_DAY_FLAG")
+        ).fetchall()
+    except ProgrammingError:
+        # _flag_dates 와 같음: 백엔드가 아직 테이블을 안 만들었으면 기록 없음
+        db.rollback()
+        flags = []
+    closed: dict[int, set[date]] = {}
+    sold_out: dict[tuple[int, int], set[date]] = {}
+    for sid, mid, ftype, fdate in flags:
+        d = pd.to_datetime(fdate).date()
+        if ftype == "CLOSED":
+            closed.setdefault(int(sid), set()).add(d)
+        elif ftype == "SOLD_OUT" and mid is not None:
+            sold_out.setdefault((int(sid), int(mid)), set()).add(d)
+
+    out = {}
+    for (sid, mid), g in sales.groupby(["store_id", "menu_id"]):
+        key = (int(sid), int(mid))
+        out[key] = build_daily_calendar(
+            g[["ds", "y"]],
+            store_open[key[0]],
+            closed_dates=closed.get(key[0], set()),
+            sold_out_dates=sold_out.get(key, set()),
+        )
+    return out
 
 
 def get_store_sales_last_n_days(db: Session, store_id: int, n_days: int = 30) -> list[dict]:

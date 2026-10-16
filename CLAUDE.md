@@ -83,7 +83,7 @@ ai-service/
 ├── backtest.py                  # rolling-origin 백테스트 (모델 vs 베이스라인 3종, wMAPE·MASE)
 ├── tests/                       # pytest (requirements-dev.txt)
 ├── ml/
-│   ├── demand_predictor.py      # XGBoost 점 추정 모델 + quantile(안전재고) 모델 (학습/예측)
+│   ├── demand_predictor.py      # 전체 매장·메뉴 글로벌 XGBoost (점 추정 + quantile 안전재고)
 │   └── feature_engineering.py  # 피처 생성 (날짜 + 날씨 + lag/rolling)
 ├── services/
 │   ├── prediction_service.py   # 예측 비즈니스 로직
@@ -98,9 +98,9 @@ ai-service/
 ```
 POST /api/predict/store/{id}
   → 기상청 단기예보(1~3일) + 중기예보(4~7일) 조회
-  → SALES_DATA에서 판매 이력 조회 → 매장 영업일 달력으로 정렬 (판매 없는 영업일 0, 휴무·미입력일 제외, 품절일 표시)
-  → Open-Meteo로 과거 날씨 조회 (학습용)
-  → XGBoost 점 추정 모델 + quantile 모델(안전재고) 학습 → 7일 예측
+  → SALES_DATA에서 전체 매장×메뉴 판매 이력 조회 → 매장 영업일 달력으로 정렬 (판매 없는 영업일 0, 휴무·미입력일 제외, 품절일 표시)
+  → Open-Meteo로 매장별 과거 날씨 조회 (학습용)
+  → 글로벌 XGBoost 점 추정 모델 + quantile 모델(안전재고) 1회 학습 → 이 매장 메뉴별 7일 예측
   → PREDICTION_RESULT 테이블 저장 (predicted_qty + recommended_order_qty)
 ```
 
@@ -111,16 +111,14 @@ POST /api/predict/store/{id}
 - `SALES_DAY_FLAG` — 읽기 (휴무·품절 기록: 휴무일은 학습 제외·예측 0, 품절일은 학습 정답에서 제외)
 - `PREDICTION_RESULT` — 쓰기 (예측 결과 저장)
 
-### 모델 전략 (`DemandPredictor.fit`, 영업일 행 수 기준)
-| 데이터 수 | 전략 | 피처셋 |
-|---|---|---|
-| 0개 | 0 반환 | — |
-| 1~6개 | 요일 평균 + 요일별 경험적 분위수(안전재고) | — |
-| 7~14개 | XGBoost | MINIMAL_FEATURE_COLS |
-| 15~29개 | XGBoost | MID_FEATURE_COLS |
-| ≥ 30개 | XGBoost | FULL_FEATURE_COLS |
+### 모델 전략 (글로벌 모델, `ml/demand_predictor.py`)
+메뉴마다 따로 학습하지 않고 **전체 매장×메뉴 이력을 하나의 XGBoost로 학습**한다 (Montero-Manso & Hyndman 2021).
+- 정답은 `판매량 / scale`, `scale = 메뉴 규모(최근 28영업일, 요일 효과 제거) × 매장 요일 비율`. 모델은 이 기준값에 대한 보정 비율을 학습한다
+- 매장 요일 비율은 같은 매장 전체 메뉴 판매량으로 추정 (`feature_engineering.store_weekday_ratio`)
+- 피처: `GLOBAL_FEATURE_COLS` + 매장·메뉴 ID(범주형) + 날씨 6종(조회된 매장만). 손실은 L1
+- 이력 1~6일 신메뉴도 같은 모델로 예측, 이력 0이면 0 반환. 전체 학습 행이 `MIN_DATA_POINTS` 미만이면 요일 평균
 
-과거 날씨가 조회되면 모든 XGBoost 단계에 날씨 6종이 추가된다. lag 피처(`lag_7`, `lag_14`)는 행 위치가 아니라 **달력 기준 같은 요일** 값이며(`feature_engineering.weekday_lag`), 7일 앞을 한 모델로 예측하므로 `lag_1`은 쓰지 않는다.
+lag 피처(`lag_7`, `lag_14`)는 행 위치가 아니라 **달력 기준 같은 요일** 값이며(`feature_engineering.weekday_lag`), 7일 앞을 한 모델로 예측하므로 `lag_1`은 쓰지 않는다. 자세한 근거와 백테스트 결과는 `ai-service/PROJECT_STATUS.md` 10절.
 
 ### 성능 검증 (백테스트)
 `ai-service`에서 `python backtest.py --synthetic` 또는 `python backtest.py --db --step 7`. 모델 변경 시 계절 나이브·요일 평균(4주)·이동평균(7일) 대비 wMAPE·MASE와 추천 발주량 커버리지(목표 60%)를 함께 확인한다.
