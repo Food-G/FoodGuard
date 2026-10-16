@@ -254,7 +254,11 @@ const MenuManagement = ({ user }: any) => {
                       onChange={(e) => setRow(idx, { unit: e.target.value })}
                       sx={{ width: 80 }}
                     >
-                      {['g', 'ml', '개'].map((u) => <MenuItem key={u} value={u}>{u}</MenuItem>)}
+                      {/* 식자재 기준 단위와 호환되는 단위만 고를 수 있게 한다 (서버도 같은 규칙으로 거부) */}
+                      {(row.ingredientId
+                        ? [recipeUnitFor(ingredients.find((i) => String(i.id) === row.ingredientId)?.unit)]
+                        : ['g', 'ml', '개']
+                      ).map((u) => <MenuItem key={u} value={u}>{u}</MenuItem>)}
                     </TextField>
                     <TextField
                       size="small" label="오차%" type="number" value={row.tolerance}

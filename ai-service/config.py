@@ -10,7 +10,8 @@ class Settings(BaseSettings):
     MIN_DATA_POINTS: int = 7
     KMA_API_KEY: str = ""  # data.go.kr 기상청 API 키
 
-    model_config = {"env_file": ".env"}
+    # .env 를 fgcli(FOODGUARD_*)와 같이 쓰므로 모르는 키는 무시한다
+    model_config = {"env_file": ".env", "extra": "ignore"}
 
 
 settings = Settings()

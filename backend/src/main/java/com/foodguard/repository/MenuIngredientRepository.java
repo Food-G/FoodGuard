@@ -6,5 +6,6 @@ import java.util.List;
 
 public interface MenuIngredientRepository extends JpaRepository<MenuIngredient, Long> {
     List<MenuIngredient> findByMenuId(Long menuId);
+    List<MenuIngredient> findByIngredientId(Long ingredientId);
     void deleteByIngredientId(Long ingredientId);
 }

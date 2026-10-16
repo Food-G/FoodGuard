@@ -1,5 +1,21 @@
 # 자산화 과정에서 발견한 결함 — 수정 내역
 
+**2026-10-16** — 단위 정리 및 ai-service 기동 오류
+
+### 단위 규칙 강제 (g/kg 1000배 오차 재발 방지)
+DB 감사 결과 현재 데이터는 정상(식자재·재고 `kg/L/개`, 레시피는 호환 조합만, 음수 재고 0건)이었으나,
+레시피 화면이 아무 식자재에나 `g/ml/개`를 고를 수 있게 했고 서버도 검사하지 않아 비호환 조합이 그대로 저장될 수 있었습니다.
+`UnitConverter`는 이런 조합을 환산 없이 통과시켜 재고 차감·발주량이 조용히 어긋났습니다.
+→ `UnitConverter`에 허용 조합표를 두고 비호환이면 예외(400). 식자재 등록·수정, 레시피 등록에서 검사.
+재고나 레시피가 있는 식자재의 단위 변경은 거부. 레시피 화면은 호환 단위만 표시. `seed_ingredients.py`도 기준 단위로 수정.
+`util/UnitConverter.java`, `service/{Ingredient,MenuIngredient}Service.java`, `frontend/src/pages/MenuManagement.tsx`, 테스트 `UnitConverterTest`
+
+### ai-service가 기동하지 않던 문제
+fgcli 자격증명(`FOODGUARD_*`)을 `ai-service/.env`에 넣으면 pydantic `Settings`가 모르는 키를 거부해 서버가 뜨지 않았습니다.
+→ `config.py`에 `extra: ignore`.
+
+---
+
 **2026-09-11** — `agent-assets/` 작성 중 코드에서 발견한 결함들을 수정했습니다.
 
 ## 수정 완료 (8건)

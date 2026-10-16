@@ -6,6 +6,7 @@ import com.foodguard.entity.MenuIngredient;
 import com.foodguard.repository.IngredientRepository;
 import com.foodguard.repository.MenuIngredientRepository;
 import com.foodguard.repository.MenuRepository;
+import com.foodguard.util.UnitConverter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
@@ -29,7 +30,7 @@ public class MenuIngredientService {
         mi.setMenu(menu);
         mi.setIngredient(ingredient);
         mi.setQtyPerUnit(BigDecimal.valueOf(qtyPerUnit));
-        mi.setUnit(unit);
+        mi.setUnit(UnitConverter.validateRecipeUnit(unit, ingredient.getUnit()));
         mi.setTolerance(BigDecimal.valueOf(tolerance == null ? 0.0 : tolerance));
         return menuIngredientRepository.save(mi);
     }
