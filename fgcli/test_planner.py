@@ -63,6 +63,15 @@ class PlannerTest(unittest.TestCase):
         self.assertIn("sales_stale", types)
         self.assertNotIn("sales_stale", [w["type"] for w in build_plan(obs(), TODAY)["warnings"]])
 
+    def test_레시피_있는_메뉴의_예측이_빠지면_재예측_대상(self):
+        # 실제로 겪은 상황: 레시피 없는 메뉴(20)의 예측만 남아 있었다
+        o = obs(menus=[{"id": 10, "menuName": "불고기버거"}, {"id": 20, "menuName": "신메뉴"}],
+                predictions=[{"menuId": 20, "date": f"2026-10-{17 + d}", "qty": 0} for d in range(7)],
+                serverRecommend=[])
+        p = build_plan(o, TODAY)
+        self.assertEqual(p["prediction"]["freshness"], "stale")
+        self.assertIn("prediction_partial", [w["type"] for w in p["warnings"]])
+
     def test_예측없으면_발주안_없음(self):
         p = build_plan(obs(predictions=[], serverRecommend=[]), TODAY)
         self.assertEqual(p["items"], [])

@@ -85,13 +85,15 @@ def save_run(record: dict) -> Path:
 
 
 def run_order(store_id: int, role: str, use_llm: bool, model: str | None) -> int:
-    client = executor.WriteClient(get_token(role))
     record: dict = {"storeId": store_id, "startedAt": datetime.now().isoformat(), "steps": []}
 
-    def plan_now() -> dict:
-        return build_plan(observe(client, store_id))
-
     try:
+        # 로그인 실패도 기록에 남도록 try 안에서 한다
+        client = executor.WriteClient(get_token(role))
+
+        def plan_now() -> dict:
+            return build_plan(observe(client, store_id))
+
         plan = plan_now()
         show_plan(plan)
 
@@ -158,8 +160,8 @@ def run_order(store_id: int, role: str, use_llm: bool, model: str | None) -> int
         print(f"  남은 부족분: {', '.join(left) if left else '없음'}")
         return 0 if all(r["verified"] for r in results) else 1
 
-    except ObserveError as e:
-        print(f"조회 실패: {e}")
+    except (ObserveError, RuntimeError, SystemExit, OSError) as e:  # OSError: requests 연결 오류
+        print(f"실패: {e}")
         record["error"] = str(e)
         return 1
     finally:

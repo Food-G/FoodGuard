@@ -125,6 +125,17 @@ def build_plan(obs: dict, today: date | None = None) -> dict:
     else:
         freshness = "fresh"
 
+    # 레시피가 있는 메뉴(=발주량에 영향을 주는 메뉴) 중 예측이 빠진 메뉴가 있으면 재예측 대상
+    # (레시피 없는 메뉴의 예측만 남아 있어도 '최신'으로 보던 문제)
+    predicted = {p["menuId"] for p in obs["predictions"]}
+    unpredicted = [m["id"] for m in obs["menus"]
+                   if (obs["recipes"].get(m["id"]) or obs["recipes"].get(str(m["id"])))
+                   and m["id"] not in predicted]
+    if unpredicted and freshness == "fresh":
+        freshness = "stale"
+        warnings.append({"type": "prediction_partial", "menuIds": unpredicted,
+                         "message": f"레시피가 있는 메뉴 {unpredicted}의 예측이 없습니다. 재예측을 권장합니다."})
+
     if obs.get("recentSalesDays") == 0:
         warnings.append({"type": "sales_stale",
                          "message": f"최근 {RECENT_SALES_DAYS}일 판매 기록이 없습니다. 예측이 오래된 판매 패턴을 이어 붙인 값이라 "
