@@ -24,7 +24,7 @@ def obs(**over):
             {"ingredientId": 100, "ingredientName": "패티", "unit": "kg", "currentQty": 5.0, "minThreshold": 0},
             {"ingredientId": 200, "ingredientName": "번", "unit": "개", "currentQty": 500.0, "minThreshold": 0},
         ],
-        "pendingOrders": [{"id": 1, "ingredientId": 100, "qty": 2.0, "status": "REQUESTED"}],
+        "pendingOrders": [{"id": 1, "ingredientId": 100, "qty": 2.0, "status": "REQUESTED", "orderedAt": "2026-10-15"}],
         # 패티: 100g × 140 × 1.1 = 15.4kg − 5 − 2 = 8.4kg
         "serverRecommend": [{"ingredientId": 100, "orderQty": 8.4}],
     }
@@ -71,6 +71,21 @@ class PlannerTest(unittest.TestCase):
         p = build_plan(o, TODAY)
         self.assertEqual(p["prediction"]["freshness"], "stale")
         self.assertIn("prediction_partial", [w["type"] for w in p["warnings"]])
+
+    def test_재고_없이_대기발주에만_기대면_입고대기_위험(self):
+        # 실제로 겪은 상황: 소고기 재고 0, 소요 전부를 넉 달 묵은 REQUESTED 발주가 메우고 있었다
+        inv = [{"ingredientId": 100, "ingredientName": "패티", "unit": "kg", "currentQty": 0.0, "minThreshold": 0},
+               obs()["inventory"][1]]
+        pend = [{"id": 9, "ingredientId": 100, "qty": 20.0, "status": "REQUESTED", "orderedAt": "2026-06-19"}]
+        p = build_plan(obs(inventory=inv, pendingOrders=pend, serverRecommend=[]), TODAY)
+        risks = {r["ingredientId"]: r["risk"] for r in p["risks"]}
+        self.assertEqual(risks[100], "awaiting_delivery")
+        self.assertEqual(p["items"], [])   # 수량 산식은 서버와 같게 유지 (경고로만 알린다)
+        stale = [w for w in p["warnings"] if w["type"] == "pending_stale"]
+        self.assertEqual(stale[0]["orderIds"], [9])
+
+    def test_최근_발주는_오래됨_경고_없음(self):
+        self.assertNotIn("pending_stale", [w["type"] for w in build_plan(obs(), TODAY)["warnings"]])
 
     def test_예측없으면_발주안_없음(self):
         p = build_plan(obs(predictions=[], serverRecommend=[]), TODAY)

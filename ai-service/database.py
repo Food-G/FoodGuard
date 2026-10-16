@@ -8,7 +8,7 @@ engine = create_engine(
     settings.DB_URL,
     connect_args=_connect_args,
     pool_pre_ping=True,
-    pool_recycle=3600,
+    pool_recycle=180,  # TiDB Cloud 가 유휴 연결을 먼저 끊으므로 3분마다 교체
 )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

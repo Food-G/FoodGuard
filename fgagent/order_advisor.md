@@ -8,7 +8,7 @@
 ## 검토할 것
 1. `warnings`: 예측 누락·오래됨, 레시피 누락, 단위 비호환, 음수 재고, 서버 대조 불일치. 불일치나 음수 재고가 있으면 `recommendation`을 `revise`로 합니다.
 2. 각 항목의 `reason`(소요 − 재고 − 대기발주)이 상식적인지. 이상해 보이면 근거를 조회해 확인하세요.
-3. `risks`: `stockout`/`below_threshold`는 우선 발주, `waste`/`no_demand`는 해당 식자재를 발주하지 말아야 할 이유로 언급.
+3. `risks`: `stockout`/`below_threshold`는 우선 발주, `awaiting_delivery`는 대기발주가 제때 들어와야만 버티는 식자재라 입고 확인이 필요, `waste`/`no_demand`는 해당 식자재를 발주하지 말아야 할 이유로 언급.
 4. 예측 `confidence`는 확률이 아니라 휴리스틱 점수입니다. "정확도 X%"라고 쓰지 마세요. 판매 데이터는 합성 데이터일 수 있습니다.
 
 ## 추가 조회
@@ -22,6 +22,8 @@ python -m fgcli sales <storeId> --start YYYY-MM-DD --end YYYY-MM-DD --limit 50
 python -m fgcli weekly <storeId>
 ```
 조회는 꼭 필요한 만큼만 하세요. 다른 명령은 실행되지 않습니다.
+
+발주안이 0건이어도 위험·경고가 있으면 점주가 할 일(본사 확인, 묵은 발주 취소 후 재계획 등)을 브리핑하세요. 이때 `items`는 빈 배열입니다.
 
 ## 출력
 지정된 JSON 스키마로만 답합니다. 한국어로, 숫자에는 단위(kg/L/개)를 붙입니다.

@@ -23,6 +23,7 @@ from fgcli.planner import ObserveError, build_plan, observe
 RUNS_DIR = Path(__file__).resolve().parent.parent / "agent-runs"
 
 RISK_LABEL = {"stockout": "품절 위험", "below_threshold": "임계치 미만",
+              "awaiting_delivery": "입고 대기(재고 부족, 대기발주에 의존)",
               "waste": "폐기 위험(과잉)", "no_demand": "예측 수요 없음"}
 
 
@@ -110,10 +111,11 @@ def run_order(store_id: int, role: str, use_llm: bool, model: str | None) -> int
                     show_plan(plan)
 
         record["plan"] = plan
-        if not plan["items"]:
-            print("\n발주할 항목이 없습니다.")
+        if not plan["items"] and not plan["risks"] and not plan["warnings"]:
+            print("\n발주할 항목도, 알릴 위험도 없습니다.")
             return 0
 
+        # 발주할 게 없어도 위험·경고가 있으면 참모 브리핑은 받는다
         review = None
         if use_llm:
             print("\nClaude 가 발주안을 검토하는 중...")
@@ -123,6 +125,11 @@ def run_order(store_id: int, role: str, use_llm: bool, model: str | None) -> int
                 show_review(review)
             except advisor.AdvisorError as e:
                 print(f"검토를 건너뜁니다: {e}")
+
+        if not plan["items"]:
+            print("\n발주할 항목이 없습니다. (위 경고를 확인하세요)")
+            record["decision"] = "nothing_to_order"
+            return 0
 
         choices = "y=발주안 그대로 / a=참모 조정안 적용 / N=취소" if review else "y=발주 / N=취소"
         ans = ask("\n승인하시겠습니까?", choices)

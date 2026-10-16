@@ -23,6 +23,7 @@ WASTE_COVER_RATIO = 2.0     # 재고가 예측 기간 소요량의 이 배수를
 MIN_PREDICTION_DAYS = 3     # 예측이 이보다 짧게 남았으면 '오래됨'
 CROSSCHECK_TOL = 0.11       # round1 누적 오차를 감안한 서버 대조 허용치
 RECENT_SALES_DAYS = 14      # 이 기간에 판매 기록이 없으면 예측 근거가 오래된 것
+STALE_PENDING_DAYS = 7      # 이보다 오래 처리되지 않은 진행 중 발주는 '도착할 것'으로 믿기 어렵다
 
 PENDING_STATUSES = ("REQUESTED", "APPROVED")
 
@@ -91,7 +92,9 @@ def observe(client: FoodGuardClient, store_id: int) -> dict:
         ],
         "pendingOrders": [
             {"id": o["id"], "ingredientId": o["ingredient"]["id"],
-             "qty": float(o["orderedQty"]), "status": o["status"]}
+             "ingredientName": o["ingredient"]["name"],
+             "qty": float(o["orderedQty"]), "status": o["status"],
+             "orderedAt": str(o.get("orderedAt") or "")[:10]}
             for o in _get(client, f"/api/orders/{store_id}")
             if o.get("status") in PENDING_STATUSES
         ],
@@ -135,6 +138,18 @@ def build_plan(obs: dict, today: date | None = None) -> dict:
         freshness = "stale"
         warnings.append({"type": "prediction_partial", "menuIds": unpredicted,
                          "message": f"레시피가 있는 메뉴 {unpredicted}의 예측이 없습니다. 재예측을 권장합니다."})
+
+    # 오래 멈춰 있는 진행 중 발주. 서버 추천도 이 수량을 '들어올 것'으로 빼고 계산하므로
+    # 실제로는 안 들어오는 발주 때문에 필요한 발주가 추천에서 사라질 수 있다.
+    stale = [o for o in obs["pendingOrders"]
+             if o.get("orderedAt") and (today - date.fromisoformat(o["orderedAt"])).days > STALE_PENDING_DAYS]
+    if stale:
+        oldest = min(o["orderedAt"] for o in stale)
+        warnings.append({
+            "type": "pending_stale", "orderIds": [o["id"] for o in stale],
+            "message": f"진행 중 발주 {len(stale)}건이 {STALE_PENDING_DAYS}일 넘게 처리되지 않았습니다 (가장 오래된 것 {oldest}). "
+                       "발주안은 이 수량이 들어온다고 보고 뺐으므로, 본사에 상태를 확인하거나 취소 후 다시 계획하세요.",
+        })
 
     if obs.get("recentSalesDays") == 0:
         warnings.append({"type": "sales_stale",
@@ -188,9 +203,13 @@ def build_plan(obs: dict, today: date | None = None) -> dict:
         daily = req / horizon if horizon else 0.0
         cover = (cur + pend) / daily if daily > 0 else None
 
+        own_cover = cur / daily if daily > 0 else None   # 대기발주 없이 지금 재고만으로 버틸 날
+
         risk = None
         if inv and inv["minThreshold"] > 0 and cur < inv["minThreshold"]:
             risk = "below_threshold"
+        elif own_cover is not None and own_cover < STOCKOUT_COVER_DAYS and pend > 0                 and (cover is None or cover >= STOCKOUT_COVER_DAYS):
+            risk = "awaiting_delivery"   # 대기발주가 제때 들어와야만 버틴다
         elif cover is not None and cover < STOCKOUT_COVER_DAYS:
             risk = "stockout"
         elif horizon and req > 0 and cur > req * WASTE_COVER_RATIO:
