@@ -22,6 +22,7 @@ python -m fgcli recipe <menuId>         # 메뉴 1개당 식자재 소요량
 python -m fgcli inventory <storeId>     # 재고 (belowThreshold 플래그 포함)
 python -m fgcli predictions <storeId>   # 오늘 이후 수요 예측
 python -m fgcli recommend <storeId>     # 발주 추천 ★
+python -m fgcli plan <storeId>          # 발주안 + 품절/폐기 위험 판단 + 서버 대조
 python -m fgcli orders <storeId>        # 발주 내역
 python -m fgcli sales <storeId> --start YYYY-MM-DD --end YYYY-MM-DD --limit 50
 python -m fgcli today <storeId>         # 오늘 매출 요약

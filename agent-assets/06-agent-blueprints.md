@@ -98,7 +98,7 @@
 | 1 | ~~읽기 전용 에이전트 구동~~ | ✅ 완료 — `.claude/agents/` + `fgcli/` |
 | 2 | 에이전트 ⑤ 감사 실행 → `05` §4 이슈 실제 건수 확인 후 데이터 정리 | 1 |
 | 3 | 단위 규칙 통일 (`INGREDIENT.unit` = kg/L/개로 일원화) | 2 |
-| 4 | 에이전트 ② 발주 참모 (쓰기 승인 플로우 포함) | 3 |
+| 4 | ~~에이전트 ② 발주 참모 (쓰기 승인 플로우 포함)~~ | ✅ 완료(2026-10-16) — `python -m fgagent order <storeId>` (아래 §5) |
 | 5 | `PREDICTION_LOG` + `INVENTORY_TXN` 추가 | — |
 | 6 | 에이전트 ③ 폐기 감시 → 실측 기반 예측으로 승격 | 5 |
 
@@ -109,3 +109,26 @@
   - 예측이 왜 그렇게 나왔는지 설명 (요일·날씨·최근 추세 피처 기여 서술)
   - 예측을 그대로 믿지 않고 **데이터 품질을 먼저 감사**(에이전트 ⑤)하는 자기검증 루프
   - 발주를 **자동 실행이 아니라 근거와 함께 제안**하는 human-in-the-loop 설계
+
+## 5. 발주 참모 구현 (2026-10-16)
+
+```
+python -m fgagent order 60006          # 전체 루프
+python -m fgagent order 60006 --no-llm # Claude 없이
+python -m fgcli plan 60006             # 발주안만 (읽기 전용)
+```
+
+| 단계 | 누가 | 어디 |
+|---|---|---|
+| 관찰 | 코드 | `fgcli/planner.py observe()` — 메뉴·레시피·예측·재고·진행 중 발주·서버 추천 |
+| 판단 | 코드 | 예측 신선도, 품절(버틸 날 < 2일)·임계치 미만·폐기(재고 > 소요 2배)·수요 없음, 데이터 품질 |
+| 발주안 | 코드 | 서버와 같은 산식으로 독립 재계산 → `/recommend`와 대조 → `planId`(상태 지문) |
+| 검토 | Claude (`claude -p`, 로그인된 계정) | `fgagent/advisor.py` — 읽기 전용 fgcli 만 허용, 줄이기/보류 제안만 |
+| 승인 | **사람** | 터미널 입력 `y` / `a`(참모 조정안) / `N` |
+| 실행 | 코드 | 실행 직전 재계산해 `planId`가 바뀌었으면 중단 → `POST /api/orders` |
+| 검증 | 코드 | 발주 내역 재조회(REQUESTED·수량 일치) + 남은 부족분 → `agent-runs/*.json` |
+
+**안전 경계는 프롬프트가 아니라 구조로 만든다.** Claude 프로세스는 `--tools Bash,Read`,
+`--allowedTools "Bash(python -m fgcli *)"`, `--permission-mode dontAsk`, `--setting-sources project` 로 뜬다.
+fgcli 에는 쓰기 명령이 없으므로 Claude 는 발주·재예측을 할 수 없다 (curl·`python -c` 거부 확인함).
+쓰기는 `fgagent/executor.py` 에만 있고, 사람이 승인한 뒤 러너가 호출한다.

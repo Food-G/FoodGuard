@@ -135,10 +135,12 @@ COMMANDS: dict[str, tuple[Callable[[argparse.Namespace], str], Trimmer, str]] = 
     "weekly-all":  (lambda a: "/api/sales/all-stores/weekly-summary", None,
                     "전 매장 주간 매출 (HQ 전용)"),
     "ai-health":   (lambda a: "/health", None, "AI 예측 서비스 가동 확인"),
+    "plan":        (lambda a: "", None,
+                    "발주 참모 발주안: 관찰→판단→발주안 + 서버 추천과 대조 (읽기 전용, 발주하지 않음)"),
 }
 
 NEEDS_STORE_ID = {"menus", "inventory", "predictions", "recommend", "orders",
-                  "sales", "today", "weekly"}
+                  "sales", "today", "weekly", "plan"}
 NEEDS_MENU_ID = {"recipe"}
 
 
@@ -220,6 +222,13 @@ def main(argv: list[str] | None = None) -> int:
 
     client = FoodGuardClient(token)
     path_fn, trimmer, _ = COMMANDS[args.command]
+
+    if args.command == "plan":
+        from fgcli.planner import ObserveError, build_plan, observe
+        try:
+            return emit(build_plan(observe(client, args.store_id)))
+        except ObserveError as e:
+            return emit({"error": "observe_failed", "message": str(e)})
 
     if args.command == "my-stores":
         path = f"/api/stores/my/{claims.get('id')}"

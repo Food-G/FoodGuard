@@ -54,3 +54,13 @@ jobs:
       - run: python -m compileall -q .
       # DB 연결은 지연 생성이라 .env 없이도 import 가 된다.
       - run: python -c "import main"
+
+  agent:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install requests
+      - run: python -m unittest fgcli.test_planner -v   # 발주 참모 산식·판단 (네트워크 없음)
