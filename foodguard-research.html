@@ -1,0 +1,595 @@
+<title>FoodGuard 2학기 연구 방향</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&family=Gowun+Dodum&display=swap">
+<style>
+/* Layout: 단일 읽기 칼럼(약 68자) + 넓은 표는 개별 가로 스크롤. 카드 없이 구분선과 라벨로 위계를 만든다. */
+:root{
+  --bg:#f6f8f5; --surface:#ffffff; --fg:#1d2420; --muted:#5b6660; --line:#d9e0db;
+  --accent:#1f6b52; --accent-soft:#e3efe9; --warn:#b4472a; --warn-soft:#f7e6df; --ok:#2f7a3a;
+  --f-display:"Gowun Dodum","IBM Plex Sans KR",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#131815; --surface:#1a201c; --fg:#e4eae6; --muted:#9aa69f; --line:#2c3530;
+  --accent:#6cc4a1; --accent-soft:#1d2e27; --warn:#f08a68; --warn-soft:#33221c; --ok:#7fcf8a; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#131815; --surface:#1a201c; --fg:#e4eae6; --muted:#9aa69f; --line:#2c3530;
+  --accent:#6cc4a1; --accent-soft:#1d2e27; --warn:#f08a68; --warn-soft:#33221c; --ok:#7fcf8a; color-scheme:dark}
+
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:16px;line-height:1.75;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:40px 80px}
+.wrap{max-width:780px;margin:0 auto;display:flex;flex-direction:column;gap:56px}
+h1,h2,h3{font-family:var(--f-display);font-weight:400;text-wrap:balance;line-height:1.3;margin:0}
+h1{font-size:clamp(30px,6vw,44px)}
+h2{font-size:26px}
+h3{font-size:19px;font-family:var(--f-body);font-weight:700}
+p{margin:0}
+a{color:var(--accent);text-underline-offset:3px}
+a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.lede{font-size:18px;color:var(--muted);max-width:62ch}
+header{display:flex;flex-direction:column;gap:14px;border-bottom:1px solid var(--line);padding-bottom:28px}
+.meta{font-family:var(--f-mono);font-size:12.5px;color:var(--muted);display:flex;flex-wrap:wrap;gap:6px 18px}
+section{display:flex;flex-direction:column;gap:18px}
+.prose{display:flex;flex-direction:column;gap:14px;max-width:68ch}
+
+.thesis{background:var(--accent-soft);border-radius:6px;padding:24px;display:flex;flex-direction:column;gap:14px}
+.thesis ol{margin:0;padding-left:1.3em;display:flex;flex-direction:column;gap:10px}
+.thesis strong{color:var(--accent)}
+
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:6px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:600px;font-size:14.5px;line-height:1.6}
+th,td{text-align:left;vertical-align:top;padding:12px 14px;border-bottom:1px solid var(--line)}
+tr:last-child td{border-bottom:0}
+th{font-family:var(--f-mono);font-size:12px;font-weight:500;letter-spacing:.05em;color:var(--muted);text-transform:uppercase;background:var(--bg)}
+td code,p code,li code{font-family:var(--f-mono);font-size:.88em;background:var(--accent-soft);padding:1px 5px;border-radius:3px}
+.pill{display:inline-block;font-family:var(--f-mono);font-size:11.5px;padding:2px 8px;border-radius:999px;white-space:nowrap}
+.pill.ok{background:var(--accent-soft);color:var(--ok)}
+.pill.fix{background:var(--warn-soft);color:var(--warn)}
+
+.axis{border-top:1px solid var(--line);padding-top:22px;display:grid;grid-template-columns:120px 1fr;gap:10px 24px}
+.axis > .tag{font-family:var(--f-mono);font-size:12.5px;color:var(--accent);padding-top:4px}
+.axis > div{min-width:0;display:flex;flex-direction:column;gap:12px}
+.axis dl{margin:0;display:grid;grid-template-columns:88px 1fr;gap:8px 14px;font-size:15px}
+.axis dt{font-family:var(--f-mono);font-size:12px;color:var(--muted);padding-top:3px}
+.axis dd{margin:0;min-width:0}
+.axis ul{margin:0;padding-left:1.1em;display:flex;flex-direction:column;gap:6px}
+
+.claim{font-family:var(--f-display);font-size:clamp(19px,3.4vw,23px);line-height:1.55;border-left:3px solid var(--accent);padding:4px 0 4px 18px;max-width:44ch;text-wrap:balance}
+.phases{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.phases li{display:grid;grid-template-columns:128px 1fr;gap:16px;padding:20px 0;border-top:1px solid var(--line)}
+.phases .when{display:flex;flex-direction:column;gap:2px;font-family:var(--f-mono);font-size:13px;color:var(--accent);padding-top:3px;font-variant-numeric:tabular-nums}
+.phases .when span{color:var(--muted);font-size:12px}
+.phases .body{min-width:0;display:flex;flex-direction:column;gap:8px}
+.phases .facts{display:grid;grid-template-columns:72px 1fr;gap:4px 12px;font-size:14.5px;margin:0}
+.phases .facts dt{font-family:var(--f-mono);font-size:12px;color:var(--muted);padding-top:2px}
+.phases .facts dd{margin:0;min-width:0}
+.split{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:28px}
+.split > div{min-width:0;display:flex;flex-direction:column;gap:10px}
+.split ul{margin:0;padding-left:1.1em;display:flex;flex-direction:column;gap:8px;font-size:15px}
+.split li b{font-weight:500}
+
+.note{border-left:3px solid var(--warn);padding:4px 0 4px 16px;font-size:15px;color:var(--muted);max-width:68ch}
+.refs{margin:0;padding-left:1.4em;font-size:14px;line-height:1.65;display:flex;flex-direction:column;gap:6px;color:var(--muted)}
+.refs b{color:var(--fg);font-weight:500}
+
+@media (max-width:560px){
+  .axis{grid-template-columns:1fr}
+  .axis dl{grid-template-columns:1fr;gap:2px}
+  .axis dd{margin-bottom:8px}
+  .phases li{grid-template-columns:1fr;gap:6px}
+  .phases .when{flex-direction:row;gap:10px}
+  .phases .facts{grid-template-columns:1fr;gap:0}
+  .phases .facts dd{margin-bottom:6px}
+}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
+</style>
+
+<div class="wrap">
+
+<header>
+  <span class="eyebrow">캡스톤디자인 II · 선행연구 검토</span>
+  <h1>FoodGuard 2학기 연구 방향</h1>
+  <p class="lede">외식업 수요예측, 부패성 재고 발주, 폐기 감축, 사람과 AI의 협업에 관한 선행연구를 현재 코드와 대조했습니다. 2학기에 무엇을 먼저 보완해야 완성도가 올라가는지 정리하고, 12/19까지의 실행 계획과 역할을 확정안으로 담았습니다.</p>
+  <div class="meta"><span>기준 코드: dev 브랜치 4456767 (2026-10-16)</span><span>검토 문헌 약 70편 (1차 24 · 2차 18 · 3차 14 · 최신 13)</span><span>작성: 2026-10-16</span><a href="#more">2차 리서치</a><a href="#more3">3차 리서치</a><a href="#latest">최신 연구</a><a href="https://claude.ai/artifact/HKhTSQykqHUi54WRk6D6rz" target="_blank" rel="noopener">계획 대비 점검 문서</a><a href="#plan">실행 계획 바로 보기</a></div>
+</header>
+
+<section>
+  <span class="eyebrow">결론 먼저</span>
+  <div class="thesis">
+    <p>문헌이 공통으로 가리키는 방향은 <strong>기능을 더 붙이기보다 효과를 측정할 수 있게 만드는 것</strong>입니다. 결과보고서의 빈칸(정확도 ±[ ]%, 폐기율 [ ]% 절감)도 이것으로 채울 수 있습니다.</p>
+    <ol>
+      <li><strong>정확도가 아니라 발주 결과로 평가한다.</strong> 예측 오차가 작아도 폐기·품절 비용이 줄지 않을 수 있습니다. 재고 시뮬레이션으로 폐기량과 품절일을 직접 비교하는 연구가 늘고 있습니다.</li>
+      <li><strong>데이터가 적으면 매장·메뉴를 묶어 하나의 모델로 학습한다.</strong> 지금은 매장×메뉴마다 7~30건으로 따로 학습합니다. 글로벌 모델이 이런 상황에서 유리하다는 이론과 실증(M5 대회)이 있습니다.</li>
+      <li><strong>판매량은 수요가 아니다.</strong> 품절된 날의 판매량은 실제 수요보다 작게 기록됩니다. 이대로 학습하면 수요를 체계적으로 과소예측합니다.</li>
+      <li><strong>점주가 고칠 수 있어야 추천을 쓴다.</strong> 사람은 알고리즘이 한 번 틀리면 쉽게 외면하지만, 직접 조정할 수 있으면 훨씬 많이 씁니다. 에이전트는 계산을 대신하지 말고 설명과 승인 흐름을 맡는 편이 맞습니다.</li>
+    </ol>
+  </div>
+</section>
+
+<section>
+  <span class="eyebrow">현재 위치</span>
+  <h2>이미 문헌과 맞는 부분, 보완할 부분</h2>
+  <div class="prose"><p>1학기 이후 코드는 문헌에서 권하는 방향으로 이미 상당히 와 있습니다. XGBoost와 날씨 피처, 분위수 회귀와 뉴스벤더로 정한 안전재고, wMAPE 기반 신뢰도가 그렇습니다. 남은 문제는 주로 <b>검증 방식</b>과 <b>의사결정 단위</b>에 있습니다.</p></div>
+  <div class="tbl"><table>
+    <thead><tr><th>항목</th><th>현재 구현</th><th>판정</th><th>문헌 근거와 보완점</th></tr></thead>
+    <tbody>
+      <tr><td>예측 모델</td><td>XGBoost + 날씨 6종 + lag/rolling</td><td><span class="pill ok">부합</span></td><td>식당 고객 수 예측에서 XGBoost가 가장 좋았고, 전일 값·휴일·요일·날씨가 주요 피처였습니다(AIMS 2025). Tanizaki 외(2019)도 POS와 날씨·이벤트 데이터를 결합했습니다.</td></tr>
+      <tr><td>안전재고</td><td>분위수 XGBoost, critical fractile 0.6</td><td><span class="pill ok">부합</span></td><td>Huber 외(2019)는 독일 제빵 체인 데이터에서 분위수 회귀 기반 ML이 기존 방법보다 크게 나았다고 보고합니다. 단, <b>데이터가 충분할 때</b>라는 조건이 붙습니다.</td></tr>
+      <tr><td>신뢰도 검증</td><td><code>cross_val_predict</code> (기본 KFold, 셔플 없음)</td><td><span class="pill fix">보완</span></td><td>폴드가 시간 순서를 지키지 않아, 앞 구간은 <b>미래 데이터로 학습한 모델</b>로 평가됩니다. 시간순 롤링 백테스트로 바꿔야 실제 운영 오차가 나옵니다.</td></tr>
+      <tr><td>2~7일 앞 예측</td><td>모든 예측일에 마지막 실측일 기준 <code>lag_1</code>, <code>lag_7</code> 사용</td><td><span class="pill fix">보완</span></td><td>학습할 때 <code>lag_7</code>은 "지난주 같은 요일"인데, 3일 뒤를 예측할 때는 다른 요일의 값이 들어갑니다. 예측일 기준으로 lag를 다시 계산하면 <code>lag_7</code>, <code>lag_14</code>는 7일 이내 예측에서 그대로 쓸 수 있습니다.</td></tr>
+      <tr><td>모델 단위</td><td>매장×메뉴별 개별 모델(7~30건)</td><td><span class="pill fix">보완</span></td><td>Montero-Manso &amp; Hyndman(2021)은 글로벌 모델이 지역 모델보다 제약이 크지 않고, 파라미터 수가 시리즈 수와 무관함을 보였습니다. M5 상위권도 여러 시리즈를 함께 학습한 LightGBM 계열이었습니다.</td></tr>
+      <tr><td>비용 파라미터</td><td><code>COST_RATIO=0.4</code> 전 메뉴 공통</td><td><span class="pill fix">보완</span></td><td>폐기 비용은 메뉴가 아니라 <b>식자재의 유통기한과 원가</b>에서 나옵니다. 메뉴 단위 뉴스벤더를 레시피로 식자재 단위로 옮기면 기준이 달라집니다(아래 C축).</td></tr>
+      <tr><td>학습 데이터</td><td>요일 효과 + 노이즈로 만든 합성 데이터</td><td><span class="pill fix">보완</span></td><td>합성 데이터에서 나온 정확도는 생성 규칙을 다시 맞힌 결과일 뿐입니다. 공개 실데이터로 교차 검증해야 수치에 근거가 생깁니다(아래 D축).</td></tr>
+      <tr><td>폐기 예측</td><td>현재고 − 유통기한 내 예측 소비량</td><td><span class="pill ok">출발점 양호</span></td><td>탐지까지는 됩니다. 다음 단계는 대응(할인, 기부, 다음 발주 축소)과 효과 측정입니다.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <span class="eyebrow">선행연구</span>
+  <h2>연구 축별 정리</h2>
+  <div class="prose"><p>축마다 핵심 문헌, 시사점, FoodGuard에서 할 일을 정리했습니다. 괄호 안 번호는 맨 아래 참고문헌 번호입니다.</p></div>
+
+  <div class="axis"><span class="tag">A · 수요예측</span><div>
+    <h3>작은 매장 데이터로 메뉴 수요를 맞히는 법</h3>
+    <dl>
+      <dt>핵심 문헌</dt><dd>Lasek 외 2016 식당 수요예측 문헌조사 [1], Tanizaki 외 2019 [2], AIMS 2025 [3], Montero-Manso &amp; Hyndman 2021 [4], M5 대회 결과 2022 [5], Chronos 2024 [6]</dd>
+      <dt>시사점</dt><dd>트리 부스팅과 날씨·휴일 피처는 이미 표준입니다. 차이는 학습 단위에서 납니다. 이력이 짧은 시리즈는 글로벌 모델이나 사전학습 시계열 모델(Chronos, TimesFM)이 유리할 수 있습니다. 다만 이력이 아예 없는 신메뉴에는 이 모델들도 약합니다.</dd>
+      <dt>할 일</dt><dd><ul>
+        <li>모든 매장·메뉴를 한 모델로 학습하고 <code>store_id</code>, <code>menu_id</code>, 메뉴 분류, 지역을 피처로 넣기</li>
+        <li>베이스라인 3종과 비교: 지난주 같은 요일, 요일 평균, Chronos 제로샷</li>
+        <li>예측일 기준으로 lag 다시 계산하기 (위 표 참고)</li>
+      </ul></dd>
+    </dl>
+  </div></div>
+
+  <div class="axis"><span class="tag">B · 평가</span><div>
+    <h3>"±10% 이내"를 무엇으로 재나</h3>
+    <dl>
+      <dt>핵심 문헌</dt><dd>Hyndman &amp; Koehler 2006 [7], Kolassa 2016 (WAPE, 간헐 수요) [8], Kourentzes 외 2019 [9], Albu 2026 [10]</dd>
+      <dt>시사점</dt><dd>MAPE는 판매량이 0인 날에 정의되지 않고, 판매가 적은 메뉴에서는 0을 예측하는 것이 오차상 유리해지는 왜곡이 있습니다. 메뉴 합산에는 WAPE, 메뉴 간 비교에는 MASE가 낫습니다. 더 중요한 점은, 정확도 지표가 재고 성과를 잘 대변하지 못한다는 것입니다. 폐기 감축이 목적이면 폐기량과 품절로 직접 평가해야 합니다.</dd>
+      <dt>할 일</dt><dd><ul>
+        <li>"주간 ±10%"를 <b>주간 메뉴별 WAPE ≤ 10%</b>로 정의하고, 시간순 롤링 백테스트로 측정</li>
+        <li>분위수 모델은 pinball loss와 실제 충족률(실판매 ≤ 추천량인 비율, 목표 60%)로 확인</li>
+      </ul></dd>
+    </dl>
+  </div></div>
+
+  <div class="axis"><span class="tag">C · 발주 결정</span><div>
+    <h3>예측에서 발주량으로</h3>
+    <dl>
+      <dt>핵심 문헌</dt><dd>Huber 외 2019 (제빵 체인) [11], Ban &amp; Rudin 2019 [12], Bertsimas &amp; Kallus 2020 [13], Müller 외 2025 (대체 수요) [14]</dd>
+      <dt>시사점</dt><dd>분위수 회귀로 발주량을 직접 내는 현재 방식은 Ban &amp; Rudin의 경험위험최소화 방식과 같은 계열입니다. Huber 외는 성과 개선의 대부분이 예측 정확도에서 온다고 보고합니다. Müller 외는 한 메뉴가 품절되면 다른 메뉴로 수요가 옮겨가는 대체 효과를 다룹니다.</dd>
+      <dt>할 일</dt><dd><ul>
+        <li>메뉴 분위수 예측을 레시피로 식자재 소요량에 합산하고, <b>식자재별 유통기한과 원가</b>로 critical fractile 정하기</li>
+        <li>유통기한이 발주 주기보다 짧은 식자재(채소, 생물)와 긴 식자재(냉동, 건자재)의 발주 규칙 분리</li>
+      </ul></dd>
+    </dl>
+  </div></div>
+
+  <div class="axis"><span class="tag">D · 데이터</span><div>
+    <h3>합성 데이터의 한계와 품절 검열</h3>
+    <dl>
+      <dt>핵심 문헌</dt><dd>FreshRetailNet-50K 2025 [15], 서울시 상권분석서비스 추정매출 [16]</dd>
+      <dt>시사점</dt><dd>FreshRetailNet-50K는 898개 매장의 신선식품 5만 개 시계열에 시간 단위 품절 표시와 강수 등 공변량이 붙은 공개 데이터입니다(CC-BY-4.0). 품절 시간의 잠재 수요를 복원한 뒤 학습하자 과소예측 편향이 7.37%에서 거의 0으로 줄었다고 보고합니다. 외식업이 아니라 신선 소매 데이터라는 점은 보고서에 밝혀야 합니다.</dd>
+      <dt>할 일</dt><dd><ul>
+        <li>FoodGuard 파이프라인을 FreshRetailNet-50K에도 돌려 "실데이터 검증" 수치 확보</li>
+        <li>FoodGuard 재고 테이블에 품절 여부를 남겨 판매량과 수요를 구분하기</li>
+        <li>지역 단위 외생 변수로 서울시 추정매출(분기, 업종별) 검토</li>
+      </ul></dd>
+    </dl>
+  </div></div>
+
+  <div class="axis"><span class="tag">E · 폐기 감축</span><div>
+    <h3>예측이 실제로 폐기를 줄였다는 증거</h3>
+    <dl>
+      <dt>핵심 문헌</dt><dd>Malefors 외 2021, 2022 (스웨덴 학교 급식) [17], Sanders (동적 할인, Marketing Science 게재 예정) [18], Saarinen (만료일 기반 자동 할인) [19]</dd>
+      <dt>시사점</dt><dd>학교 급식에서 등록 인원 전원분을 조리하던 방식은 오차가 20~40%였고, 최선의 예측 모델은 2~3%였습니다. 현장 개입 실험에서 수요예측 도구를 쓴 급식소는 1인분당 배식 폐기가 34g 줄었고, 비교군은 11g 줄었습니다. 유통기한에 따라 점진적으로 할인하면 폐기가 평균 21% 줄어든다는 시뮬레이션 결과와, 온라인 소매에서 9.6% 줄었다는 실증 결과도 있습니다.</dd>
+      <dt>할 일</dt><dd><ul>
+        <li>폐기 예측 결과에 대응 행동 연결: 오늘 할인할 메뉴, 기부 가능 품목, 다음 발주 감량</li>
+        <li>대응 전후의 폐기량을 기록해서 효과를 측정</li>
+      </ul></dd>
+    </dl>
+  </div></div>
+
+  <div class="axis"><span class="tag">F · 사람과 AI</span><div>
+    <h3>점주가 추천을 받아들이게 하는 설계</h3>
+    <dl>
+      <dt>핵심 문헌</dt><dd>Dietvorst 외 2015, 2018 [20], Fildes 외 2009 [21], OptiGuide (Microsoft) 2023 [22], InvAgent 2024 [23], AIM-Bench 2025 [24]</dd>
+      <dt>시사점</dt><dd>사람은 알고리즘이 틀리는 것을 한 번 보면 신뢰를 빨리 잃습니다. 결과를 직접 조정할 수 있게 하면 불완전한 알고리즘도 훨씬 많이 씁니다. 반면 6만 건 이상의 공급망 예측을 분석한 Fildes 외에 따르면, 작은 수동 조정은 오히려 정확도를 해치는 경우가 많았고 상향 조정은 낙관 편향이 있었습니다. LLM 쪽에서는 OptiGuide가 계산은 최적화 엔진에 맡기고 LLM은 "만약 ~라면" 질문에 답하고 설명하도록 나눴습니다. AIM-Bench는 LLM도 재고 결정에서 사람과 비슷한 편향을 보인다고 보고합니다.</dd>
+      <dt>할 일</dt><dd><ul>
+        <li>발주 참모 에이전트: 수치는 예측·발주 모듈이 내고, LLM은 근거 설명과 승인 흐름만 맡기</li>
+        <li>점주의 승인·수정·거절과 수정 폭을 로그로 남기기. 이것이 보고서의 "추천 적용률 80%" 지표가 됩니다</li>
+        <li>수정된 발주와 원안 중 어느 쪽 결과가 좋았는지 사후 비교</li>
+      </ul></dd>
+    </dl>
+  </div></div>
+</section>
+
+<section id="more">
+  <span class="eyebrow">2차 리서치</span>
+  <h2>더 깊이 본 문헌</h2>
+  <div class="prose"><p>1차에서 비어 있던 국내 선행연구, 날씨 효과의 크기, 판매가 적은 메뉴, 품절, 부패성 재고 정책, LLM의 역할 경계를 추가로 찾았습니다. 번호는 참고문헌 25번부터 이어집니다.</p></div>
+
+  <div class="axis"><span class="tag">G · 국내 연구</span><div>
+    <h3>국내 급식 식수 예측: 가장 가까운 비교 대상</h3>
+    <dl>
+      <dt>핵심 문헌</dt><dd>전종식·박은주·권오병 2019 (대한영양사협회학술지) [25], 목포해양대 2023 (한국컴퓨터정보학회 하계학술대회) [26], 이화여대 체감 날씨 변수 연구 [27], Yoo·Eom·Zhou 2024 [28]</dd>
+      <dt>내용</dt><dd>S시청 구내식당 연구는 63개 변수를 8개 범주로 묶고 6개 모델을 앙상블해서, 식수 예측 오차율을 10~11%에서 약 6~7%로 낮췄습니다. 잔반은 약 40% 줄어들 것으로 <b>기대</b>한다고 밝혔는데, 이는 실측이 아닌 추정치입니다. 목포해양대 연구는 교내식당 실데이터와 기상 데이터로 XGBoost 모델을 평일과 주말로 나눠 만들었고, 평일 MAE가 조식 16명, 중식 23명, 석식 25명이었습니다. 이화여대 연구는 기온 대신 체감온도, 열지수, 불쾌지수를 넣었을 때 설명력이 더 좋았다고 보고합니다. 서울 오프라인 매장 연구는 폭염 때 매출이 약 4%, 한파 때 약 11% 늘었다고 보고합니다.</dd>
+      <dt>의미</dt><dd>목포해양대 연구는 FoodGuard와 구성이 거의 같습니다(XGBoost + 날씨). 결과보고서에서 "국내 선행연구 대비" 비교의 기준으로 쓸 수 있습니다. 체감온도 같은 파생 날씨 피처는 바로 시험해 볼 수 있습니다.</dd>
+    </dl>
+  </div></div>
+
+  <div class="axis"><span class="tag">H · 날씨 효과</span><div>
+    <h3>날씨가 매출을 얼마나, 며칠 앞까지 바꾸나</h3>
+    <dl>
+      <dt>핵심 문헌</dt><dd>Badorf &amp; Hoberg 2020 (Journal of Retailing and Consumer Services) [29], Bujisic 호텔 레스토랑 연구 (보도 기반) [30]</dd>
+      <dt>내용</dt><dd>673개 매장 데이터에서 날씨가 일 매출에 주는 효과는 매장 위치에 따라 최대 23.1%, 상품군에 따라 최대 40.7%까지 달랐습니다. 극한 날씨의 효과는 비선형이라 선형 모델은 이를 잘못 추정합니다. 날씨 예보를 넣으면 7일 앞까지 예측 정확도가 좋아졌지만, 멀어질수록 개선 폭이 줄었습니다. 미국 호텔 레스토랑 사례에서는 비보다 기온의 영향이 컸고, 점심이 가장 크게 영향을 받았다고 보도됐습니다.</dd>
+      <dt>의미</dt><dd>FoodGuard는 기상청 단기예보(1~3일)와 중기예보(4~7일)를 섞어 씁니다. <b>날씨 피처를 넣었을 때와 뺐을 때의 정확도 차이를 예측 구간별로 따로 재면</b>, 날씨 연동이 실제로 얼마나 도움이 되는지 보고서에 숫자로 쓸 수 있습니다. 매장마다 날씨 효과가 다르다는 점은 글로벌 모델에서 매장과 날씨를 함께 피처로 넣어야 하는 이유도 됩니다.</dd>
+    </dl>
+  </div></div>
+
+  <div class="axis"><span class="tag">I · 메뉴 예측</span><div>
+    <h3>식당·급식 메뉴 단위 예측의 직접 선행연구</h3>
+    <dl>
+      <dt>핵심 문헌</dt><dd>Posch 외 2022 (International Journal of Forecasting) [31], 식당 음식물 폐기 예측 ML 프레임워크 2026 (arXiv) [32]</dd>
+      <dt>내용</dt><dd>Posch 외는 일반 식당과 대형 사내식당의 20개월치 POS 데이터만으로 메뉴별 일 판매량을 예측했습니다. 여러 겹의 계절성, 추세 변화, 결측, 이상치를 다루면서도 사람이 해석할 수 있는 모델을 목표로 했습니다. 식당 폐기 예측 연구는 실측 폐기량이 없어서, 공식에 노이즈를 더한 대리 타깃으로 학습했습니다(R² 0.817). 또 주문 건수 피처가 정답을 새어 나가게 해서 제외했다고 밝힙니다.</dd>
+      <dt>의미</dt><dd>두 번째 연구는 FoodGuard의 합성 데이터 문제와 같은 구조입니다. <b>공식으로 만든 데이터에서 나온 높은 정확도는 그 공식을 다시 맞힌 것</b>이라는 점을 논문도 한계로 적었습니다. 결과보고서에서도 합성 데이터 수치와 실데이터 수치를 나눠야 하는 근거로 인용할 수 있습니다.</dd>
+    </dl>
+  </div></div>
+
+  <div class="axis"><span class="tag">J · 판매 적은 메뉴</span><div>
+    <h3>간헐 수요와 품절 검열</h3>
+    <dl>
+      <dt>핵심 문헌</dt><dd>Damato 외 2026 (arXiv) [33], Sachs &amp; Minner 2014 (International Journal of Production Economics) [34]</dd>
+      <dt>내용</dt><dd>4만 개가 넘는 간헐 수요 시계열에서 글로벌 모델(TiDE)이 지역 모델보다 정확하고 계산도 적게 들었습니다. 상위 분위수, 즉 안전재고에 해당하는 구간은 Tweedie 분포를 쓴 모델이 가장 잘 맞혔습니다. Sachs &amp; Minner는 품절로 관측되지 않은 수요를 <b>시간대별 판매 패턴</b>으로 추정하면서 발주량을 함께 정하는 방법을 제시했고, 실데이터에서는 분포를 가정하지 않는 방법이 더 나았다고 보고합니다.</dd>
+      <dt>의미</dt><dd>XGBoost는 Tweedie 목적함수(<code>reg:tweedie</code>)를 바로 지원합니다. 판매가 적고 0이 많은 메뉴에 시험해 볼 수 있습니다. POS 판매 기록에 시각이 남아 있다면, 평소보다 일찍 판매가 끊긴 날을 품절로 추정할 수 있습니다.</dd>
+    </dl>
+  </div></div>
+
+  <div class="axis"><span class="tag">K · 부패성 재고</span><div>
+    <h3>유통기한과 발주 단위를 반영한 폐기 추정</h3>
+    <dl>
+      <dt>핵심 문헌</dt><dd>van Donselaar &amp; Broekmeulen 2012 (International Journal of Production Economics) [35], Broekmeulen의 EWA 발주 정책 [36], 레시피 단위 예측 업계 사례 [37]</dd>
+      <dt>내용</dt><dd>van Donselaar &amp; Broekmeulen은 주기적으로 발주하고, 리드타임이 있고, 박스 단위로 사며, 먼저 들어온 재고부터 쓰는 조건에서 예상 폐기량을 구하는 근사식을 만들었습니다(평균 오차 약 -0.01%). EWA 정책은 목표 서비스 수준을 지키면서 폐기를 최소화하는 부패성 상품 발주 방식입니다. 한 밀키트 업체는 예측 단위를 상품에서 레시피로 바꾸고 식자재로 풀어 계산한 뒤, 예측 오차가 34% 줄고 박스당 식자재 폐기가 6.1%에서 3.4%로 줄었다고 밝혔습니다(업체 발표 사례).</dd>
+      <dt>의미</dt><dd>지금 폐기 예측은 "현재고 − 유통기한 내 예상 소비량"입니다. 여기에 <b>발주 단위(박스)와 선입선출</b>을 넣으면 문헌에 근거한 폐기 추정식이 됩니다. 메뉴 예측을 레시피로 식자재에 풀어 계산하는 현재 구조가 맞는 방향이라는 근거도 됩니다.</dd>
+    </dl>
+  </div></div>
+
+  <div class="axis"><span class="tag">L · 예측과 결정</span><div>
+    <h3>예측을 결정 비용에 맞추는 방법</h3>
+    <dl>
+      <dt>핵심 문헌</dt><dd>Elmachtoub &amp; Grigas 2022 (Management Science) [38], 컨포멀 기반 뉴스벤더 2024 (arXiv) [39], Wickramasuriya 외 2019 MinT (JASA) [40]</dd>
+      <dt>내용</dt><dd>Smart Predict-then-Optimize는 예측 오차 대신 그 예측으로 내린 결정의 손실로 모델을 학습시킵니다. 모델이 잘못 설정됐을 때 특히 효과가 컸습니다. 컨포멀 방식으로 모델 편향을 보정한 뉴스벤더 연구는 실데이터에서 손실을 최대 47.3% 줄였다고 보고합니다. 다만 표준 컨포멀 예측은 그대로 쓸 수 없고 데이터 양에 민감합니다. MinT는 매장, 지역, 본사 예측의 합계가 서로 맞도록 조정하는 방법입니다.</dd>
+      <dt>의미</dt><dd>FoodGuard의 분위수 회귀는 이 흐름의 단순한 형태입니다. 데이터가 적을 때는 메뉴 간 잔차를 모아 실제 충족률이 목표 60%에 맞는지 보정하는 정도가 현실적입니다. 본사 화면의 지역·전체 예측이 매장 예측의 합과 맞지 않는다면 MinT가 해법입니다.</dd>
+    </dl>
+  </div></div>
+
+  <div class="axis"><span class="tag">M · LLM의 경계</span><div>
+    <h3>LLM은 숫자를 예측하지 않는다</h3>
+    <dl>
+      <dt>핵심 문헌</dt><dd>Tan 외 2024 (NeurIPS) [41], Bansal 외 2021 (CHI) [42]</dd>
+      <dt>내용</dt><dd>LLM 기반 시계열 예측 모델 세 가지에서 LLM 부분을 빼거나 단순한 어텐션 층으로 바꿔도 정확도가 떨어지지 않았고, 대부분 오히려 좋아졌습니다. 사전학습 LLM은 데이터가 적은 상황에서도 도움이 되지 않았습니다. Bansal 외의 실험에서는 AI 설명이 사람과 AI 팀의 성과를 높이지 못했습니다. 대신 추천이 맞든 틀리든 사람이 받아들일 확률을 높였습니다.</dd>
+      <dt>의미</dt><dd>발주 참모 에이전트에서 LLM은 수치 예측을 맡지 않고, 예측 모듈의 결과를 설명하고 승인 흐름을 돕는 역할에 머물러야 합니다. 설명이 무조건 수용을 늘릴 수 있으므로, 평가할 때는 승인률만 보지 말고 <b>틀린 추천을 점주가 거절한 비율</b>도 함께 재야 합니다.</dd>
+    </dl>
+  </div></div>
+
+  <h3>2차 리서치로 추가된 할 일</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>할 일</th><th>근거</th><th>난이도</th></tr></thead>
+    <tbody>
+      <tr><td>날씨 피처를 넣었을 때와 뺐을 때의 정확도 차이를 1~3일, 4~7일 구간별로 측정</td><td>H [29]</td><td>낮음</td></tr>
+      <tr><td>목포해양대·S시청 식수 예측 연구를 결과보고서의 국내 비교 기준으로 인용</td><td>G [25][26]</td><td>낮음</td></tr>
+      <tr><td>체감온도, 극한 기온 같은 파생·비선형 날씨 피처 시험</td><td>G [27], H [29]</td><td>낮음</td></tr>
+      <tr><td>판매가 적은 메뉴에 XGBoost Tweedie 목적함수 시험</td><td>J [33]</td><td>낮음</td></tr>
+      <tr><td>분위수 추천량의 실제 충족률 측정과 보정(메뉴 간 잔차 풀링)</td><td>L [39]</td><td>중간</td></tr>
+      <tr><td>폐기 추정식에 발주 단위(박스)와 선입선출 반영</td><td>K [35][36]</td><td>중간</td></tr>
+      <tr><td>POS 판매 시각으로 품절 시점 추정</td><td>J [34]</td><td>중간 (시각 데이터 필요)</td></tr>
+      <tr><td>에이전트 평가에 "틀린 추천을 거절한 비율" 추가</td><td>M [42]</td><td>낮음</td></tr>
+      <tr><td>본사 화면의 지역·전체 예측과 매장 합계 정합성 점검</td><td>L [40]</td><td>중간</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="more3">
+  <span class="eyebrow">3차 리서치</span>
+  <h2>현장 도입, 특수일, 폐기 측정, 검증 방법</h2>
+  <div class="prose"><p>앞의 두 차례가 "무엇을 예측하고 어떻게 발주하나"였다면, 이번에는 "점주가 실제로 쓰게 하려면", "공휴일과 시간대는 어떻게 다루나", "폐기를 어떻게 재고 어떻게 주장하나"를 찾았습니다. 번호는 참고문헌 43번부터 이어집니다.</p></div>
+
+  <div class="axis"><span class="tag">N · 현장 도입</span><div>
+    <h3>점주는 추천을 언제 따르고, 고치면 결과가 나아지나</h3>
+    <dl>
+      <dt>핵심 문헌</dt><dd>Kesavan &amp; Kushwaha 2020 (Management Science) [43], Kesavan·Kushwaha·Steele 2026 (Management Science) [44], Caro &amp; Sáez de Tejada Cuenca 2023 (MSOM, Zara) [45]</dd>
+      <dt>내용</dt><dd>자동차 부품 소매업체의 현장 실험에서, 담당자가 발주 도구의 결과를 덮어쓰자 이익이 평균 5.77% 줄었습니다. 다만 성장기 상품에서는 오히려 이익이 늘었고, 성숙기·쇠퇴기 상품에서 크게 나빠졌습니다. 같은 연구진의 후속 연구에서는 결과가 아니라 <b>예측의 입력값</b>을 사람이 조정하게 했더니 완전 자동화보다 이익이 4.92% 늘었습니다. Zara의 할인 가격 추천 시스템 연구에서는, 관리자들이 익숙하고 눈에 잘 보이는 지표(재고, 판매량)를 기준으로 판단해서 추천을 따르지 않는 경우가 많았습니다. 관심을 매출 쪽으로 옮기는 개입을 하자 추천을 따르는 비율과 매출이 함께 올랐습니다. 가맹점 관리자는 직영점 관리자보다 추천을 약간 더 따르는 경향이 있었습니다.</dd>
+      <dt>의미</dt><dd>점주에게 발주량을 직접 고치게 하기보다, <b>"내일 단체 예약 30명", "근처 행사" 같은 입력을 넣게 하는 방식</b>이 더 나을 수 있습니다. 승인 화면에는 점주가 실제로 신경 쓰는 지표(예상 폐기 금액, 품절 위험)를 앞에 보여주는 편이 추천을 따르게 하는 데 유리합니다.</dd>
+    </dl>
+  </div></div>
+
+  <div class="axis"><span class="tag">O · 특수일·시간대</span><div>
+    <h3>공휴일은 플래그 하나로 충분하지 않다</h3>
+    <dl>
+      <dt>핵심 문헌</dt><dd>Huber &amp; Stuckenschmidt 2020 (International Journal of Forecasting) [46], Bojer &amp; Meldgaard 2021 (Kaggle 대회 분석, IJF) [47], 대만 iChef POS 연구 (Shmueli 연구실) [48]</dd>
+      <dt>내용</dt><dd>제빵 체인 연구에서 특수일의 수요는 평일과 패턴이 크게 달랐습니다. ML이 기존 방법보다 나았고, 회귀 대신 수요 구간을 맞히는 분류 문제로 풀었을 때 더 좋았습니다. 일본 식당 821곳의 방문객을 예측한 Kaggle 대회에서는 우승팀이 LightGBM, XGBoost, 신경망을 평균했습니다. 공휴일은 토요일처럼, 그 앞뒤 날은 금요일·월요일처럼 다루면 성능이 좋아지는 경우가 많았습니다. 대만 식당 POS 연구에서는 날씨와 공휴일 데이터를 넣어도 하루 전체 매출 예측은 거의 나아지지 않았습니다. 반면 저녁 3시간 같은 식사 시간대 단위에서는 정확도가 올라갔습니다.</dd>
+      <dt>의미</dt><dd>FoodGuard는 공휴일을 <code>is_holiday</code> 하나로만 표시합니다(<code>feature_engineering.py:56</code>). 연휴 전날과 다음 날, 설·추석 연휴 길이, "공휴일은 주말처럼"을 피처로 넣는 것은 바로 시험할 수 있습니다. 날씨 효과가 하루 단위보다 시간대 단위에서 크게 나타난다면, H축의 날씨 효과 측정에서 효과가 작게 나와도 이상한 일이 아닙니다.</dd>
+    </dl>
+  </div></div>
+
+  <div class="axis"><span class="tag">P · 폐기 측정</span><div>
+    <h3>폐기를 어디서, 어떻게 재고, 얼마의 가치로 말하나</h3>
+    <dl>
+      <dt>핵심 문헌</dt><dd>Papargyropoulou 외 2019 (Sustainability) [49], Champions 12.3 식당 보고서 2019 [50], FLW Standard (WRI 외) [51]</dd>
+      <dt>내용</dt><dd>말레이시아 외식·숙박업 5개 사례에서 음식의 약 3분의 1이 버려졌고, 그중 절반 가까이는 피할 수 있는 폐기였습니다. 가장 큰 비중은 <b>조리 준비 단계</b> 폐기였고, 그다음이 뷔페 잔여, 손님 잔반 순이었습니다. 버려진 음식의 가치는 식자재 구매액의 23%에 달했습니다. 12개국 식당 114곳을 분석한 Champions 12.3 보고서에서는, 주방 폐기 감축에 1달러를 쓸 때마다 운영비가 약 7달러 절감됐습니다. 첫해에 주방 폐기가 평균 26% 줄었고, 75% 이상이 1년 안에 투자금을 회수했습니다. 다만 이 효과는 예측 시스템이 아니라 측정, 직원 교육, 메뉴 재설계로 얻은 것입니다. FLW Standard는 폐기량 측정 방법 10가지를 정의하고, 어떤 방법을 썼는지와 불확실성을 함께 밝히도록 요구합니다.</dd>
+      <dt>의미</dt><dd>준비 단계 폐기가 가장 크다는 결과는, 발주와 준비량 최적화에 집중하는 FoodGuard의 방향을 뒷받침합니다. 결과보고서의 기대효과(15~20% 절감)에는 Champions 12.3의 26%를 외부 근거로 들 수 있습니다. 단, 개입 방식이 다르다는 점을 함께 적어야 합니다. 폐기 기록은 FLW Standard의 용어로 정의하고 측정 방법을 밝혀야 수치가 신뢰를 얻습니다.</dd>
+    </dl>
+  </div></div>
+
+  <div class="axis"><span class="tag">Q · 검증 방법</span><div>
+    <h3>"베이스라인보다 낫다"를 엄밀하게 말하는 법</h3>
+    <dl>
+      <dt>핵심 문헌</dt><dd>Diebold-Mariano 검정과 Harvey·Leybourne·Newbold 1997 소표본 보정 [52], TSTR 평가 (Esteban 외 2017) [53], Recruit 식당 방문객 데이터 [47], Genpact 음식 주문 수요 데이터 [54]</dd>
+      <dt>내용</dt><dd>두 예측 모델의 오차 차이가 우연인지 확인할 때는 Diebold-Mariano 검정을 씁니다. 표본이 작으면 검정이 과민해져서 우연한 차이를 "더 낫다"로 잘못 판정할 수 있습니다. 그래서 Harvey 외의 소표본 보정을 함께 씁니다. TSTR(합성 데이터로 학습하고 실데이터로 시험)은 합성 데이터가 실제로 쓸모 있는지 재는 표준 방식입니다. 실데이터로 학습한 모델과 성능을 비교하고, 판별 점수 같은 지표를 함께 봐야 합니다. 외식업에 가까운 공개 데이터로는 일본 식당 821곳의 15개월 방문객과 예약 데이터(Recruit), 배달 센터별·메뉴별 145주 주문 수 데이터(Genpact, 가격·프로모션 포함)가 있습니다.</dd>
+      <dt>의미</dt><dd>백테스트 결과에 Diebold-Mariano 검정(소표본 보정)을 붙이면, 발표에서 "베이스라인보다 낫다"를 통계적으로 주장할 수 있습니다. FoodGuard 합성 데이터로 학습한 모델을 Recruit이나 Genpact 데이터에서 시험하면, 합성 데이터 생성기가 현실을 얼마나 닮았는지 숫자로 보여줄 수 있습니다. FreshRetailNet보다 외식업에 가깝다는 장점도 있습니다. Kaggle 데이터는 이용 조건을 먼저 확인해야 합니다.</dd>
+    </dl>
+  </div></div>
+
+  <div class="axis"><span class="tag">R · 국내 현장</span><div>
+    <h3>국내 점주의 디지털 수준과 기부 제도</h3>
+    <dl>
+      <dt>핵심 문헌</dt><dd>중소기업중앙회 소상공인 DX·AX 설문 2026 (보도) [55], 식품등 기부 활성화에 관한 법률과 기부식품 소비기한 기준 [56]</dd>
+      <dt>내용</dt><dd>소상공인 500곳(외식업 200곳 포함)을 조사한 결과, AI·디지털 활용 수준이 기초 단계 30.5%, 입문 단계 52.8%였고, 정부 지원사업에 참여한 경험은 3.2%뿐이었습니다. 기부 식품은 식품군별 소비기한 잔여일수 기준(모집 가능 기한, 배분 기한)을 지켜야 합니다. 2025년 보건복지부 감사에서는 기부일과 소비기한이 잘못 입력되거나 기한이 지난 식품이 있었던 점이 지적됐습니다.</dd>
+      <dt>의미</dt><dd>점주 대부분이 디지털 입문 단계라면, 승인 화면은 "승인 / 수정 / 거절" 정도로 단순해야 합니다. FoodGuard의 기부 기능에는 소비기한 잔여일수 검사가 반드시 들어가야 합니다. 식품군별 세부 기준은 법령 원문과 한국사회복지협의회 안내에서 직접 확인해야 합니다.</dd>
+    </dl>
+  </div></div>
+
+  <h3>3차 리서치로 추가된 할 일</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>할 일</th><th>근거</th><th>난이도</th></tr></thead>
+    <tbody>
+      <tr><td>연휴 전날·다음 날, 연휴 길이, "공휴일은 주말처럼" 특수일 피처 추가</td><td>O [46][47]</td><td>낮음</td></tr>
+      <tr><td>백테스트 비교에 Diebold-Mariano 검정(소표본 보정) 추가</td><td>Q [52]</td><td>낮음</td></tr>
+      <tr><td>결과보고서 기대효과에 Champions 12.3(첫해 26% 감축, 7:1)을 개입 방식 차이와 함께 인용</td><td>P [50]</td><td>낮음</td></tr>
+      <tr><td>폐기 기록을 FLW Standard 용어로 정의하고 측정 방법 명시</td><td>P [51]</td><td>낮음</td></tr>
+      <tr><td>기부 기능에 소비기한 잔여일수 검사 추가</td><td>R [56]</td><td>낮음 (기준 확인 필요)</td></tr>
+      <tr><td>승인 화면에 예상 폐기 금액과 품절 위험을 먼저 표시</td><td>N [45]</td><td>낮음</td></tr>
+      <tr><td>점주가 발주량 대신 입력(예약, 행사)을 조정하는 방식 검토</td><td>N [44]</td><td>중간</td></tr>
+      <tr><td>합성 데이터로 학습해 Recruit·Genpact에서 시험(TSTR)</td><td>Q [47][53][54]</td><td>중간</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="latest">
+  <span class="eyebrow">최신 연구 · 2025 ~ 2026</span>
+  <h2>최근 1년 사이에 나온 연구와 국내 동향</h2>
+  <div class="prose"><p>앞의 리서치는 검증된 고전 문헌이 중심이었습니다. 여기서는 2025년 이후 나온 논문과 이번 주 보도된 국내 사례를 모았습니다. 최신 arXiv 논문은 아직 동료심사를 거치지 않은 것이 많으므로, 방향을 잡는 근거로 쓰고 수치 인용은 신중히 해야 합니다. 번호는 참고문헌 57번부터 이어집니다.</p></div>
+
+  <div class="axis"><span class="tag">X · 국내 동향</span><div>
+    <h3>국내 외식 프랜차이즈는 이미 AI 발주를 쓰기 시작했다</h3>
+    <dl>
+      <dt>자료</dt><dd>전자신문 2026-10-15 [57], 머니투데이 2026-10-14 [58], 「머신러닝 기반 외식업 프랜차이즈 가맹점 성패 예측」 문화기술의 융합 8(4), 2022 [59]</dd>
+      <dt>내용</dt><dd>이연에프엔씨(한촌설렁탕, 육수당)는 약 12억 원을 들여 점주용 앱 '한큐'를 만들었습니다. 과거 판매량, 날씨, 계절성으로 <b>3일치 예상 판매량과 적정 발주량</b>을 제시합니다. 9월 매출 예측 정확도는 85%였고, 육수당 88개 매장의 AI 발주 사용률은 8월 68.1%에서 9월 81.1%로 올랐습니다. 추천 수량을 그대로 발주하는 매장은 60%를 넘었습니다. 샤브올데이도 연말에 AI 발주량 권고 기능을 넣을 예정입니다. 스타트업 니즈의 '미리'는 POS와 배달앱 매출을 연동해 레시피 기준으로 식자재를 자동 차감하고, 수요예측과 자동발주까지 제공합니다. 약 3,000개 매장이 쓰고 있습니다. 발주 업무 시간은 90분에서 30분 미만으로 줄었다고 하는데, 이는 자체 설문 결과입니다. 두 기사 모두 <b>폐기 감축 효과를 측정한 수치는 없었습니다</b>. 배경 통계로, 외식업 영업이익률은 2020년 12.1%에서 2024년 8.7%로 떨어졌고, 매출 대비 식재료비 비중은 36.3%에서 40.7%로 올랐습니다(농림축산식품부 조사).</dd>
+      <dt>의미</dt><dd>결과보고서의 "기존 시스템은 단순 재고 기록 중심"이라는 서술은 2026년 기준으로 사실과 다릅니다. 고쳐야 합니다. 대신 차별점을 분명히 할 수 있습니다. 상용 서비스들은 <b>폐기·품절 효과를 측정해 공개하지 않습니다</b>. FoodGuard는 그 효과를 백테스트와 시뮬레이션으로 보여주는 쪽에 무게를 두면 됩니다. "추천 적용률 80%" 목표는 육수당 사례(사용률 81%, 그대로 발주 60%)와 비교해 현실적인 수준입니다. 식재료비 비중 통계는 보고서의 필요성 근거로 바로 쓸 수 있습니다.</dd>
+    </dl>
+  </div></div>
+
+  <div class="axis"><span class="tag">S · 사람·LLM·최적화</span><div>
+    <h3>LLM은 묻고 설명하고, 계산은 최적화가 한다</h3>
+    <dl>
+      <dt>핵심 문헌</dt><dd>Baek·Fu·Ma·Peng 2026 (arXiv) [60], Duan·Hu·Jiang 2025 (arXiv) [61]</dd>
+      <dt>내용</dt><dd>Baek 외는 1,000개가 넘는 재고 관리 문제(합성·실수요, 수요 변화, 계절성, 불확실한 리드타임)로 InventoryBench를 만들었습니다. 고전 재고 정책에 LLM을 결합한 방법이 각각 단독으로 쓸 때보다 나았습니다. 수업 실험에서는 사람과 AI가 함께 결정한 팀이 사람만, AI만 결정할 때보다 평균 이익이 높았습니다. 사람과 AI의 협업이 오히려 성과를 떨어뜨린다는 기존 연구와 다른 결과입니다. Duan 외는 역할을 나눴습니다. LLM은 사용자와 대화하며 수요, 비용, 리드타임 같은 값을 표로 정리하고, 앞뒤 답이 충돌하면 다시 묻고, 계산된 정책을 쉬운 말로 설명합니다. 정책 계산은 최적화 알고리즘이 합니다. 이 방식은 GPT-4o가 직접 결정할 때보다 비용을 평균 32.1% 줄였고, 70개 사례 중 97.1%에서 이겼습니다. GPT-4o에게 정확한 값을 줘도 나아지지 않았다는 점에서, LLM의 한계는 정보가 아니라 계산에 있다고 결론지었습니다.</dd>
+      <dt>의미</dt><dd>FoodGuard 발주 참모의 설계도로 그대로 쓸 수 있습니다. LLM은 점주와 대화하며 "내일 단체 예약 30명", "목요일 휴무" 같은 입력을 표로 정리하고, 모호하면 되묻습니다. 그다음 예측·발주 모듈의 결과를 설명합니다. 발주량 계산은 절대 LLM에게 맡기지 않습니다.</dd>
+    </dl>
+  </div></div>
+
+  <div class="axis"><span class="tag">T · 기반모델</span><div>
+    <h3>학습 없이 쓰는 최신 시계열 모델이 FoodGuard 상황에 강하다</h3>
+    <dl>
+      <dt>핵심 문헌</dt><dd>Chronos-2 2025 (Amazon, arXiv) [62], TabPFN-TS 2025 (arXiv) [63], Chronos-2·TabPFN-TS 공변량 비교 2026 (arXiv) [64]</dd>
+      <dt>내용</dt><dd>Chronos-2는 1억 2천만 파라미터 모델로, 날씨나 공휴일처럼 <b>미래 값을 미리 아는 공변량</b>을 그대로 넣을 수 있습니다. fev-bench에서 평균 승률 90.7%로 2위 모델(80.8%)보다 높았고, 공변량이 있는 과제에서 차이가 가장 컸습니다. TabPFN-TS는 시계열 예측을 표 형식 회귀 문제로 바꿔 푸는 1,100만 파라미터 모델로, 공변량이 있는 과제에서 다른 제로샷 모델을 모두 앞섰습니다. 독립 비교 연구에서는 단순한 합성 실험과 짧은 예측 구간에서 TabPFN-TS가 Chronos-2보다 나았습니다. 일부 모델은 벤치마크 데이터가 학습에 섞였다는 지적도 있습니다.</dd>
+      <dt>의미</dt><dd>FoodGuard는 메뉴당 이력이 7~30건으로 짧고, 날씨와 공휴일이라는 미래 공변량이 있습니다. 이 두 모델이 가장 강한 조건입니다. 1차에서 제안한 "Chronos 제로샷" 베이스라인을 <b>Chronos-2와 TabPFN-TS</b>로 바꾸면, 매장별 XGBoost 학습이 학습 없는 최신 모델보다 실제로 나은지 확인할 수 있습니다. 어느 쪽 결과든 발표에서 설득력 있는 비교가 됩니다.</dd>
+    </dl>
+  </div></div>
+
+  <div class="axis"><span class="tag">U · 텍스트 맥락</span><div>
+    <h3>숫자에 없는 정보는 텍스트로 넣을 수 있다</h3>
+    <dl>
+      <dt>핵심 문헌</dt><dd>Williams 외 "Context is Key" 2025 (ICML) [65]</dd>
+      <dt>내용</dt><dd>모든 과제가 텍스트 맥락 없이는 풀 수 없도록 설계된 예측 벤치마크입니다. 맥락 정보를 넣는 것이 중요했고, LLM 기반 예측이 예상보다 잘했지만 치명적인 약점도 드러났습니다. 단순한 프롬프팅 방법이 다른 방법을 모두 앞섰습니다. 2차 리서치의 Tan 외(2024)는 LLM이 숫자 패턴 예측에는 도움이 안 된다고 했습니다. 두 결과를 합치면, LLM은 <b>숫자에 없는 정보를 반영할 때</b> 쓸모가 있다는 뜻입니다.</dd>
+      <dt>의미</dt><dd>점주 메모("근처 축제", "단체 예약")를 예측에 반영하는 기능에 연구 근거가 생겼습니다. 안전하게 하려면 S축처럼 LLM이 메모를 "인원 +30명, 날짜" 같은 구조화된 조정값으로 바꾸고, 반영은 예측 모듈이 합니다.</dd>
+    </dl>
+  </div></div>
+
+  <div class="axis"><span class="tag">V · 부패성 재고</span><div>
+    <h3>데이터가 적을 때는 재고 이론의 구조를 모델에 넣는다</h3>
+    <dl>
+      <dt>핵심 문헌</dt><dd>Liao·Peng·Rong 2026 (arXiv) [66]</dd>
+      <dt>내용</dt><dd>수요와 리드타임 분포를 모르는 부패성 상품의 발주 정책을 끝에서 끝까지 학습합니다. 주문마다 그 주문이 평생 만드는 비용(폐기·품절)을 손실로 씁니다. 순수 블랙박스 신경망보다, 재고 이론의 "예상 재고 수준" 정책 구조를 모델 안에 넣은 쪽이 일관되게 나았습니다. 구조를 넣으면 모델이 배워야 할 복잡도가 줄어서 적은 데이터로도 잘 배운다고 설명합니다.</dd>
+      <dt>의미</dt><dd>FoodGuard의 발주 산식(필요량 − 현재고 − 미처리 발주)처럼 재고 이론의 구조를 유지하고, 그 위에 학습을 얹는 현재 방향이 맞다는 근거입니다. 발주량을 신경망 하나로 바로 뽑는 방식은 데이터가 적은 지금 단계에서 피하는 편이 좋습니다.</dd>
+    </dl>
+  </div></div>
+
+  <div class="axis"><span class="tag">W · 폐기 측정 기술</span><div>
+    <h3>재기만 해도 줄어든다, 그리고 점주는 품절을 더 두려워한다</h3>
+    <dl>
+      <dt>핵심 문헌</dt><dd>Sigala 외 2025 (Waste Management, EU LOWINFOOD) [67], ReFED AI 보고서 2026 [68], 식료품점 AI 발주 도입 보도와 사례 리뷰 [69]</dd>
+      <dt>내용</dt><dd>외식·숙박업 주방에 AI 저울과 카메라를 단 폐기통을 두고 폐기가 주방에서 나왔는지 손님 잔반인지 분류하게 했더니, 끼니당 폐기 비용이 최대 39% 줄었습니다. 식료품점에서는 정확한 AI 발주 추천도 점장들이 자주 덮어쓴다는 보고가 있습니다. 재고를 줄이면 품절 위험이 바로 커지기 때문입니다. 여러 AI 발주 도입 사례를 모은 리뷰에서는 매장당 폐기가 14.8% 줄었지만, 무작위 실험이 아닌 관찰 결과입니다.</dd>
+      <dt>의미</dt><dd>폐기율을 재려면 점주가 폐기를 기록하는 아주 간단한 입력이라도 있어야 합니다. 기록 자체가 감축 효과를 낸다는 근거도 있습니다. 점주가 품절을 두려워한다는 점에서, 승인 화면에는 "이대로 발주하면 품절 위험 n%"를 함께 보여줘야 감량 추천이 받아들여질 가능성이 높습니다.</dd>
+    </dl>
+  </div></div>
+
+  <h3>최신 연구로 추가된 할 일</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>할 일</th><th>근거</th><th>난이도</th></tr></thead>
+    <tbody>
+      <tr><td>결과보고서의 "기존 시스템" 서술 수정, 국내 AI 발주 사례와 식재료비 비중 통계 반영</td><td>X [57][58]</td><td>낮음</td></tr>
+      <tr><td>차별점을 "폐기·품절 효과를 측정해 보여주는 시스템"으로 명시</td><td>X [57][58]</td><td>낮음</td></tr>
+      <tr><td>베이스라인에 Chronos-2, TabPFN-TS 제로샷 추가</td><td>T [62][63]</td><td>중간</td></tr>
+      <tr><td>발주 참모: LLM은 입력 정리·되묻기·설명만, 계산은 예측·발주 모듈</td><td>S [60][61]</td><td>중간</td></tr>
+      <tr><td>점주 메모를 구조화된 조정값으로 바꿔 예측에 반영</td><td>U [65], S [61]</td><td>중간</td></tr>
+      <tr><td>점주가 폐기를 간단히 기록하는 입력 추가</td><td>W [67]</td><td>낮음</td></tr>
+      <tr><td>승인 화면에 "이대로 발주 시 품절 위험" 표시</td><td>W [69]</td><td>낮음</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="plan">
+  <span class="eyebrow">방향 확정안</span>
+  <h2>2학기 실행 계획 · 10/19 ~ 12/19</h2>
+  <p class="claim">FoodGuard는 수요 예측을 발주로 바꾸고, 그 발주가 폐기와 품절을 얼마나 줄이는지 숫자로 보여준다.</p>
+  <div class="prose"><p>2학기 작업은 모두 이 한 문장을 증명하는 데 맞춥니다. 앞 단계의 결과가 다음 단계의 근거가 되도록 순서를 정했고, 2단계가 끝나면 결과보고서의 수치 빈칸을 근거와 함께 채울 수 있습니다.</p></div>
+  <ol class="phases">
+    <li><div class="when">10/19 – 11/1<span>1단계 · 2주</span></div><div class="body">
+      <h3>측정 기반 만들기</h3>
+      <p>예측을 다시 돌려도 이전 예측이 남도록 <code>PREDICTION_LOG</code>에 저장합니다. 시간순 롤링 백테스트로 WAPE, MASE, 충족률을 계산하고 단순 예측(지난주 같은 요일, 요일 평균)과 비교합니다. 2~7일 앞 예측에서 lag_7이 다른 요일을 가리키는 버그도 이때 고칩니다.</p>
+      <dl class="facts"><dt>완료 기준</dt><dd>메뉴별 WAPE 비교표 1장</dd><dt>담당</dt><dd>지현윤(백테스트), 김지환(lag 수정), 서준호(예측 기록 테이블)</dd><dt>근거</dt><dd>B축</dd></dl>
+    </div></li>
+    <li><div class="when">11/2 – 11/15<span>2단계 · 2주</span></div><div class="body">
+      <h3>효과 검증</h3>
+      <p>과거 기간을 다시 재생해서 경험식 발주(지난주 판매량 + 여유분)와 FoodGuard 추천 발주의 폐기량, 품절일, 비용을 비교합니다. 같은 파이프라인을 공개 실데이터 FreshRetailNet-50K에도 돌려 합성 데이터에서 나온 수치가 유지되는지 확인합니다.</p>
+      <dl class="facts"><dt>완료 기준</dt><dd>폐기율·품절일 비교표. 결과보고서의 "정확도 ±[ ]%", "폐기율 [ ]% 절감" 칸을 이 표로 채웁니다</dd><dt>담당</dt><dd>지현윤(시뮬레이션), 정태현(공개 데이터 전처리)</dd><dt>근거</dt><dd>B·D·E축</dd></dl>
+    </div></li>
+    <li><div class="when">11/16 – 11/29<span>3단계 · 2주</span></div><div class="body">
+      <h3>발주 고도화</h3>
+      <p>g/kg 단위를 통일하고, 식자재별 유통기한과 원가로 안전재고 기준을 정합니다. 글로벌 모델을 시험하고 2단계 비교표로 효과를 확인합니다. 발주 참모 에이전트는 관찰 → 발주안 → 점주 승인 → 실행 → 기록 순서로 돌고, 승인·수정 내역을 남깁니다.</p>
+      <dl class="facts"><dt>완료 기준</dt><dd>점주 승인부터 발주, 기록까지 이어지는 데모</dd><dt>담당</dt><dd>정태현(단위 통일), 김지환(안전재고·글로벌 모델), 지현윤(에이전트), 서준호(승인 화면)</dd><dt>근거</dt><dd>A·C·F축</dd></dl>
+    </div></li>
+    <li><div class="when">11/30 – 12/13<span>4단계 · 2주</span></div><div class="body">
+      <h3>현장 검증</h3>
+      <p>시범 가맹점 시나리오로 통합 QA를 하고, 점주·본사 관점에서 시연해 피드백을 받습니다. 폐기 위험 품목에 할인, 기부, 발주 감량 제안을 연결합니다. GitHub Actions로 빌드와 테스트를 자동화합니다.</p>
+      <dl class="facts"><dt>완료 기준</dt><dd>QA 결과와 피드백 기록, CI 통과</dd><dt>담당</dt><dd>몽흐데르겔(QA 시나리오), 서준호(결과 대시보드), 지현윤(CI)</dd><dt>근거</dt><dd>E·F축</dd></dl>
+    </div></li>
+    <li><div class="when">12/14 – 12/19<span>5단계 · 1주</span></div><div class="body">
+      <h3>마무리</h3>
+      <p>결과보고서 수치, 최종 진도보고서 8~15주, 회의록, 수행사진을 정리하고 발표합니다.</p>
+      <dl class="facts"><dt>완료 기준</dt><dd>최종 산출물 제출</dd><dt>담당</dt><dd>전원</dd></dl>
+    </div></li>
+  </ol>
+
+  <h3>역할</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>이름</th><th>계획서상 역할</th><th>2학기 담당</th></tr></thead>
+    <tbody>
+      <tr><td>김지환</td><td>백엔드, AI 수요 예측 모델</td><td>모델 개선: lag 버그 수정, 글로벌 모델, 식자재별 안전재고</td></tr>
+      <tr><td>지현윤</td><td>시스템 통합·배포, AI 수요 예측 모델</td><td>백테스트·시뮬레이션 파이프라인, 발주 참모 에이전트, CI</td></tr>
+      <tr><td>서준호 (팀장)</td><td>프론트엔드, DB 설계</td><td>예측 기록 테이블 설계, 승인 화면, 결과 대시보드</td></tr>
+      <tr><td>정태현</td><td>데이터 처리, DB 설계</td><td>단위 통일, 공개 데이터 전처리, 품절 기록</td></tr>
+      <tr><td>몽흐데르겔</td><td>프론트엔드 보조, 테스트·검증</td><td>QA 시나리오, 테스트</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="split">
+    <div>
+      <h3>하지 않을 것</h3>
+      <ul>
+        <li><b>상권 크롤링 피처.</b> 효과를 측정할 체계가 먼저입니다.</li>
+        <li><b>새 화면 추가.</b> 승인 화면과 결과 대시보드 외에는 만들지 않습니다.</li>
+        <li><b>LSTM 등으로 모델 갈아타기.</b> 데이터가 적어 이득이 불확실합니다. 개선은 측정 체계 위에서 비교합니다.</li>
+        <li><b>특허 실제 출원.</b> 보고서에는 출원 가능성으로만 적습니다.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>팀이 정할 것</h3>
+      <ul>
+        <li><b>실제 가맹점 판매 데이터를 구할 수 있는가.</b> 가능하면 2단계에 실데이터 검증을 추가합니다.</li>
+        <li><b>공용 DB에 <code>PREDICTION_LOG</code> 테이블 추가.</b> 1단계 시작 전에 합의가 필요합니다.</li>
+        <li><b>결과보고서의 CI/CD 문구.</b> 4단계에서 실제로 구축하거나, 그 전에 문구를 고칩니다.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section>
+  <span class="eyebrow">보고서 연결</span>
+  <h2>결과보고서 빈칸을 채우는 방법</h2>
+  <div class="tbl"><table>
+    <thead><tr><th>보고서 항목</th><th>정의</th><th>측정 방법</th><th>밝혀야 할 한계</th></tr></thead>
+    <tbody>
+      <tr><td>예측 정확도 ±[ ]%</td><td>주간 메뉴별 WAPE</td><td>시간순 롤링 백테스트, 베이스라인 대비 개선폭 함께 표기</td><td>합성 데이터 결과와 공개 데이터 결과를 나눠 제시</td></tr>
+      <tr><td>폐기율 [ ]% 절감</td><td>(경험식 폐기량 − FoodGuard 폐기량) ÷ 경험식 폐기량</td><td>발주 정책 시뮬레이션, 품절일도 같이 보고</td><td>현장 실측이 아닌 시뮬레이션 값</td></tr>
+      <tr><td>추천 적용률 80%</td><td>추천을 그대로 또는 소폭 수정해 승인한 비율</td><td>에이전트 승인 로그</td><td>시범 사용자 수가 적으면 사례 보고로 표기</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <span class="eyebrow">한계</span>
+  <p class="note">국내 연구는 급식 식수 예측 2편을 찾았지만, 외식업 매장의 메뉴 판매와 날씨, 식자재 발주를 직접 다룬 KCI 논문은 아직 찾지 못했습니다. RISS, DBpia에서 "외식 수요예측", "식자재 발주", "기상 요인 카드매출" 같은 키워드로 직접 확인하는 것을 권합니다. 일부 문헌은 초록과 2차 자료로만 확인했으므로 인용 전에 원문 수치를 확인해야 합니다: Tanizaki 2019, M5 결과, Saarinen, 목포해양대 2023, Bujisic, Damato 2026(수정판), 밀키트 업체 사례, 대만 iChef 연구, Kesavan 2026, 중기중앙회 설문(보도), 기부식품 소비기한 기준. 최신 연구 섹션의 arXiv 논문(Baek, Duan, Liao, Chronos-2, TabPFN-TS)은 동료심사 전이고, 국내 기업 사례는 기업 발표를 옮긴 보도이며, Sigala 2025는 요약 페이지로만 확인했습니다.</p>
+</section>
+
+<section>
+  <span class="eyebrow">참고문헌</span>
+  <ol class="refs">
+    <li><b>Lasek, Cercone, Saunders (2016).</b> Restaurant Sales and Customer Demand Forecasting: Literature Survey and Categorization of Methods. Smart City 360°. <a href="https://eudl.eu/doi/10.1007/978-3-319-33681-7_40" target="_blank" rel="noopener">EUDL</a></li>
+    <li><b>Tanizaki, Hoshino, Shimmura, Takenaka (2019).</b> Demand forecasting in restaurants using machine learning and statistical analysis. Procedia CIRP 79. doi:10.1016/j.procir.2019.02.164</li>
+    <li><b>AIMS Press (2025).</b> Daily restaurant customer forecasting, Applied Computing and Intelligence 5(2). <a href="https://www.aimspress.com/aimspress-data/aci/2025/2/PDF/aci-05-02-011.pdf" target="_blank" rel="noopener">PDF</a></li>
+    <li><b>Montero-Manso, Hyndman (2021).</b> Principles and algorithms for forecasting groups of time series: Locality and globality. IJF 37(4). <a href="https://arxiv.org/abs/2008.00444" target="_blank" rel="noopener">arXiv</a></li>
+    <li><b>Makridakis, Spiliotis, Assimakopoulos (2022).</b> M5 accuracy competition: Results, findings, and conclusions. IJF. <a href="https://pure.unic.ac.cy/en/publications/m5-accuracy-competition-results-findings-and-conclusions/" target="_blank" rel="noopener">UNIC</a></li>
+    <li><b>Ansari 외 (2024).</b> Chronos: Learning the Language of Time Series. TMLR. <a href="https://www.arxiv-vanity.com/papers/2403.07815" target="_blank" rel="noopener">arXiv 2403.07815</a> · Decathlon 적용 사례 <a href="https://aws.amazon.com/blogs/machine-learning/how-decathlon-runs-demand-forecasting-at-scale-with-chronos-2/" target="_blank" rel="noopener">AWS</a></li>
+    <li><b>Hyndman, Koehler (2006).</b> Another look at measures of forecast accuracy. IJF 22(4). <a href="https://www.doi.org/10.1016/J.IJFORECAST.2006.03.001" target="_blank" rel="noopener">DOI</a></li>
+    <li><b>Hewamalage, Ackermann, Bergmeir (2022).</b> Forecast Evaluation for Data Scientists: Common Pitfalls and Best Practices (Kolassa 2016 논의 포함). <a href="https://arxiv.org/pdf/2203.10716" target="_blank" rel="noopener">arXiv</a></li>
+    <li><b>Kourentzes 외 (2019).</b> Optimising forecasting models for inventory planning. IJPE. <a href="https://research.birmingham.ac.uk/portal/files/89328860/Kourentzes_et_al_Optimising_forecasting_models_for_inventory_planning_International_Journal_of_Production_Economics_2019.pdf" target="_blank" rel="noopener">PDF</a></li>
+    <li><b>Albu (2026).</b> Forecast Accuracy Versus Waste Outcomes. Review of International Comparative Management. <a href="https://rmci.ase.ro/no27vol2/01.pdf" target="_blank" rel="noopener">PDF</a></li>
+    <li><b>Huber, Müller, Fleischmann, Stuckenschmidt (2019).</b> A data-driven newsvendor problem: From data to decision. EJOR 278(3). <a href="https://madoc.bib.uni-mannheim.de/49848" target="_blank" rel="noopener">MADOC</a></li>
+    <li><b>Ban, Rudin (2019).</b> The Big Data Newsvendor: Practical Insights from Machine Learning. Operations Research 67(1). <a href="https://lbsresearch.london.edu/id/eprint/966" target="_blank" rel="noopener">LBS</a></li>
+    <li><b>Bertsimas, Kallus (2020).</b> From Predictive to Prescriptive Analytics. Management Science. <a href="https://arxiv.org/abs/1402.5481" target="_blank" rel="noopener">arXiv</a></li>
+    <li><b>Müller, Huber, Fleischmann, Stuckenschmidt (2025).</b> Data-driven inventory management under customer substitution. EJOR. <a href="https://madoc.bib.uni-mannheim.de/62842" target="_blank" rel="noopener">MADOC</a></li>
+    <li><b>FreshRetailNet-50K (2025).</b> A Stockout-Annotated Censored Demand Dataset for Latent Demand Recovery and Forecasting in Fresh Retail. <a href="https://arxiv.org/abs/2505.16319v1" target="_blank" rel="noopener">arXiv</a> · <a href="https://huggingface.co/datasets/sky5268/FreshRetailNet-50K/blob/main/README.md" target="_blank" rel="noopener">Hugging Face</a></li>
+    <li><b>서울특별시.</b> 상권분석서비스(추정매출). <a href="https://data.seoul.go.kr/dataList/OA-15569/S/1/datasetView.do" target="_blank" rel="noopener">서울 열린데이터광장</a></li>
+    <li><b>Malefors 외 (2021, 2022).</b> 스웨덴 학교 급식 수요예측과 폐기 감축 개입 연구. <a href="https://pub.epsilon.slu.se/22412/" target="_blank" rel="noopener">SLU</a> · <a href="https://pub.epsilon.slu.se/28418/" target="_blank" rel="noopener">SLU</a></li>
+    <li><b>Sanders (UC San Diego).</b> 유통기한 기반 동적 가격 시뮬레이션. <a href="https://today.ucsd.edu/story/dynamic-pricing-could-cut-greenhouse-gas-emissions-from-landfills-far-more-than-organic-waste-bans" target="_blank" rel="noopener">UCSD</a></li>
+    <li><b>Saarinen (Aalto).</b> 만료일 기반 자동 할인 실증. <a href="https://cbs.dk/en/node/550178" target="_blank" rel="noopener">CBS 세미나</a></li>
+    <li><b>Dietvorst, Simmons, Massey (2015).</b> Algorithm Aversion. J. Exp. Psychology: General. <a href="https://faculty.wharton.upenn.edu/wp-content/uploads/2016/11/20-Dietvorst-Simmons-Massey-2015.pdf" target="_blank" rel="noopener">PDF</a></li>
+    <li><b>Fildes, Goodwin, Lawrence, Nikolopoulos (2009).</b> Effective forecasting and judgmental adjustments. IJF 25(1). <a href="https://eprints.lancs.ac.uk/id/eprint/48874" target="_blank" rel="noopener">Lancaster</a></li>
+    <li><b>Li, Mellou, Zhang, Pathuri, Menache (2023).</b> Large Language Models for Supply Chain Optimization (OptiGuide). <a href="https://www.microsoft.com/en-us/research/publication/large-language-models-for-supply-chain-optimization/" target="_blank" rel="noopener">Microsoft Research</a></li>
+    <li><b>Quan, Liu (2024).</b> InvAgent: A LLM-based Multi-Agent System for Inventory Management. <a href="https://arxiv.org/abs/2407.11384v2" target="_blank" rel="noopener">arXiv</a></li>
+    <li><b>AIM-Bench (2025).</b> LLM 에이전트의 재고 보충 의사결정 편향 벤치마크. <a href="https://arxiv.org/pdf/2508.11416v1" target="_blank" rel="noopener">arXiv</a></li>
+    <li><b>전종식, 박은주, 권오병 (2019).</b> Predicting the Number of People for Meals of an Institutional Foodservice by Applying Machine Learning Methods: S City Hall Case. 대한영양사협회학술지 25(1). doi:10.14373/JKDA.2019.25.1.44 <a href="https://koreascience.kr/journal/OOSHB5/v25n1.page" target="_blank" rel="noopener">KoreaScience</a></li>
+    <li><b>목포해양대 연구진 (2023).</b> 교내식당 식사 인원 예측 모델(XGBoost + 기상 데이터). 한국컴퓨터정보학회 하계학술대회. <a href="https://koreascience.kr/article/CFKO202323672014438.pdf" target="_blank" rel="noopener">KoreaScience PDF</a></li>
+    <li><b>이화여자대학교 석사학위논문 (2017).</b> 날씨가 배달음식 매출에 미치는 영향: 체감온도·열지수·불쾌지수 등 파생 기상 변수와 계절별 차이. <a href="https://dspace.ewha.ac.kr/handle/2015.oak/241476" target="_blank" rel="noopener">Ewha DSpace</a></li>
+    <li><b>Yoo, Eom, Zhou (2024).</b> Thermal comfort and retail sales: A big data analysis of extreme temperature's impact on brick-and-mortar stores. Journal of Retailing and Consumer Services. <a href="https://pure.uos.ac.kr/en/publications/thermal-comfort-and-retail-sales-a-big-data-analysis-of-extreme-t/" target="_blank" rel="noopener">서울시립대</a></li>
+    <li><b>Badorf, Hoberg (2020).</b> The impact of daily weather on retail sales: An empirical study in brick-and-mortar stores. Journal of Retailing and Consumer Services 52. <a href="https://ideas.repec.org/a/eee/joreco/v52y2020ics0969698919303236.html" target="_blank" rel="noopener">RePEc</a></li>
+    <li><b>Bujisic (University of Central Florida 외).</b> 기온과 레스토랑 매출 연구 보도. <a href="https://www.restaurantdive.com/news/fair-weather-diners-how-temperature-influences-consumer-cravings/549897/" target="_blank" rel="noopener">Restaurant Dive</a></li>
+    <li><b>Posch, Truden, Hungerländer, Pilz (2022).</b> A Bayesian Approach for Predicting Food and Beverage Sales in Staff Canteens and Restaurants. IJF 38(1). <a href="https://arxiv.org/abs/2005.12647v1" target="_blank" rel="noopener">arXiv</a></li>
+    <li><b>(2026).</b> A Machine Learning Framework for Predicting Restaurant Food Waste to Support Sustainable Food Management. <a href="https://arxiv.org/pdf/2609.08078" target="_blank" rel="noopener">arXiv 2609.08078</a></li>
+    <li><b>Damato, Rubattu, Azzimonti, Corani (2026).</b> Intermittent time series forecasting: local vs global models. <a href="https://arxiv.org/abs/2601.14031v1" target="_blank" rel="noopener">arXiv</a></li>
+    <li><b>Sachs, Minner (2014).</b> The data-driven newsvendor with censored demand observations. IJPE 149. <a href="https://ideas.repec.org/a/eee/proeco/v149y2014icp28-36.html" target="_blank" rel="noopener">RePEc</a></li>
+    <li><b>van Donselaar, Broekmeulen (2012).</b> Approximations for the relative outdating of perishable products by combining stochastic modeling, simulation and regression modeling. IJPE 140(2). <a href="https://ideas.repec.org/a/eee/proeco/v140y2012i2p660-669.html" target="_blank" rel="noopener">RePEc</a></li>
+    <li><b>Broekmeulen.</b> Estimated Withdrawal &amp; Aging (EWA) 부패성 상품 발주 정책. <a href="https://research.tue.nl/en/persons/rob-acm-broekmeulen/" target="_blank" rel="noopener">TU/e</a></li>
+    <li><b>Gousto 레시피 단위 수요예측 사례 (업체 발표).</b> <a href="https://uvik.net/case-studies/recipe-box-demand-forecasting-data-engineering-pod/" target="_blank" rel="noopener">사례 페이지</a></li>
+    <li><b>Elmachtoub, Grigas (2022).</b> Smart "Predict, then Optimize". Management Science 68(1). <a href="https://arxiv.org/abs/1710.08005v2" target="_blank" rel="noopener">arXiv</a></li>
+    <li><b>(2024).</b> 컨포멀 방식으로 모델 편향을 보정한 특성 기반 뉴스벤더. <a href="https://arxiv.org/html/2412.13159v1" target="_blank" rel="noopener">arXiv 2412.13159</a></li>
+    <li><b>Wickramasuriya, Athanasopoulos, Hyndman (2019).</b> Optimal forecast reconciliation for hierarchical and grouped time series through trace minimization. JASA 114(526). <a href="https://rdrr.io/pkg/hts/man/MinT.html" target="_blank" rel="noopener">hts 문서</a></li>
+    <li><b>Tan, Merrill, Gupta, Althoff, Hartvigsen (2024).</b> Are Language Models Actually Useful for Time Series Forecasting? NeurIPS. <a href="https://arxiv.org/abs/2406.16964v2" target="_blank" rel="noopener">arXiv</a></li>
+    <li><b>Bansal 외 (2021).</b> Does the Whole Exceed its Parts? The Effect of AI Explanations on Complementary Team Performance. CHI. <a href="https://arxiv.org/abs/2006.14779" target="_blank" rel="noopener">arXiv</a></li>
+    <li><b>Kesavan, Kushwaha (2020).</b> Field Experiment on the Profit Implications of Merchants' Discretionary Power to Override Data-Driven Decision-Making Tools. Management Science. doi:10.1287/mnsc.2020.3743 <a href="https://pubsonline.informs.org/doi/suppl/10.1287/mnsc.2020.3743" target="_blank" rel="noopener">INFORMS</a></li>
+    <li><b>Kesavan, Kushwaha, Steele (2026).</b> Profit Implications of Judgmental Adjustments to Forecast Inputs: Evidence from a Large-Scale Field Experiment. Management Science. <a href="https://academicnewsletter.sufe.edu.cn/info/386271" target="_blank" rel="noopener">소개 페이지</a></li>
+    <li><b>Caro, Sáez de Tejada Cuenca (2023).</b> Believing in Analytics: Managers' Adherence to Price Recommendations from a DSS. MSOM 25(2). <a href="https://ideas.repec.org/a/inm/ormsom/v25y2023i2p524-542.html" target="_blank" rel="noopener">RePEc</a></li>
+    <li><b>Huber, Stuckenschmidt (2020).</b> Daily retail demand forecasting using machine learning with emphasis on calendric special days. IJF 36(4). <a href="https://ideas.repec.org/a/eee/intfor/v36y2020i4p1420-1438.html" target="_blank" rel="noopener">RePEc</a></li>
+    <li><b>Bojer, Meldgaard (2021).</b> Kaggle forecasting competitions: An overlooked learning opportunity. IJF. (Recruit 식당 방문객 예측 대회 분석 포함) <a href="https://arxiv.org/pdf/2009.07701" target="_blank" rel="noopener">arXiv</a></li>
+    <li><b>iChef Taiwan POS·날씨·공휴일 식당 매출 예측 연구 (Galit Shmueli 연구실 요약).</b> <a href="https://galitshmueli.com/node/1253" target="_blank" rel="noopener">연구 요약</a></li>
+    <li><b>Papargyropoulou 외 (2019).</b> Patterns and Causes of Food Waste in the Hospitality and Food Service Sector: Food Waste Prevention Insights from Malaysia. Sustainability 11(21). <a href="https://ideas.repec.org/a/gam/jsusta/v11y2019i21p6016-d281524.html" target="_blank" rel="noopener">RePEc</a></li>
+    <li><b>Champions 12.3 (2019).</b> The Business Case for Reducing Food Loss and Waste: Restaurants. <a href="https://sustainablebrands.com/read/org-governance/champions-12-3-restaurants-realize-7-1-roi-by-reducing-food-waste" target="_blank" rel="noopener">Sustainable Brands 요약</a> · <a href="https://champions123.org/publications" target="_blank" rel="noopener">Champions 12.3</a></li>
+    <li><b>FLW Protocol.</b> Food Loss and Waste Accounting and Reporting Standard. <a href="https://www.wri.org/node/41042" target="_blank" rel="noopener">WRI</a> · 외식업 측정 가이드 <a href="https://www.cec.org/flwm/?p=59" target="_blank" rel="noopener">CEC</a></li>
+    <li><b>Harvey, Leybourne, Newbold (1997).</b> Testing the equality of prediction mean squared errors. IJF 13(2). (Diebold-Mariano 소표본 보정) <a href="https://www.statsmodels.org/dev/generated/statsmodels.tsa.stattools.diebold_mariano_test.html" target="_blank" rel="noopener">statsmodels 문서</a></li>
+    <li><b>Esteban, Hyland, Rätsch (2017).</b> Real-valued (Medical) Time Series Generation with Recurrent Conditional GANs. (TSTR 평가 제안) <a href="https://arxiv.org/pdf/1706.02633" target="_blank" rel="noopener">arXiv</a></li>
+    <li><b>Analytics Vidhya · Genpact (2018).</b> Food Demand Forecasting 해커톤 데이터. <a href="https://github.com/rohansurve212/Food-Demand-Forecasting-Challenge" target="_blank" rel="noopener">GitHub 정리</a></li>
+    <li><b>중소기업중앙회 (2026).</b> 소상공인 DX·AX 현황 및 정책 수요 설문조사 (보도). <a href="https://www.heraldk.com/article/2026060817383372575" target="_blank" rel="noopener">헤럴드경제</a></li>
+    <li><b>식품등 기부 활성화에 관한 법률, 기부식품 소비기한 기준.</b> <a href="https://biz.sbs.co.kr/amp/article/20000242134" target="_blank" rel="noopener">SBS Biz 보도</a> · 원문은 국가법령정보센터에서 확인</li>
+    <li><b>전자신문 (2026-10-15).</b> "인건비·식자재비 이중고"…외식 프랜차이즈, AI로 돌파구 찾는다. <a href="https://www.etnews.com/20261015000255" target="_blank" rel="noopener">전자신문</a></li>
+    <li><b>머니투데이 (2026-10-14).</b> 식자재비 절반 뚝…3000개 식당 홀린 니즈의 '미리'. <a href="https://www.mt.co.kr/policy/2026/10/14/2026101409395923678" target="_blank" rel="noopener">머니투데이</a></li>
+    <li><b>(2022).</b> 머신러닝 기반 외식업 프랜차이즈 가맹점 성패 예측. 문화기술의 융합 8(4), 347–353. <a href="https://www.kci.go.kr/kciportal/ci/sereArticleSearch/ciSereArtiView.kci?sereArticleSearchBean.artiId=ART002864180" target="_blank" rel="noopener">KCI</a></li>
+    <li><b>Baek, Fu, Ma, Peng (2026).</b> AI Agents for Inventory Control: Human-LLM-OR Complementarity. <a href="https://www.arxiv.org/abs/2602.12631" target="_blank" rel="noopener">arXiv 2602.12631</a></li>
+    <li><b>Duan, Hu, Jiang (2025).</b> Ask, Clarify, Optimize: Human–LLM Agent Collaboration for Smarter Inventory Control. <a href="https://arxiv.org/html/2601.00121v1" target="_blank" rel="noopener">arXiv 2601.00121</a></li>
+    <li><b>Ansari 외 (2025).</b> Chronos-2: From Univariate to Universal Forecasting. <a href="https://arxiv.org/pdf/2510.15821" target="_blank" rel="noopener">arXiv 2510.15821</a></li>
+    <li><b>Hoo 외 (2025).</b> From Tables to Time: Extending TabPFN-v2 to Time Series Forecasting. <a href="https://arxiv.org/pdf/2501.02945" target="_blank" rel="noopener">arXiv 2501.02945</a> · <a href="https://github.com/PriorLabs/tabpfn-time-series" target="_blank" rel="noopener">GitHub</a></li>
+    <li><b>(2026).</b> Investigating simple target-covariate relationships for Chronos-2 and TabPFN-TS. <a href="https://arxiv.org/pdf/2605.12200" target="_blank" rel="noopener">arXiv 2605.12200</a></li>
+    <li><b>Williams 외 (2025).</b> Context Is Key: A Benchmark for Forecasting with Essential Textual Information. ICML (PMLR 267). <a href="https://proceedings.mlr.press/v267/williams25a.html" target="_blank" rel="noopener">PMLR</a></li>
+    <li><b>Liao, Peng, Rong (2026).</b> Deep Learning for Perishable Inventory Systems with Human Knowledge. <a href="https://arxiv.org/abs/2601.15589" target="_blank" rel="noopener">arXiv 2601.15589</a></li>
+    <li><b>Sigala 외 (2025).</b> Reducing food waste in the HORECA sector using AI-based waste-tracking devices. Waste Management. <a href="https://www.sciencedirect.com/science/article/pii/S0956053X25001072" target="_blank" rel="noopener">ScienceDirect</a> · <a href="https://ec.europa.eu/newsroom/env/redirection/item/888677/default/1701" target="_blank" rel="noopener">EU 요약</a></li>
+    <li><b>ReFED (2026).</b> The Food Operating System: How AI is Being Deployed. <a href="https://refed.org/uploads/2026-refed-ai-report-final.pdf" target="_blank" rel="noopener">PDF</a></li>
+    <li><b>식료품점 AI 발주 도입과 점장 덮어쓰기 보도 · AI 발주 사례 리뷰.</b> <a href="https://www.thepacker.com/news/sustainability/ai-cuts-food-waste-produce-aisle-grocers-battle-cultural-overrides" target="_blank" rel="noopener">The Packer</a> · <a href="https://www.sciencedirect.com/science/article/pii/S2666154325002662" target="_blank" rel="noopener">ScienceDirect 리뷰</a></li>
+  </ol>
+</section>
+
+</div>

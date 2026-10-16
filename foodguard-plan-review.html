@@ -1,0 +1,352 @@
+<title>FoodGuard 계획 대비 점검</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&family=Gowun+Dodum&display=swap">
+<style>
+/* Layout: 단일 읽기 칼럼(약 70자) + 넓은 비교표는 개별 가로 스크롤. 상태는 색 칩으로, 위계는 구분선과 라벨로. 연구 방향 문서와 같은 토큰을 써서 한 묶음으로 읽히게 한다. */
+:root{
+  --bg:#f6f8f5; --surface:#ffffff; --fg:#1d2420; --muted:#5b6660; --line:#d9e0db;
+  --accent:#1f6b52; --accent-soft:#e3efe9;
+  --ok:#2f7a3a; --ok-soft:#e4f1e5; --warn:#a2650a; --warn-soft:#f8edd9; --bad:#b4472a; --bad-soft:#f7e6df; --na:#6b7470; --na-soft:#eceeed;
+  --f-display:"Gowun Dodum","IBM Plex Sans KR",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#131815; --surface:#1a201c; --fg:#e4eae6; --muted:#9aa69f; --line:#2c3530;
+  --accent:#6cc4a1; --accent-soft:#1d2e27;
+  --ok:#7fcf8a; --ok-soft:#1f2f22; --warn:#e7b25a; --warn-soft:#33291a; --bad:#f08a68; --bad-soft:#33221c; --na:#a3aca8; --na-soft:#252b28; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#131815; --surface:#1a201c; --fg:#e4eae6; --muted:#9aa69f; --line:#2c3530;
+  --accent:#6cc4a1; --accent-soft:#1d2e27;
+  --ok:#7fcf8a; --ok-soft:#1f2f22; --warn:#e7b25a; --warn-soft:#33291a; --bad:#f08a68; --bad-soft:#33221c; --na:#a3aca8; --na-soft:#252b28; color-scheme:dark}
+
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:16px;line-height:1.75;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:40px 80px}
+.wrap{max-width:860px;margin:0 auto;display:flex;flex-direction:column;gap:56px}
+h1,h2,h3{font-family:var(--f-display);font-weight:400;text-wrap:balance;line-height:1.3;margin:0}
+h1{font-size:clamp(30px,6vw,44px)}
+h2{font-size:26px}
+h3{font-size:19px;font-family:var(--f-body);font-weight:700}
+p{margin:0}
+a{color:var(--accent);text-underline-offset:3px}
+a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.lede{font-size:18px;color:var(--muted);max-width:64ch}
+header{display:flex;flex-direction:column;gap:14px;border-bottom:1px solid var(--line);padding-bottom:28px}
+.meta{font-family:var(--f-mono);font-size:12.5px;color:var(--muted);display:flex;flex-wrap:wrap;gap:6px 18px}
+section{display:flex;flex-direction:column;gap:18px}
+.prose{display:flex;flex-direction:column;gap:14px;max-width:70ch}
+.prose ul,.prose ol{margin:0;padding-left:1.2em;display:flex;flex-direction:column;gap:8px}
+
+.keys{background:var(--accent-soft);border-radius:6px;padding:24px;display:flex;flex-direction:column;gap:12px}
+.keys ol{margin:0;padding-left:1.3em;display:flex;flex-direction:column;gap:10px}
+.keys strong{color:var(--accent)}
+
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:6px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:14px;line-height:1.6}
+.tbl.wide table{min-width:960px}
+.tbl.mid table{min-width:720px}
+th,td{text-align:left;vertical-align:top;padding:11px 13px;border-bottom:1px solid var(--line)}
+tr:last-child td{border-bottom:0}
+th{font-family:var(--f-mono);font-size:11.5px;font-weight:500;letter-spacing:.05em;color:var(--muted);text-transform:uppercase;background:var(--bg);white-space:nowrap}
+td.row-h{font-weight:700;white-space:nowrap}
+td code,p code,li code{font-family:var(--f-mono);font-size:.86em;background:var(--accent-soft);padding:1px 5px;border-radius:3px;word-break:break-all}
+.num{font-variant-numeric:tabular-nums;font-family:var(--f-mono)}
+
+.chip{display:inline-block;font-family:var(--f-mono);font-size:11.5px;padding:2px 8px;border-radius:999px;white-space:nowrap}
+.c-ok{background:var(--ok-soft);color:var(--ok)}
+.c-part{background:var(--warn-soft);color:var(--warn)}
+.c-no{background:var(--bad-soft);color:var(--bad)}
+.c-na{background:var(--na-soft);color:var(--na)}
+.legend{display:flex;flex-wrap:wrap;gap:8px 14px;font-size:13.5px;color:var(--muted);align-items:center}
+
+.alert{border-left:3px solid var(--bad);background:var(--bad-soft);padding:16px 18px;border-radius:0 6px 6px 0;display:flex;flex-direction:column;gap:8px;max-width:76ch}
+.alert h3{color:var(--bad)}
+.alert ul{margin:0;padding-left:1.1em;display:flex;flex-direction:column;gap:6px}
+
+.flow{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+.step{border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:14px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.step .k{font-family:var(--f-mono);font-size:11.5px;color:var(--accent);letter-spacing:.05em}
+.step .v{font-size:14px}
+.step .ex{font-family:var(--f-mono);font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+
+.compare{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
+.case{border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:16px 18px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.case.bad{border-color:var(--bad)}
+.case.good{border-color:var(--ok)}
+.case dl{margin:0;display:grid;grid-template-columns:1fr auto;gap:4px 14px;font-size:14px}
+.case dt{color:var(--muted)}
+.case dd{margin:0;font-family:var(--f-mono);font-variant-numeric:tabular-nums;text-align:right}
+.case .total{border-top:1px solid var(--line);padding-top:8px;font-weight:700}
+.tag-ex{font-family:var(--f-mono);font-size:11px;color:var(--warn);background:var(--warn-soft);padding:1px 7px;border-radius:999px;align-self:flex-start}
+
+.note{border-left:3px solid var(--warn);padding:4px 0 4px 16px;font-size:15px;color:var(--muted);max-width:72ch}
+.refs{margin:0;padding-left:1.4em;font-size:14px;line-height:1.65;display:flex;flex-direction:column;gap:6px;color:var(--muted)}
+.refs b{color:var(--fg);font-weight:500}
+
+@media (max-width:560px){ td.row-h{white-space:normal} }
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
+</style>
+
+<div class="wrap">
+
+<header>
+  <span class="eyebrow">캡스톤디자인 · 계획서 대비 점검</span>
+  <h1>FoodGuard 계획 대비 점검</h1>
+  <p class="lede">세부 과제 계획서의 목표를 기준으로 현재 코드를 전부 읽고 평가했습니다. 같은 일을 하는 국내외 서비스와 연구의 예측 모델, 기능, 성과도 나란히 비교했습니다.</p>
+  <div class="meta"><span>기준 코드: jhy 브랜치 (dev 2de3d30과 코드 동일)</span><span>검토 범위: AI 서비스 약 1,400줄 · 백엔드 약 3,000줄 · 프론트엔드 약 8,200줄</span><span>작성: 2026-10-16</span><a href="https://claude.ai/artifact/56ejsZG7JaMSuztGphueud" target="_blank" rel="noopener">연구 방향 문서</a></div>
+</header>
+
+<section>
+  <span class="eyebrow">한눈에</span>
+  <div class="keys">
+    <ol>
+      <li><strong>계획서의 기능 범위는 대부분 만들어져 있습니다.</strong> 7일 수요 예측, 발주 추천과 자동 발주, 본사 승인부터 배송·QR 검수·재고 반영까지 이어지는 발주 흐름, 폐기 예측, 기부 기록이 있습니다.</li>
+      <li><strong>계획서의 정량 목표 세 가지는 지금 구조로는 측정할 수 없습니다.</strong> 지난 예측이 덮어써져 남지 않고, 실제 폐기를 기록하는 곳이 없고, 점주가 추천을 고쳤는지 남지 않습니다.</li>
+      <li><strong>유사 서비스와 비교하면 차별점이 분명합니다.</strong> 본사-가맹점-배송 검수를 하나로 묶은 흐름과, 폐기 예측에서 기부로 이어지는 연결은 비교한 서비스들에서 찾지 못했습니다. 약점은 효과 측정과 보안입니다.</li>
+      <li><strong>보안 문제가 현장 적용의 가장 큰 걸림돌입니다.</strong> 공개 저장소에 DB 비밀번호, JWT 서명 키, 기상청 API 키가 들어 있고, 서버는 역할이나 매장 소유를 확인하지 않습니다.</li>
+      <li><strong>본사 통계 화면의 수치는 하드코딩된 가상 값입니다.</strong> "폐기율 12.5% 감소" 같은 문구가 실측처럼 보이므로, 발표에서는 예시 화면이라고 밝히거나 실제 데이터로 바꿔야 합니다.</li>
+    </ol>
+  </div>
+</section>
+
+<section id="eval">
+  <span class="eyebrow">1 · 기대평가</span>
+  <h2>계획서 평가 기준별 기대평가</h2>
+  <div class="prose"><p>계획서 2장 "평가 기준"의 정량·정성 목표를 하나씩 놓고, 현재 코드로 측정할 수 있는지, 외부 사례의 비교치는 얼마인지, 현실적으로 무엇을 기대할 수 있는지 정리했습니다.</p></div>
+  <div class="legend"><span class="chip c-ok">달성 가능</span><span class="chip c-part">조건부</span><span class="chip c-no">측정 불가 · 재설계 필요</span></div>
+  <div class="tbl wide"><table>
+    <thead><tr><th>계획서 목표</th><th>현재 코드 상태</th><th>외부 비교치</th><th>현실적 기대</th><th>판정</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="row-h">메뉴별 판매량 예측<br>주간 ±10% 이내</td>
+        <td>화면의 "신뢰도"는 <code>100 − wMAPE</code>입니다. 이 값은 시간 순서를 무시한 교차검증으로 학습 구간 안에서 계산됩니다(<code>demand_predictor.py:150</code>). 재예측하면 미래 예측을 지우고 다시 쓰므로(<code>data_service.py:77</code>) 지난 예측과 실제 판매를 비교할 수 없습니다.</td>
+        <td>S시청 구내식당 식수 예측 오차 6~7% [1]. 한촌설렁탕 '한큐' 매장 매출 예측 정확도 85% [2]. 메뉴 단위 예측 MAPE는 안정 품목 약 4%, 변동 품목 12~18% 수준 [3].</td>
+        <td><b>매장 전체의 주간 합계</b> 기준이면 10% 이내가 가능해 보입니다. 메뉴×일 단위로 10%는 판매량이 적은 메뉴 때문에 어렵습니다. 목표 정의를 "매장 주간 합계 WAPE"로 명확히 하고, 메뉴 단위는 따로 보고하는 편이 안전합니다.</td>
+        <td><span class="chip c-part">조건부</span><br><span class="chip c-no">지금은 측정 불가</span></td>
+      </tr>
+      <tr>
+        <td class="row-h">식자재 폐기율<br>15~20% 절감</td>
+        <td>폐기 "예측"만 있습니다(<code>WastePredictionService</code>). 실제 폐기량을 저장하는 필드가 없습니다. 초기 설계(<code>schema.sql</code>)에는 <code>waste_quantity</code>가 있었지만 실제 엔티티(<code>Inventory.java</code>)에서는 빠졌습니다. 식자재 원가도 없어서 폐기 금액도 계산할 수 없습니다.</td>
+        <td>12개국 식당 114곳 첫해 주방 폐기 26% 감소 [4]. 식료품점 AI 발주 도입 사례 매장당 14.8% [5]. AI 폐기 측정 저울로 끼니당 폐기 비용 최대 39% [6]. 측정 장비 업체들은 50% 이상을 주장합니다(업체 발표) [7].</td>
+        <td>15~20%는 문헌 범위 안에 있습니다. 다만 실측 매장이 없으므로, 과거 데이터를 다시 돌리는 <b>발주 시뮬레이션의 추정치</b>로 보고해야 합니다. 시범 매장이 생기면 실제 폐기 기록이 필요합니다.</td>
+        <td><span class="chip c-part">조건부</span><br><span class="chip c-no">지금은 측정 불가</span></td>
+      </tr>
+      <tr>
+        <td class="row-h">발주량 추천<br>점주 80% 이상 활용</td>
+        <td>추천 미리보기 API(<code>/orders/recommend</code>)는 있지만 이를 쓰는 화면이 없습니다. 점주는 "자동 발주" 버튼으로 추천을 그대로 발주 요청으로 만듭니다(<code>Orders.tsx:133</code>). 추천을 수정하거나 거절한 기록이 남지 않습니다.</td>
+        <td>육수당 88개 매장 AI 발주 사용률 81.1%, 추천 수량 그대로 발주 60% 이상 [2].</td>
+        <td>80%는 국내 사례와 비교해 현실적인 목표입니다. "사용률"과 "그대로 승인한 비율"을 나눠 정의하고, 승인·수정·거절을 기록해야 측정할 수 있습니다.</td>
+        <td><span class="chip c-no">측정 설계 필요</span></td>
+      </tr>
+      <tr>
+        <td class="row-h">사용자 편의성<br>직관적 대시보드</td>
+        <td>점주용 메뉴 타일, POS, 예측 차트, 폐기 예측, 본사용 가맹점·발주 관리 화면이 있습니다. 본사 대시보드는 백엔드에 없는 주간 매출 API를 함께 불러서, 가맹점 목록까지 비어 보일 가능성이 높습니다(<code>AdminDashboard.tsx:33</code>, 실행 확인 안 함).</td>
+        <td>SUS(사용성 척도)의 업계 평균 점수는 68점입니다 [8].</td>
+        <td>시연 참가자에게 SUS 설문을 받아 68점 이상을 목표로 하면 정성 목표를 숫자로 보여줄 수 있습니다.</td>
+        <td><span class="chip c-ok">달성 가능</span></td>
+      </tr>
+      <tr>
+        <td class="row-h">의사결정 지원</td>
+        <td>신뢰도 50% 미만 항목 경고가 있습니다. 추천의 근거(어떤 메뉴 예측에서 나왔는지, 품절 위험)는 보여주지 않습니다.</td>
+        <td>관리자는 익숙한 지표를 기준으로 추천을 따를지 정하고, 근거를 보여주면 따르는 비율이 오릅니다 [9].</td>
+        <td>추천 미리보기 화면에 "필요량 · 현재고 · 미처리 발주 · 품절 위험"을 함께 보여주면 됩니다. 이미 API에 앞의 세 값이 있습니다.</td>
+        <td><span class="chip c-ok">달성 가능</span></td>
+      </tr>
+      <tr>
+        <td class="row-h">산업체 실무<br>적용 가능성</td>
+        <td>단위를 kg·L·개로 제한하고 레시피 단위를 자동으로 맞춥니다. 발주는 3단계 QR 검수와 배송 위치 공유까지 갖췄습니다. 반면 판매 기록에 시각이 없어(<code>SalesData</code>는 날짜만) 시간대 예측이나 품절 추정을 할 수 없습니다. 보안 문제는 아래 경고를 참고하세요.</td>
+        <td>OWASP Top 10(2021)에서 접근 통제 실패가 1위 위험입니다 [10].</td>
+        <td>보안 문제를 고치기 전에는 실제 가맹점 데이터로 시범 운영을 할 수 없습니다. 고친 뒤에는 발주 흐름의 완성도가 강점이 됩니다.</td>
+        <td><span class="chip c-no">보안 해결 전 불가</span></td>
+      </tr>
+    </tbody>
+  </table></div>
+
+  <div class="alert" role="note">
+    <h3>현장 적용 전에 반드시 고칠 보안 문제</h3>
+    <ul>
+      <li><b>비밀 정보 노출:</b> <code>backend/src/main/resources/application.properties</code>에 TiDB 접속 주소, 실제 DB 비밀번호, JWT 서명 키가 들어 있고, <code>ai-service/.env.example</code>에 기상청 API 키가 들어 있습니다. GitHub 저장소는 로그인 없이 받을 수 있는 공개 상태입니다. 세 값 모두 재발급하고 환경변수로 옮겨야 합니다. 새 값으로 바꾸면 이력에 남은 옛 값은 쓸모가 없어집니다.</li>
+      <li><b>역할 검사 없음:</b> JWT 필터가 권한을 비운 채 인증만 처리합니다(<code>JwtFilter.java</code>). 로그인한 점주라면 누구나 본사 전용 API(전체 발주 조회, 발주 승인)를 호출하거나 다른 매장의 데이터를 볼 수 있습니다.</li>
+      <li><b>본사 관리자 자유 가입:</b> 회원가입 화면에서 "본사 관리자"를 고를 수 있고 서버도 그대로 받아들입니다(<code>UserService.signup</code>).</li>
+      <li><b>검수 우회 가능성:</b> 배송 기사용 그룹 링크가 각 품목의 QR 토큰을 내려주고, 점주 검수 API는 토큰만 있으면 인증 없이 동작합니다. 링크를 가진 사람이 점주 검수까지 끝낼 수 있습니다.</li>
+    </ul>
+  </div>
+</section>
+
+<section id="model">
+  <span class="eyebrow">2 · 예측모델 예시</span>
+  <h2>FoodGuard 모델은 실제로 이렇게 동작한다</h2>
+  <div class="prose"><p>코드를 그대로 따라가며, 메뉴 하나의 예측이 식자재 발주량이 되기까지를 단계별로 정리했습니다. 수치는 동작을 보여주기 위한 <b>가상의 예시</b>입니다.</p></div>
+  <div class="flow">
+    <div class="step"><span class="k">① 데이터 양 판단</span><span class="v">판매 이력이 몇 일치인지에 따라 모델을 고릅니다. 30일 이상이면 XGBoost에 피처 16개와 날씨 6개를 씁니다.</span><span class="ex">예: 김치찌개 45일치 → 전체 피처</span></div>
+    <div class="step"><span class="k">② 학습</span><span class="v">점예측 모델과 60% 분위수 모델을 같은 데이터로 따로 학습합니다. 60%는 원가 비율 0.4에서 나온 뉴스벤더 기준입니다.</span><span class="ex">재예측할 때마다 다시 학습</span></div>
+    <div class="step"><span class="k">③ 7일 예측</span><span class="v">날마다 점예측과 추천량을 냅니다. 추천량은 둘 중 큰 값입니다.</span><span class="ex">예: 점예측 38 · 분위수 41 → 추천 41그릇</span></div>
+    <div class="step"><span class="k">④ 식자재 환산</span><span class="v">7일 추천량을 모두 더한 뒤 레시피로 식자재 양을 구하고, g은 kg으로, ml은 L로 바꿉니다.</span><span class="ex">예: 321그릇 × 돼지고기 120g = 38.5kg</span></div>
+    <div class="step"><span class="k">⑤ 발주량</span><span class="v">필요량에서 현재고와 아직 도착하지 않은 발주량을 뺍니다.</span><span class="ex">예: 38.5 − 12.0 − 5.0 = 21.5kg</span></div>
+  </div>
+
+  <h3>같은 예시로 본 현재 방식과 제안 방식</h3>
+  <div class="compare">
+    <div class="case bad">
+      <span class="tag-ex">가상 예시</span>
+      <h3>현재: 7일 일별 분위수를 모두 더함</h3>
+      <dl>
+        <dt>7일 점예측 합계</dt><dd>294그릇</dd>
+        <dt>7일 일별 분위수 추천 합계</dt><dd>321그릇</dd>
+        <dt>돼지고기 필요량 (120g/그릇)</dt><dd>38.5kg</dd>
+        <dt>현재고 + 미처리 발주</dt><dd>17.0kg</dd>
+        <dt class="total">발주량</dt><dd class="total">21.5kg</dd>
+      </dl>
+      <p>돼지고기 유통기한이 3일이어도 7일치를 한 번에 주문합니다. 일별 안전재고가 7번 쌓여서 주간 합계는 점예측보다 9% 많아집니다.</p>
+    </div>
+    <div class="case good">
+      <span class="tag-ex">가상 예시</span>
+      <h3>제안: 식자재 보호기간만큼만, 분위수 1회</h3>
+      <dl>
+        <dt>보호기간 (유통기한 3일 한도)</dt><dd>3일</dd>
+        <dt>3일 점예측 합계</dt><dd>114그릇</dd>
+        <dt>3일 합계에 분위수 1회 적용</dt><dd>약 119그릇</dd>
+        <dt>돼지고기 필요량</dt><dd>14.3kg</dd>
+        <dt class="total">발주량 (현재고 17.0kg으로 충분)</dt><dd class="total">0kg</dd>
+      </dl>
+      <p>재고 이론의 정기 발주 방식처럼 "다음 발주가 도착할 때까지 + 유통기한 이내"만 덮고, 안전재고는 그 합계에 한 번만 붙입니다 [11].</p>
+    </div>
+  </div>
+
+  <h3>데이터 양에 따른 전략: 문서와 코드가 다르다</h3>
+  <div class="tbl mid"><table>
+    <thead><tr><th>판매 이력</th><th>CLAUDE.md에 적힌 전략</th><th>실제 코드 (<code>demand_predictor.py</code>)</th></tr></thead>
+    <tbody>
+      <tr><td class="num">0일</td><td>—</td><td>예측 0, 신뢰도 0</td></tr>
+      <tr><td class="num">1~6일</td><td>예측 불가 (0 반환)</td><td>요일 평균과 요일별 60% 분위수로 예측 (신뢰도 30)</td></tr>
+      <tr><td class="num">7~14일</td><td>요일 평균 + 경험적 분위수</td><td>XGBoost, 최소 피처 8개</td></tr>
+      <tr><td class="num">15~29일</td><td>XGBoost, 중간 피처</td><td>XGBoost, 중간 피처 12개</td></tr>
+      <tr><td class="num">30일 이상</td><td>XGBoost + 날씨</td><td>XGBoost, 전체 피처 16개 (날씨는 데이터가 있으면 모든 단계에서 추가)</td></tr>
+    </tbody>
+  </table></div>
+  <p class="note">그 밖에 코드에서 확인한 모델 관련 사항입니다. 학습에는 Open-Meteo 실측 날씨를, 예측에는 기상청 예보를 씁니다. 4~7일 강수량은 강수확률을 5mm, 2mm, 0mm로 바꾼 추정값입니다. <code>lag_7</code>은 2~7일 앞 예측에서 같은 요일을 가리키지 않습니다. <code>main.py</code> 설명과 <code>uml/</code> 시퀀스 다이어그램에는 아직 RandomForest로 적혀 있습니다.</p>
+
+  <h3>유사 연구·서비스의 예측 모델 예시</h3>
+  <div class="tbl wide"><table>
+    <thead><tr><th>사례</th><th>예측 대상 · 단위</th><th>모델</th><th>입력</th><th>기간</th><th>보고된 성과</th><th>근거 수준</th></tr></thead>
+    <tbody>
+      <tr><td class="row-h">FoodGuard (현재)</td><td>매장 × 메뉴, 일</td><td>XGBoost 점예측 + 60% 분위수</td><td>요일·공휴일·lag·이동평균·날씨 6종</td><td>7일</td><td>측정 기록 없음</td><td>—</td></tr>
+      <tr><td class="row-h">목포해양대 2023</td><td>교내식당 식수, 끼니</td><td>XGBoost + GridSearch, 평일·주말 분리</td><td>실데이터 + 기상</td><td>—</td><td>평일 MAE 조식 16 · 중식 23 · 석식 25명</td><td>학술대회 [12]</td></tr>
+      <tr><td class="row-h">S시청 구내식당 2019</td><td>식수, 일</td><td>6개 모델 앙상블</td><td>63개 변수 8개 범주</td><td>—</td><td>오차 10~11% → 6~7%</td><td>학술지 [1]</td></tr>
+      <tr><td class="row-h">독일 제빵 체인 2019</td><td>매장 × 상품, 일</td><td>분위수 회귀 ML (뉴스벤더)</td><td>POS</td><td>일</td><td>데이터가 충분하면 기존 방법보다 크게 나음</td><td>EJOR [13]</td></tr>
+      <tr><td class="row-h">식당·사내식당 2022</td><td>메뉴, 일</td><td>베이지안 일반화 가법 모형</td><td>POS만</td><td>일</td><td>사람이 해석 가능한 예측</td><td>IJF [14]</td></tr>
+      <tr><td class="row-h">일본 식당 821곳 대회</td><td>매장 방문객, 일</td><td>LightGBM + XGBoost + 신경망 평균</td><td>방문·예약·공휴일</td><td>1~39일</td><td>대회 1위</td><td>IJF 분석 [15]</td></tr>
+      <tr><td class="row-h">Chronos-2 · TabPFN-TS</td><td>범용 시계열</td><td>사전학습 모델, 학습 없이 사용</td><td>미래 공변량 (날씨·공휴일)</td><td>다양</td><td>공변량 과제 벤치마크 최상위권</td><td>arXiv [16]</td></tr>
+      <tr><td class="row-h">한큐 (이연에프엔씨)</td><td>매장 판매·발주량</td><td>비공개</td><td>과거 판매·날씨·계절성</td><td>3일</td><td>매출 예측 정확도 85%</td><td>보도 [2]</td></tr>
+      <tr><td class="row-h">먼키 AI Biz</td><td>메뉴 × 시간대</td><td>비공개</td><td>1년 이상 매출·환경 변수</td><td>다음날·주간</td><td>"최대 97%"</td><td>업체 발표 [17]</td></tr>
+      <tr><td class="row-h">풀무원 식수 예측</td><td>급식 끼니 식수</td><td>비공개</td><td>3년 이용 패턴 + 다음 주 메뉴</td><td>다음 주</td><td>수치 미공개</td><td>보도 [18]</td></tr>
+    </tbody>
+  </table></div>
+  <p class="note">비교해 보면 FoodGuard의 모델 구성(XGBoost + 날씨 + 분위수)은 국내 학술 사례와 같은 수준입니다. 차이는 결과를 측정해 숫자로 보여주는지에서 납니다. 국내 사례들은 오차나 MAE를 보고했지만, FoodGuard는 아직 보고할 수 있는 측정값이 없습니다.</p>
+</section>
+
+<section id="apps">
+  <span class="eyebrow">3 · 외부 유사 서비스</span>
+  <h2>비슷한 앱·프로그램과 기능 비교</h2>
+  <div class="prose"><p>공개 자료(기사, 업체 자료, 사례 연구)로 확인한 범위만 표시했습니다. "미확인"은 공개 자료로 확인하지 못했다는 뜻이지, 기능이 없다는 뜻이 아닙니다.</p></div>
+  <div class="legend"><span class="chip c-ok">있음</span><span class="chip c-part">부분</span><span class="chip c-no">없음</span><span class="chip c-na">미확인</span></div>
+  <div class="tbl wide"><table>
+    <thead><tr><th>기능</th><th>FoodGuard</th><th>한큐 (한촌설렁탕)</th><th>미리 (니즈)</th><th>먼키 AI Biz</th><th>풀무원 식수예측</th><th>ClearCOGS (미국)</th><th>Afresh (미국)</th><th>Winnow · Leanpath</th></tr></thead>
+    <tbody>
+      <tr><td class="row-h">수요 예측</td><td><span class="chip c-ok">메뉴·7일</span></td><td><span class="chip c-ok">판매량·3일</span></td><td><span class="chip c-ok">있음</span></td><td><span class="chip c-ok">메뉴·시간대</span></td><td><span class="chip c-ok">끼니 식수</span></td><td><span class="chip c-ok">품목</span></td><td><span class="chip c-ok">신선 품목</span></td><td><span class="chip c-no">없음</span></td></tr>
+      <tr><td class="row-h">날씨 반영</td><td><span class="chip c-ok">기상청 예보</span></td><td><span class="chip c-ok">있음</span></td><td><span class="chip c-na">미확인</span></td><td><span class="chip c-ok">환경 변수</span></td><td><span class="chip c-na">미확인</span></td><td><span class="chip c-ok">날씨·행사</span></td><td><span class="chip c-ok">계절·날씨</span></td><td><span class="chip c-no">없음</span></td></tr>
+      <tr><td class="row-h">레시피 기반 식자재 환산</td><td><span class="chip c-ok">있음</span></td><td><span class="chip c-na">미확인</span></td><td><span class="chip c-ok">자동 차감</span></td><td><span class="chip c-na">미확인</span></td><td><span class="chip c-no">식수 단위</span></td><td><span class="chip c-ok">레시피 데이터</span></td><td><span class="chip c-no">상품 단위</span></td><td><span class="chip c-no">없음</span></td></tr>
+      <tr><td class="row-h">발주량 추천</td><td><span class="chip c-ok">분위수 기반</span></td><td><span class="chip c-ok">있음</span></td><td><span class="chip c-ok">있음</span></td><td><span class="chip c-part">주문 보조</span></td><td><span class="chip c-part">권장 식수만</span></td><td><span class="chip c-ok">있음</span></td><td><span class="chip c-ok">이익·폐기 균형</span></td><td><span class="chip c-no">없음</span></td></tr>
+      <tr><td class="row-h">자동 발주</td><td><span class="chip c-ok">버튼 일괄</span></td><td><span class="chip c-na">미확인</span></td><td><span class="chip c-ok">있음</span></td><td><span class="chip c-na">미확인</span></td><td><span class="chip c-no">매니저 결정</span></td><td><span class="chip c-na">미확인</span></td><td><span class="chip c-part">매일 추천</span></td><td><span class="chip c-no">없음</span></td></tr>
+      <tr><td class="row-h">점주 수정·피드백 기록</td><td><span class="chip c-no">없음</span></td><td><span class="chip c-ok">그대로 발주율 집계</span></td><td><span class="chip c-na">미확인</span></td><td><span class="chip c-na">미확인</span></td><td><span class="chip c-part">매니저 최종 결정</span></td><td><span class="chip c-na">미확인</span></td><td><span class="chip c-ok">직원 피드백</span></td><td><span class="chip c-no">해당 없음</span></td></tr>
+      <tr><td class="row-h">실제 폐기 측정</td><td><span class="chip c-no">없음</span></td><td><span class="chip c-na">미확인</span></td><td><span class="chip c-na">미확인</span></td><td><span class="chip c-na">미확인</span></td><td><span class="chip c-na">미확인</span></td><td><span class="chip c-na">미확인</span></td><td><span class="chip c-part">손실 집계</span></td><td><span class="chip c-ok">AI 저울·카메라</span></td></tr>
+      <tr><td class="row-h">폐기 예측 → 대응 (기부)</td><td><span class="chip c-ok">예측 + 기부 기록</span></td><td><span class="chip c-na">미확인</span></td><td><span class="chip c-na">미확인</span></td><td><span class="chip c-na">미확인</span></td><td><span class="chip c-na">미확인</span></td><td><span class="chip c-na">미확인</span></td><td><span class="chip c-part">손실 최소화</span></td><td><span class="chip c-part">원인 분석</span></td></tr>
+      <tr><td class="row-h">본사-가맹점 관리</td><td><span class="chip c-ok">승인·발송·가맹점</span></td><td><span class="chip c-ok">가맹본부 앱</span></td><td><span class="chip c-na">미확인</span></td><td><span class="chip c-ok">자체 매장</span></td><td><span class="chip c-ok">사업장</span></td><td><span class="chip c-ok">다점포 브랜드</span></td><td><span class="chip c-ok">체인</span></td><td><span class="chip c-ok">다점포</span></td></tr>
+      <tr><td class="row-h">배송·검수 (QR·위치)</td><td><span class="chip c-ok">3단계 QR + GPS</span></td><td><span class="chip c-na">미확인</span></td><td><span class="chip c-na">미확인</span></td><td><span class="chip c-na">미확인</span></td><td><span class="chip c-no">없음</span></td><td><span class="chip c-na">미확인</span></td><td><span class="chip c-na">미확인</span></td><td><span class="chip c-no">없음</span></td></tr>
+      <tr><td class="row-h">효과 수치 공개</td><td><span class="chip c-no">측정 전</span></td><td><span class="chip c-part">사용률·정확도만</span></td><td><span class="chip c-part">단일 사례·자체 설문</span></td><td><span class="chip c-part">업체 발표</span></td><td><span class="chip c-no">미공개</span></td><td><span class="chip c-part">고객 후기</span></td><td><span class="chip c-part">자체 사례 + 독립 파일럿</span></td><td><span class="chip c-part">업체 50%+, 대학 19~20%</span></td></tr>
+      <tr><td class="row-h">대상</td><td>프랜차이즈 본사 + 가맹점</td><td>자사 가맹점 (육수당 88곳)</td><td>일반 식당 약 3,000곳</td><td>자체 공유주방</td><td>단체급식 사업장</td><td>미국 식당 브랜드</td><td>미국 식료품점</td><td>대형 주방·급식</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="prose">
+    <h3>비교에서 보이는 FoodGuard의 자리</h3>
+    <ul>
+      <li><b>강점:</b> 예측 → 발주 추천 → 본사 승인 → 발송 → 기사 수령 → 점주 검수 → 재고 반영까지 한 시스템에서 이어집니다. 비교한 서비스들은 대부분 예측·발주 추천이나 폐기 측정 중 한쪽에 집중합니다. 폐기 예측에서 기부 기록으로 이어지는 연결도 다른 서비스에서는 확인하지 못했습니다.</li>
+      <li><b>약점:</b> 다른 서비스가 최소한 사용률이나 정확도를 공개하는 데 비해 FoodGuard는 아직 측정 수단이 없습니다. 점주 피드백을 받는 구조(Afresh, 한큐)도 없습니다.</li>
+      <li><b>기회:</b> 비교한 서비스 중 독립적으로 검증된 폐기 감축 수치를 공개한 곳은 거의 없었습니다. FoodGuard가 백테스트와 시뮬레이션으로 폐기·품절 효과를 측정해 공개하면, 학생 프로젝트로서 가장 확실한 차별점이 됩니다.</li>
+    </ul>
+  </div>
+</section>
+
+<section id="plan">
+  <span class="eyebrow">4 · 계획서 비교</span>
+  <h2>계획서 항목별 구현 현황</h2>
+  <div class="legend"><span class="chip c-ok">구현</span><span class="chip c-part">부분</span><span class="chip c-no">미구현</span></div>
+  <div class="tbl wide"><table>
+    <thead><tr><th>계획서 항목</th><th>계획서 내용</th><th>현재 구현 (코드 근거)</th><th>상태</th></tr></thead>
+    <tbody>
+      <tr><td class="row-h">결과물 1</td><td>매출 데이터와 날씨·휴일로 다음 1주 메뉴별 판매량 예측</td><td>7일 예측, 기상청 단기·중기 예보, 한국 공휴일 피처, 데이터 양별 모델 선택. 특수일은 공휴일 여부 하나뿐입니다.</td><td><span class="chip c-ok">구현</span></td></tr>
+      <tr><td class="row-h">결과물 2</td><td>예측 기반 최적 발주량 제안, 재고 부족 방지·폐기 감소</td><td>분위수 기반 추천량, 레시피 환산, 현재고·미처리 발주 차감, 자동 발주. 유통기한·발주 주기는 반영하지 않고 7일치를 한 번에 계산합니다.</td><td><span class="chip c-part">부분</span></td></tr>
+      <tr><td class="row-h">결과물 3</td><td>AI 예측과 목표 매출을 비교한 주간 매출 계획, 대시보드 시각화</td><td>매출 조회·통계 화면은 있습니다. 목표 매출을 입력하거나 예측과 비교하는 기능이 없고, 오늘·주간 매출 요약 API 3개가 백엔드에 없습니다.</td><td><span class="chip c-no">미구현</span></td></tr>
+      <tr><td class="row-h">결과물 4 (본사)</td><td>가맹점 매출·재고·폐기율 모니터링</td><td>가맹점 관리, 전체 발주 관리, 지역 필터가 있습니다. 본사 매출 요약 API가 없고, 폐기 통계 화면(<code>Stats.tsx</code>)은 하드코딩된 가상 수치입니다.</td><td><span class="chip c-part">부분</span></td></tr>
+      <tr><td class="row-h">결과물 4 (점주)</td><td>유통업체 발주 요청</td><td>발주 요청, 본사 승인·거절, 유통기한 입력과 QR 발송, 기사 수령, 점주 검수, 재고 자동 반영, 실시간 위치 공유까지 있습니다.</td><td><span class="chip c-ok">구현</span></td></tr>
+      <tr><td class="row-h">평가 기준 (정량)</td><td>±10%, 폐기 15~20% 절감, 추천 활용 80%</td><td>세 지표 모두 측정에 필요한 기록(지난 예측, 실제 폐기, 승인·수정)이 없습니다.</td><td><span class="chip c-no">미구현</span></td></tr>
+      <tr><td class="row-h">기술 스택</td><td>MySQL, LSTM·XGBoost·Prophet, Chart.js</td><td>TiDB Cloud(MySQL 호환), XGBoost만 사용, ECharts. 바뀐 이유를 보고서에 적어야 합니다.</td><td><span class="chip c-part">변경</span></td></tr>
+      <tr><td class="row-h">외부 데이터</td><td>날씨·공휴일·이벤트 통합 (<code>external_data</code> 테이블 설계)</td><td>날씨와 공휴일은 AI 서비스가 직접 API로 가져옵니다. 설계했던 외부 데이터 테이블과 지역 이벤트 입력은 없습니다.</td><td><span class="chip c-part">부분</span></td></tr>
+      <tr><td class="row-h">CI/CD</td><td>GitHub Actions로 병합 시 자동 테스트·빌드·배포</td><td><code>.github</code> 폴더가 없고, 테스트는 13줄짜리 기본 테스트 하나입니다. 결과보고서에는 "적용하였다"고 적혀 있습니다.</td><td><span class="chip c-no">미구현</span></td></tr>
+      <tr><td class="row-h">데이터 수집</td><td>요일별 매출 더미 데이터 생성 엔진</td><td>생성 스크립트(<code>generate_dummy_data.py</code>)가 저장소에 없어 같은 데이터를 다시 만들 수 없습니다. 개인 설정 파일과 분석 메모에만 이름이 남아 있습니다.</td><td><span class="chip c-no">재현 불가</span></td></tr>
+      <tr><td class="row-h">2학기 확장 구상</td><td>기상·상권 데이터 결합 (BM 특허 구상)</td><td>상권 데이터는 쓰지 않습니다. 지역은 시·도 단위 날씨 좌표로만 씁니다.</td><td><span class="chip c-no">미구현</span></td></tr>
+      <tr><td class="row-h">Phase 4</td><td>시범 가맹점 QA, 점주·본사 피드백</td><td>아직 시작 전입니다. 보안 문제를 먼저 해결해야 합니다.</td><td><span class="chip c-no">미착수</span></td></tr>
+      <tr><td class="row-h">문서 정합성</td><td>ERD, 아키텍처, 모델 설명</td><td><code>schema.sql</code>은 실제 테이블과 이름·구조가 다릅니다. <code>uml/</code>과 <code>main.py</code>는 RandomForest 기준입니다. CLAUDE.md의 모델 전략 표는 코드와 다릅니다(2장 표 참고).</td><td><span class="chip c-part">갱신 필요</span></td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="todo">
+  <span class="eyebrow">5 · 이번 점검에서 나온 할 일</span>
+  <h2>우선순위</h2>
+  <div class="tbl mid"><table>
+    <thead><tr><th>순서</th><th>할 일</th><th>이유</th></tr></thead>
+    <tbody>
+      <tr><td class="num">1</td><td>DB 비밀번호·JWT 키·기상청 키 재발급, 환경변수로 이동. 서버에 역할·매장 소유 검사 추가, 본사 관리자 가입 막기</td><td>공개 저장소라 지금도 누구나 DB에 접속할 수 있습니다.</td></tr>
+      <tr><td class="num">2</td><td>예측 기록, 실제 폐기 입력, 추천 승인·수정·거절 기록 추가</td><td>계획서 정량 목표 세 가지를 재려면 이 기록이 필요합니다.</td></tr>
+      <tr><td class="num">3</td><td>본사 통계 화면을 실제 데이터로 바꾸거나 "예시 화면" 표시. 누락된 매출 요약 API 3개 구현</td><td>가상 수치가 실측처럼 발표되면 신뢰를 잃습니다.</td></tr>
+      <tr><td class="num">4</td><td>발주 추천 미리보기 화면을 만들어 근거와 함께 보여주고, 승인 후 발주</td><td>추천 활용률을 측정하고 의사결정 지원을 보여줄 수 있습니다.</td></tr>
+      <tr><td class="num">5</td><td>발주량 계산을 식자재별 보호기간 합계에 분위수 1회 적용으로 변경</td><td>지금 방식은 7일치 안전재고를 쌓아 과잉 발주로 기웁니다.</td></tr>
+      <tr><td class="num">6</td><td>CLAUDE.md, uml, schema.sql, main.py 설명 갱신. 더미 데이터 생성기를 저장소에 추가</td><td>보고서와 코드가 서로 다르면 심사에서 지적받기 쉽습니다.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <span class="eyebrow">한계</span>
+  <p class="note">코드는 읽어서 분석했고 직접 실행하지는 않았습니다. 본사 대시보드 목록이 비는 문제는 코드 흐름으로 추정한 것입니다. 유사 서비스의 기능과 성과는 공개 기사와 업체 자료 기준이며, 대부분 독립적으로 검증되지 않았습니다. 기대평가의 외부 비교치는 대상과 단위가 FoodGuard와 달라서, 같은 조건의 비교가 아닌 참고 범위로 봐야 합니다.</p>
+</section>
+
+<section>
+  <span class="eyebrow">참고</span>
+  <ol class="refs">
+    <li><b>전종식, 박은주, 권오병 (2019).</b> S City Hall 구내식당 식수 예측. 대한영양사협회학술지 25(1). <a href="https://koreascience.kr/journal/OOSHB5/v25n1.page" target="_blank" rel="noopener">KoreaScience</a></li>
+    <li><b>전자신문 (2026-10-15).</b> 외식 프랜차이즈 AI 발주 도입 (이연에프엔씨 '한큐', 육수당, 샤브올데이). <a href="https://www.etnews.com/20261015000255" target="_blank" rel="noopener">기사</a></li>
+    <li><b>메뉴 단위 예측 오차 사례 모음.</b> 월별 메뉴 MAPE 14%, 급식 식자재 일별 MAPE 4~18%. <a href="https://journal.lembagakita.com/ijsecs/article/download/7039/4532/24457" target="_blank" rel="noopener">IJSECS</a> · <a href="https://arxiv.org/pdf/2005.12647" target="_blank" rel="noopener">Posch 외</a></li>
+    <li><b>Champions 12.3 (2019).</b> The Business Case for Reducing Food Loss and Waste: Restaurants. <a href="https://sustainablebrands.com/read/org-governance/champions-12-3-restaurants-realize-7-1-roi-by-reducing-food-waste" target="_blank" rel="noopener">요약</a></li>
+    <li><b>Pacific Coast Food Waste Commitment.</b> AI 발주 파일럿 사례 연구 (매장당 폐기 14.8% 감소). <a href="https://pacificcoastcollaborative.org/wp-content/uploads/2022/12/PCFWC-Case-Study_AI_Final.pdf" target="_blank" rel="noopener">PDF</a></li>
+    <li><b>Sigala 외 (2025).</b> Reducing food waste in the HORECA sector using AI-based waste-tracking devices. Waste Management. <a href="https://ec.europa.eu/newsroom/env/redirection/item/888677/default/1701" target="_blank" rel="noopener">EU 요약</a></li>
+    <li><b>Winnow · Leanpath 성과 자료.</b> <a href="https://www.epa.gov/sites/default/files/2019-12/documents/winnow_presentation_12_19_19.pdf" target="_blank" rel="noopener">Winnow (EPA 발표)</a> · <a href="https://spectrum.ieee.org/leanpath-weighs-waste" target="_blank" rel="noopener">Leanpath (IEEE Spectrum)</a> · <a href="https://sustainability.wisc.edu/a-forkful-of-sustainability/" target="_blank" rel="noopener">위스콘신대 사례</a></li>
+    <li><b>Sauro, Lewis.</b> System Usability Scale 기준 점수 68. <a href="https://www.measuringu.com/sus/" target="_blank" rel="noopener">MeasuringU</a></li>
+    <li><b>Caro, Sáez de Tejada Cuenca (2023).</b> Believing in Analytics. MSOM 25(2). <a href="https://ideas.repec.org/a/inm/ormsom/v25y2023i2p524-542.html" target="_blank" rel="noopener">RePEc</a></li>
+    <li><b>OWASP Top 10 (2021).</b> A01 Broken Access Control. <a href="https://owasp.org/Top10/2021/A01_2021-Broken_Access_Control/index.html" target="_blank" rel="noopener">OWASP</a></li>
+    <li><b>정기 발주 정책의 발주 상한과 안전재고 (보호기간 R+L).</b> <a href="https://open-exam-prep.com/study-guides/pe-industrial/inventory-scheduling-logistics/stochastic-inventory-safety-stock" target="_blank" rel="noopener">개념 정리</a> · 원전: Silver, Pyke, Thomas, <i>Inventory and Production Management in Supply Chains</i></li>
+    <li><b>목포해양대 연구진 (2023).</b> 교내식당 식사 인원 예측. 한국컴퓨터정보학회 하계학술대회. <a href="https://koreascience.kr/article/CFKO202323672014438.pdf" target="_blank" rel="noopener">PDF</a></li>
+    <li><b>Huber 외 (2019).</b> A data-driven newsvendor problem: From data to decision. EJOR 278(3). <a href="https://madoc.bib.uni-mannheim.de/49848" target="_blank" rel="noopener">MADOC</a></li>
+    <li><b>Posch 외 (2022).</b> A Bayesian Approach for Predicting Food and Beverage Sales in Staff Canteens and Restaurants. IJF. <a href="https://arxiv.org/abs/2005.12647v1" target="_blank" rel="noopener">arXiv</a></li>
+    <li><b>Bojer, Meldgaard (2021).</b> Kaggle forecasting competitions. IJF. <a href="https://arxiv.org/pdf/2009.07701" target="_blank" rel="noopener">arXiv</a></li>
+    <li><b>Chronos-2 (2025) · TabPFN-TS (2025).</b> <a href="https://arxiv.org/pdf/2510.15821" target="_blank" rel="noopener">Chronos-2</a> · <a href="https://arxiv.org/pdf/2501.02945" target="_blank" rel="noopener">TabPFN-TS</a></li>
+    <li><b>먼키 AI Biz.</b> <a href="https://www.fnnews.com/news/202212120847429856" target="_blank" rel="noopener">파이낸셜뉴스</a> · <a href="https://www.sanupin-news.kr/news/articleView.html?idxno=2937" target="_blank" rel="noopener">산업인뉴스</a></li>
+    <li><b>풀무원 식수 예측 시스템 (2022).</b> <a href="https://news.mtn.co.kr/news-detail/2022120510501361095" target="_blank" rel="noopener">MTN</a></li>
+    <li><b>그 밖의 서비스 자료.</b> 니즈 '미리' <a href="https://www.mt.co.kr/policy/2026/10/14/2026101409395923678" target="_blank" rel="noopener">머니투데이</a> · ClearCOGS <a href="https://thespoon.tech/clearcogs-raises-3-8m-its-ai-powered-forecasting-software-that-helps-restaurants-reduce-waste/" target="_blank" rel="noopener">The Spoon</a> · Afresh <a href="https://www.organicproducenetwork.com/organic-retail/afresh-s-ai-produce-ordering-system-increases-sales-and-reduces-shrink" target="_blank" rel="noopener">Organic Produce Network</a></li>
+  </ol>
+</section>
+
+</div>
