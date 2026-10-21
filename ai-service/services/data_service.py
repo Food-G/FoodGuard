@@ -118,6 +118,26 @@ def get_all_sales_data(db: Session) -> dict[tuple[int, int], pd.DataFrame]:
     return out
 
 
+def get_recipes(db: Session) -> dict[int, list[tuple[int, float]]]:
+    """
+    메뉴별 레시피 {menu_id: [(ingredient_id, 메뉴 1개당 사용량)]}.
+    사용량은 식자재 기준 단위로 환산한다 (백엔드 UnitUtils.convertToBaseUnit 과 같은 규칙: g→kg, ml→L).
+    """
+    rows = db.execute(
+        text(
+            "SELECT mi.menu_id, mi.ingredient_id, mi.qty_per_unit, mi.unit, i.unit "
+            "FROM MENU_INGREDIENT mi JOIN INGREDIENT i ON i.ingredient_id = mi.ingredient_id"
+        )
+    ).fetchall()
+    recipes: dict[int, list[tuple[int, float]]] = {}
+    for menu_id, ingredient_id, qty, unit, base_unit in rows:
+        per_unit = float(qty)
+        if (unit, base_unit) in (("g", "kg"), ("ml", "L")):
+            per_unit /= 1000.0
+        recipes.setdefault(int(menu_id), []).append((int(ingredient_id), per_unit))
+    return recipes
+
+
 def get_store_sales_last_n_days(db: Session, store_id: int, n_days: int = 30) -> list[dict]:
     """대시보드용 매장 전체 최근 판매 데이터."""
     rows = db.execute(

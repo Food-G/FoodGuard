@@ -13,8 +13,9 @@ FoodGuard 수요 예측 모델 — 매장·메뉴 통합 글로벌 모델.
 - 데이터가 적어 깊이 3, 트리 100개, min_child_weight 100 으로 보정 폭을 작게 제한
 - 이력 1~6일인 신메뉴도 같은 모델로 예측한다 (규모와 매장 요일 비율로 시작). 이력이 없으면 0
 
-추천 발주량(recommended_order_qty)은 품절비용 vs 폐기비용의 critical fractile
-(뉴스벤더 모델)을 목표 분위수로 하는 별도 quantile 모델로 산출한다.
+추천 발주량(recommended_order_qty) = 점추정 × safety_factor.
+safety_factor 는 식자재 7일 사용량 기준으로 품절비용 vs 폐기비용의 critical fractile
+(뉴스벤더 모델)을 맞추는 conformal 보정 비율이다 (ml/calibration.py, prediction_service 가 설정).
 원가 데이터가 없어 COST_RATIO(판매가 대비 원가 비율 근사치, config.py)로 근사한다.
 """
 
@@ -77,8 +78,9 @@ SeriesKey = tuple[int, int]  # (store_id, menu_id)
 class DemandPredictor:
     def __init__(self):
         self.model: XGBRegressor | None = None
-        self.quantile_model: XGBRegressor | None = None
         self.critical_fractile: float = CRITICAL_FRACTILE
+        # 식자재 단위 conformal 보정 비율 (ml/calibration.safety_factor). 1.0 이면 점추정 그대로
+        self.safety_factor: float = 1.0
         self.feature_cols: list[str] = GLOBAL_FEATURE_COLS
         # 이력 있는 메뉴별 wMAPE 기반 confidence 기준값 (0~100, 학습 행이 적으면 DEFAULT_CONFIDENCE)
         self.scores: dict[SeriesKey, float] = {}
@@ -129,12 +131,6 @@ class DemandPredictor:
 
         self.model = XGBRegressor(objective="reg:absoluteerror", **XGB_PARAMS)
         self.model.fit(X, y)
-
-        # 안전재고용 quantile 모델 (critical fractile 목표) — 같은 피처, 같은 데이터로 학습
-        self.quantile_model = XGBRegressor(
-            objective="reg:quantileerror", quantile_alpha=self.critical_fractile, **XGB_PARAMS
-        )
-        self.quantile_model.fit(X, y)
 
         # 메뉴별 confidence: out-of-fold 예측으로 메뉴마다 실제 오차율(wMAPE)을 잰다
         oof = cross_val_predict(XGBRegressor(objective="reg:absoluteerror", **XGB_PARAMS), X, y, cv=KFold(5))
@@ -239,18 +235,23 @@ class DemandPredictor:
         f = _with_scale(pd.DataFrame(rows))
         X = self._design(f)
         point = np.maximum(0, np.round(self.model.predict(X) * f["scale"].to_numpy()))
-        # 안전재고 반영 추천 발주량: critical fractile quantile 예측값
-        # (점 추정치보다 낮게 나올 수 있으므로 점 추정치를 하한으로 사용)
-        quant = np.maximum(0, np.round(self.quantile_model.predict(X) * f["scale"].to_numpy()))
         base_confidence = max(15.0, self.scores.get((store_id, menu_id), DEFAULT_CONFIDENCE))
 
+        # 안전재고 반영 추천 발주량 = 점추정 × safety_factor. 백엔드가 레시피로 합산하면 식자재 단위로
+        # 분위수를 한 번 적용한 값이 된다. 비율이 1에 가까워(≈1.01) 날마다 반올림하면 사라지므로,
+        # 기간 합계가 round(합계 × 비율)이 되도록 남는 단위를 소수부가 큰 날부터 1씩 더한다 (최대잔여 방식)
+        raw = point * self.safety_factor
+        recommended = np.floor(raw)
+        extra = int(round(raw.sum() - recommended.sum()))
+        recommended[np.argsort(-(raw - recommended), kind="stable")[:extra]] += 1
+
         predictions = []
-        for i, (p, q) in enumerate(zip(point, quant), start=1):
+        for i, (p, r) in enumerate(zip(point, recommended), start=1):
             predictions.append(
                 {
                     "date": base_date + timedelta(days=i),
                     "predicted_qty": int(p),
-                    "recommended_order_qty": int(max(p, q)),
+                    "recommended_order_qty": int(r),
                     # 예측일이 멀수록 신뢰도 감소 (1일차: 0%, 7일차: -9%)
                     "confidence": round(max(15.0, base_confidence - (i - 1) * CONFIDENCE_DECAY_PER_DAY), 2),
                 }

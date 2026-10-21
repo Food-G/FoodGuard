@@ -83,7 +83,8 @@ ai-service/
 ├── backtest.py                  # rolling-origin 백테스트 (모델 vs 베이스라인 3종, wMAPE·MASE)
 ├── tests/                       # pytest (requirements-dev.txt)
 ├── ml/
-│   ├── demand_predictor.py      # 전체 매장·메뉴 글로벌 XGBoost (점 추정 + quantile 안전재고)
+│   ├── demand_predictor.py      # 전체 매장·메뉴 글로벌 XGBoost (점 추정, 추천량 = 점추정 × safety_factor)
+│   ├── calibration.py           # 식자재 단위 conformal 안전재고 보정 비율 (safety_factor)
 │   └── feature_engineering.py  # 피처 생성 (날짜 + 날씨 + lag/rolling)
 ├── services/
 │   ├── prediction_service.py   # 예측 비즈니스 로직
@@ -100,7 +101,7 @@ POST /api/predict/store/{id}
   → 기상청 단기예보(1~3일) + 중기예보(4~7일) 조회
   → SALES_DATA에서 전체 매장×메뉴 판매 이력 조회 → 매장 영업일 달력으로 정렬 (판매 없는 영업일 0, 휴무·미입력일 제외, 품절일 표시)
   → Open-Meteo로 매장별 과거 날씨 조회 (학습용)
-  → 글로벌 XGBoost 점 추정 모델 + quantile 모델(안전재고) 1회 학습 → 이 매장 메뉴별 7일 예측
+  → 글로벌 XGBoost 점 추정 모델 1회 학습 + 최근 4주 재학습으로 식자재 단위 안전재고 비율 보정 → 이 매장 메뉴별 7일 예측
   → PREDICTION_RESULT 테이블 저장 (predicted_qty + recommended_order_qty)
 ```
 
@@ -126,7 +127,8 @@ lag 피처(`lag_7`, `lag_14`)는 행 위치가 아니라 **달력 기준 같은 
 신뢰도(confidence)는 R² 대신 **wMAPE** 기반: `clip(100 - wMAPE, 15, 95)`. 예측일이 멀수록 하루당 1.5% 감소 (최소 15%).
 
 ### 안전재고 (recommended_order_qty)
-품절비용 vs 폐기비용의 뉴스벤더 모델(critical fractile)로 목표 분위수를 정한 XGBoost quantile 모델(`objective="reg:quantileerror"`)로 산출. 원가 데이터가 DB에 없어 `COST_RATIO=0.4`(판매가의 40%)로 근사, critical fractile = `1 - COST_RATIO = 0.6`. 자세한 배경은 `ai-service/PROJECT_STATUS.md` 참조.
+품절비용 vs 폐기비용의 뉴스벤더 모델(critical fractile)로 목표 분위수를 정한다. 원가 데이터가 DB에 없어 `COST_RATIO=0.4`(판매가의 40%)로 근사, critical fractile = `1 - COST_RATIO = 0.6`.
+분위수는 메뉴·일자가 아니라 **식자재 7일 사용량 기준으로 한 번만** 적용한다 (`ml/calibration.py`, split conformal): 최근 4주 시점을 재학습해 식자재 `실제/예측` 사용량 비율의 0.6 분위수(`safety_factor`)를 구하고 `recommended_order_qty = 점추정 × safety_factor`. 백엔드 `recommend()`가 레시피로 합산하면 식자재 단위 분위수가 된다. 자세한 배경은 `ai-service/PROJECT_STATUS.md` 5절·10절 P1-2.
 
 ### 날씨 피처 (6개)
 `temp_max`, `temp_min`, `precipitation`, `is_rainy`, `is_hot`, `is_cold`

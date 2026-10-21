@@ -7,11 +7,13 @@ import pandas as pd
 from sqlalchemy.orm import Session
 
 from config import settings
+from ml.calibration import safety_factor
 from ml.demand_predictor import DemandPredictor
 from services.data_service import (
     get_active_menus,
     get_all_sales_data,
     get_closed_dates,
+    get_recipes,
     get_store_region,
     save_predictions_bulk,
 )
@@ -23,7 +25,8 @@ from services.weather_service import (
 
 # v1.1: 판매 이력 영업일 달력 정렬(0 채움), lag 달력 기준·lag_1 제거, 품절일 학습 제외
 # v2.0: 메뉴별 로컬 모델 → 전체 매장·메뉴 글로벌 모델 (PROJECT_STATUS.md 10절)
-MODEL_VERSION = "xgb_global_v2.0"
+# v2.1: 추천 발주량을 메뉴·일자 분위수 대신 식자재 단위 conformal 보정 비율로 산출
+MODEL_VERSION = "xgb_global_v2.1"
 
 
 def train_global_model(db: Session) -> DemandPredictor:
@@ -41,6 +44,8 @@ def train_global_model(db: Session) -> DemandPredictor:
 
     predictor = DemandPredictor().fit(series, weather=weather)
     if predictor.is_trained:
+        # 최근 4주 시점을 다시 학습해 식자재 7일 사용량 기준 critical fractile 보정 비율을 구한다
+        predictor.safety_factor = safety_factor(series, get_recipes(db))
         predictor.save()
     return predictor
 

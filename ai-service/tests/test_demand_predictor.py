@@ -39,6 +39,18 @@ def test_new_menu_with_few_days_is_predicted_with_store_weekday_pattern():
     assert all(p["recommended_order_qty"] >= p["predicted_qty"] for p in preds.values())
 
 
+def test_small_safety_factor_survives_rounding_in_weekly_total():
+    series, origin = _store_with_new_menu(new_days=3)
+    model = DemandPredictor().fit(series)
+    model.safety_factor = 1.005  # 날마다 반올림하면 40 × 1.005 = 40.2 → 40 으로 사라지는 크기
+    preds = model.predict(1, 12, days=7, start_date=origin)
+    point = sum(p["predicted_qty"] for p in preds)
+    recommended = sum(p["recommended_order_qty"] for p in preds)
+    assert recommended > point
+    assert abs(recommended - point * 1.005) <= 0.5
+    assert all(0 <= p["recommended_order_qty"] - p["predicted_qty"] <= 1 for p in preds)
+
+
 def test_menu_without_history_predicts_zero():
     series, origin = _store_with_new_menu(new_days=3)
     model = DemandPredictor().fit(series)

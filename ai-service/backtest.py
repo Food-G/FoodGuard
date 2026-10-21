@@ -12,6 +12,9 @@ rolling-origin 백테스트 — 글로벌 DemandPredictor와 베이스라인 4�
 - MASE    : 시계열별 MAE / 학습 구간 계절 나이브(7일 전) MAE 의 평균 (Hyndman & Koehler 2006).
             1보다 작으면 계절 나이브보다 낫다
 - 커버리지: 실제 판매량 <= 추천 발주량인 비율. 목표는 critical fractile (현재 0.6)
+- 식자재 단위 (--db, 레시피 있는 매장): 7일 식자재 사용량 기준 커버리지·잉여율·부족률.
+  보정 비율은 그 시점 이전의 겹치지 않는 주간 구간 최대 4개로만 구한다 (운영 ml/calibration.py 와 같은 규칙,
+  --step 7 로 돌려야 운영과 같은 주 간격이 된다)
 베이스라인 '매장 요일비율×28일 평균'은 글로벌 모델의 기준값(scale)을 단순화한 값이다
 (모델은 28일 평균 대신 요일 효과를 뺀 평균을 쓴다). 모델의 보정이 얼마나 더해지는지 보려고 넣었다.
 날씨 피처는 넣지 않는다. 과거 실측 날씨를 예보 대신 쓰면 성능이 부풀려지므로 별도 실험으로 분리한다.
@@ -26,6 +29,7 @@ from datetime import date, timedelta
 import numpy as np
 import pandas as pd
 
+from ml.calibration import CALIBRATION_WEEKS, conformal_quantile, ingredient_usage, usage_ratios, window_sums
 from ml.demand_predictor import CRITICAL_FRACTILE, DemandPredictor
 from ml.feature_engineering import store_weekday_ratio
 
@@ -47,15 +51,30 @@ def synthetic_series(days: int = 200, seed: int = 42) -> pd.DataFrame:
     return pd.DataFrame(rows, columns=["ds", "y"])
 
 
-def db_series() -> dict[SeriesKey, pd.DataFrame]:
+def db_series() -> tuple[dict[SeriesKey, pd.DataFrame], dict[int, list[tuple[int, float]]]]:
     from database import SessionLocal
-    from services.data_service import get_all_sales_data
+    from services.data_service import get_all_sales_data, get_recipes
 
     db = SessionLocal()
     try:
-        return get_all_sales_data(db)
+        return get_all_sales_data(db), get_recipes(db)
     finally:
         db.close()
+
+
+def recent_weekly(history: list[tuple[date, list[float]]], origin: date) -> list[float]:
+    """origin 이전에 끝난, 서로 겹치지 않는 최근 주간 구간 최대 CALIBRATION_WEEKS 개의 비율."""
+    picked: list[float] = []
+    last = None
+    n = 0
+    for o, ratios in reversed(history):
+        if o + timedelta(days=HORIZON) <= origin and (last is None or o + timedelta(days=HORIZON) <= last):
+            picked += ratios
+            last = o
+            n += 1
+            if n == CALIBRATION_WEEKS:
+                break
+    return picked
 
 
 def store_totals(series: dict[SeriesKey, pd.DataFrame]) -> dict[int, pd.Series]:
@@ -105,7 +124,13 @@ def wmape(g: pd.DataFrame) -> float:
     return float(g["ae"].sum() / max(g["y"].sum(), 1e-9) * 100)
 
 
-def run(series: dict[SeriesKey, pd.DataFrame], min_train: int, step: int, store: int | None = None) -> None:
+def run(
+    series: dict[SeriesKey, pd.DataFrame],
+    min_train: int,
+    step: int,
+    store: int | None = None,
+    recipes: dict[int, list[tuple[int, float]]] | None = None,
+) -> None:
     series = {k: df.sort_values("ds").reset_index(drop=True) for k, df in series.items()}
     plan: dict[date, list[tuple[SeriesKey, int]]] = defaultdict(list)  # origin -> [(시계열, origin 행 위치)]
     scales: dict[SeriesKey, float] = {}
@@ -123,11 +148,35 @@ def run(series: dict[SeriesKey, pd.DataFrame], min_train: int, step: int, store:
     records = []  # (method, series, horizon, actual, pred)
     covered = []
     n_origins = 0
+    recipe_stores = {sid for sid, mid in series if mid in (recipes or {})}
+    ratio_history: dict[int, list[tuple[date, list[float]]]] = defaultdict(list)  # 매장 -> [(시점, 식자재 비율)]
+    ing_records = []  # (method, 실제 사용량, 발주 기준량)
+    factors = []
     for origin in sorted(plan):
         past = {k: df[df["ds"] <= origin] for k, df in series.items()}
         past = {k: df for k, df in past.items() if len(df) > 0}
         model = DemandPredictor().fit(past)
         totals = store_totals(past)
+
+        # 운영과 같이 이전 주간 구간들의 식자재 비율로 보정 비율을 정하고 모델에 넣는다
+        q = conformal_quantile(
+            [r for h in ratio_history.values() for r in recent_weekly(h, origin)], CRITICAL_FRACTILE
+        )
+        model.safety_factor = q if q is not None else 1.0
+        for sid in {key[0] for key, _ in plan[origin]} & recipe_stores:
+            sums = window_sums(model, series, sid, origin)
+            actual = {m: s[0] for m, s in sums.items()}
+            point = {m: s[1] for m, s in sums.items()}
+            if q is not None:
+                factors.append(q)
+                use = ingredient_usage(actual, recipes)
+                for method, req in (
+                    ("점추정 합 (안전재고 없음)", ingredient_usage(point, recipes)),
+                    ("메뉴·일자 추천량 합 (모델 출력)", ingredient_usage({m: s[2] for m, s in sums.items()}, recipes)),
+                    ("점추정 합 × 보정 비율 (식자재 conformal)", {i: v * q for i, v in ingredient_usage(point, recipes).items()}),
+                ):
+                    ing_records += [(method, use.get(i, 0.0), r) for i, r in req.items() if r > 0]
+            ratio_history[sid].append((origin, usage_ratios(actual, point, recipes)))
 
         for key, i in plan[origin]:
             df = series[key]
@@ -161,6 +210,23 @@ def run(series: dict[SeriesKey, pd.DataFrame], min_train: int, step: int, store:
         print(f"| {method} | {wmape(g):.1f}% | {mase:.3f} | " + " | ".join(f"{v:.1f}%" for v in by_h) + " |")
 
     print(f"\n추천 발주량 커버리지(실제 <= 추천): {np.mean(covered) * 100:.1f}% (목표 {CRITICAL_FRACTILE * 100:.0f}%)")
+
+    if not ing_records:
+        return
+    ing = pd.DataFrame(ing_records, columns=["method", "use", "req"])
+    ing = ing[ing["use"] > 0]
+    print(
+        f"\n식자재 단위 7일 발주 평가: 레시피 있는 매장 {len(recipe_stores)}곳, 보정 가능 시점 {len(factors)}개, "
+        f"식자재×구간 {len(ing) // ing['method'].nunique()}개, 보정 비율 평균 {np.mean(factors):.3f} "
+        f"(범위 {min(factors):.3f}~{max(factors):.3f})\n"
+    )
+    print(f"| 방법 | 커버리지 (목표 {CRITICAL_FRACTILE * 100:.0f}%) | 평균 잉여율 | 평균 부족률 |")
+    print("|---|---|---|---|")
+    for method, g in ing.groupby("method", sort=False):
+        excess = ((g["req"] - g["use"]).clip(lower=0) / g["use"]).mean() * 100
+        short = ((g["use"] - g["req"]).clip(lower=0) / g["use"]).mean() * 100
+        print(f"| {method} | {(g['use'] <= g['req']).mean() * 100:.1f}% | {excess:.1f}% | {short:.1f}% |")
+    print("잉여율·부족률: 식자재×구간마다 (발주 기준량 - 실제 사용량)의 양수·음수 부분을 실제 사용량으로 나눈 평균")
 
 
 def run_cold_start(series: dict[SeriesKey, pd.DataFrame], origin_row: int = 35, new_days=(1, 3, 5)) -> None:
@@ -214,9 +280,10 @@ def main() -> None:
     if args.synthetic:
         run({(0, 0): synthetic_series()}, args.min_train or 90, args.step)
     elif args.cold_start:
-        run_cold_start(db_series())
+        run_cold_start(db_series()[0])
     else:
-        run(db_series(), args.min_train or 28, args.step, store=args.store)
+        series, recipes = db_series()
+        run(series, args.min_train or 28, args.step, store=args.store, recipes=recipes)
 
 
 if __name__ == "__main__":
