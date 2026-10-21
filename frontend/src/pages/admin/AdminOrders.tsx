@@ -40,8 +40,6 @@ const STAGE_MAP: Record<string, { done: number; active: number }> = {
   DONE:            { done: 3, active: 0 },
 };
 
-const STAGE_LABELS = ['본사 발송', '기사 수령', '점주 검수'];
-
 const StepBadge = ({ n, done, active }: { n: number; done: number; active: number }) => {
   const isDone = n <= done;
   const isActive = n === active;
@@ -169,14 +167,6 @@ const AdminOrders = () => {
       setError('발송 검수 처리에 실패했습니다.');
       setHqSendTarget(null);
     }
-  };
-
-  const handleDriverReceive = async (id: number) => {
-    try {
-      await orderService.driverReceive(id);
-      withStatus(id, 'DRIVER_RECEIVED');
-      setSuccess('배달기사 수령 처리가 완료되었습니다.');
-    } catch { setError('배달기사 수령 처리에 실패했습니다.'); }
   };
 
   const handleClearCompleted = () => {
