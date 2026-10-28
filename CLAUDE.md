@@ -65,6 +65,8 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 ## FoodGuard 프로젝트 컨텍스트
 
+> 진행 현황·남은 작업·작업 규칙·기준 수치는 `docs/HANDOFF.md`. 새 세션은 그 문서부터 읽는다.
+
 ### 서비스 구조
 - **Frontend**: React + TypeScript + Vite (포트 5173)
 - **Backend**: Spring Boot 3.x + Java 17 + JPA (포트 8080), DB: TiDB Cloud (MySQL 호환)
