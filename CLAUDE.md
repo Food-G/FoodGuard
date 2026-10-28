@@ -129,6 +129,7 @@ lag 피처(`lag_7`, `lag_14`)는 행 위치가 아니라 **달력 기준 같은 
 ### 안전재고 (recommended_order_qty)
 품절비용 vs 폐기비용의 뉴스벤더 모델(critical fractile)로 목표 분위수를 정한다. 원가 데이터가 DB에 없어 `COST_RATIO=0.4`(판매가의 40%)로 근사, critical fractile = `1 - COST_RATIO = 0.6`.
 분위수는 메뉴·일자가 아니라 **식자재 7일 사용량 기준으로 한 번만** 적용한다 (`ml/calibration.py`, split conformal): 최근 4주 시점을 재학습해 식자재 `실제/예측` 사용량 비율의 0.6 분위수(`safety_factor`)를 구하고 `recommended_order_qty = 점추정 × safety_factor`. 백엔드 `recommend()`가 레시피로 합산하면 식자재 단위 분위수가 된다. 자세한 배경은 `ai-service/PROJECT_STATUS.md` 5절·10절 P1-2.
+백엔드는 식자재마다 `리드타임 − 1 + min(발주 주기, 보관기한)`일 안의 추천량만 발주한다 (`INGREDIENT.shelf_life_days·lead_time_days·order_cycle_days`, 비면 7일치. 10절 P1-3).
 
 ### 날씨 피처 (6개)
 `temp_max`, `temp_min`, `precipitation`, `is_rainy`, `is_hot`, `is_cold`

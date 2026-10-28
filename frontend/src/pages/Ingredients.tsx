@@ -11,6 +11,13 @@ import { useMyStore } from '../hooks/useMyStore';
 
 const UNIT_OPTIONS = ['kg', 'L', '개'];
 
+// 자동 발주 기간 계산용 식자재 설정 (비우면 백엔드 기본값)
+const DAY_FIELDS = [
+  { key: 'shelfLifeDays', label: '보관기한(일)', min: 1, placeholder: '제한 없음' },
+  { key: 'leadTimeDays', label: '입고(일 뒤)', min: 0, placeholder: '1' },
+  { key: 'orderCycleDays', label: '주기(일)', min: 1, placeholder: '7' },
+];
+
 const Ingredients = ({ user }: any) => {
   const theme = useTheme();
   const confirm = useConfirm();
@@ -67,6 +74,9 @@ const Ingredients = ({ user }: any) => {
       await api.put(`/ingredients/${editingIng.id}`, {
         name: editingIng.name,
         unit: editingIng.unit,
+        shelfLifeDays: editingIng.shelfLifeDays ?? '',
+        leadTimeDays: editingIng.leadTimeDays ?? '',
+        orderCycleDays: editingIng.orderCycleDays ?? '',
       });
       setSuccess('식자재가 수정되었습니다.');
       setEditingIng(null);
@@ -153,13 +163,14 @@ const Ingredients = ({ user }: any) => {
               <TableRow>
                 <TableCell>식자재명</TableCell>
                 <TableCell>단위</TableCell>
+                <TableCell>발주 설정 (보관기한 · 입고 · 주기)</TableCell>
                 <TableCell align="center" width={120}>관리</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {allIngredients.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={3}>
+                  <TableCell colSpan={4}>
                     <Typography variant="body2" color="text.secondary" sx={{ py: 1 }}>
                       등록된 식자재가 없습니다.
                     </Typography>
@@ -201,6 +212,18 @@ const Ingredients = ({ user }: any) => {
                           </Box>
                         </Popover>
                       </TableCell>
+                      <TableCell>
+                        <Stack direction="row" gap={1}>
+                          {DAY_FIELDS.map(({ key, label, min, placeholder }) => (
+                            <TextField
+                              key={key} label={label} size="small" type="number" placeholder={placeholder}
+                              InputLabelProps={{ shrink: true }} inputProps={{ min }} sx={{ width: 96 }}
+                              value={editingIng[key] ?? ''}
+                              onChange={(e) => setEditingIng((p: any) => ({ ...p, [key]: e.target.value }))}
+                            />
+                          ))}
+                        </Stack>
+                      </TableCell>
                       <TableCell align="center">
                         <Stack direction="row" gap={0.5} justifyContent="center">
                           <Button size="small" variant="contained" disabled={ingSubmitting}
@@ -213,6 +236,13 @@ const Ingredients = ({ user }: any) => {
                     <>
                       <TableCell><Typography variant="body2" fontWeight={600}>{ing.name}</Typography></TableCell>
                       <TableCell>{ing.unit}</TableCell>
+                      <TableCell>
+                        <Typography variant="body2" color="text.secondary">
+                          보관 {ing.shelfLifeDays ? `${ing.shelfLifeDays}일` : '제한 없음'}
+                          {' · '}{ing.leadTimeDays ?? 1}일 뒤 입고
+                          {' · '}{ing.orderCycleDays ?? 7}일마다
+                        </Typography>
+                      </TableCell>
                       <TableCell align="center">
                         <Stack direction="row" gap={0.5} justifyContent="center">
                           <IconButton size="small" color="primary"
@@ -232,6 +262,10 @@ const Ingredients = ({ user }: any) => {
             </TableBody>
           </Table>
         </TableContainer>
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1.5 }}>
+          자동 발주는 식자재마다 "입고 전 기간 + 다음 입고까지" 수요만 주문하고, 보관기한을 넘는 날의 수요는 다음 발주로 미룹니다.
+          비워 두면 다음날 입고, 7일마다 입고, 보관기한 제한 없음으로 계산합니다.
+        </Typography>
       </Paper>
     </Stack>
   );
