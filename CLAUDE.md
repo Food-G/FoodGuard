@@ -84,6 +84,7 @@ ai-service/
 ├── config.py                    # 환경설정 (.env: DB_URL, KMA_API_KEY)
 ├── backtest.py                  # rolling-origin 백테스트 (모델 vs 베이스라인 3종, wMAPE·MASE)
 ├── simulate_orders.py           # 발주 시뮬레이션 (관행 규칙 vs FoodGuard 발주의 폐기·품절 비교)
+├── compare_models.py            # 모델 비교 실험용 Prophet·LSTM (backtest.py --compare, requirements-experiment.txt, 운영 미사용)
 ├── tests/                       # pytest (requirements-dev.txt)
 ├── ml/
 │   ├── demand_predictor.py      # 전체 매장·메뉴 글로벌 XGBoost (점 추정, 추천량 = 점추정 × safety_factor)

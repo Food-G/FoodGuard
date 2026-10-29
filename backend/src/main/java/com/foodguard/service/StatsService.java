@@ -1,8 +1,10 @@
 package com.foodguard.service;
 
+import com.foodguard.entity.DonationRecord;
 import com.foodguard.entity.OrderRequest;
 import com.foodguard.entity.Store;
 import com.foodguard.entity.WasteRecord;
+import com.foodguard.repository.DonationRecordRepository;
 import com.foodguard.repository.OrderRequestRepository;
 import com.foodguard.repository.SalesDataRepository;
 import com.foodguard.repository.StoreRepository;
@@ -23,11 +25,15 @@ public class StatsService {
     private final WasteRecordRepository wasteRecordRepository;
     private final OrderRequestRepository orderRequestRepository;
     private final StoreRepository storeRepository;
+    private final DonationRecordRepository donationRecordRepository;
 
     @Transactional(readOnly = true)
     public Map<String, Object> hq() {
         List<WasteRecord> wastes = wasteRecordRepository.findAll();
         List<OrderRequest> orders = orderRequestRepository.findAll();
+        // 기부 완료 = 폐기될 뻔한 식자재를 살린 기록
+        List<DonationRecord> donations = donationRecordRepository.findAll().stream()
+                .filter(d -> "COMPLETED".equals(d.getStatus())).toList();
 
         // 월별 매출 + 폐기 기록 건수
         Map<String, long[]> monthly = new TreeMap<>();
@@ -42,18 +48,21 @@ public class StatsService {
         List<Map<String, Object>> monthlyList = new ArrayList<>();
         monthly.forEach((month, v) -> monthlyList.add(Map.of("month", month, "revenue", v[0], "wasteCount", v[1])));
 
-        // 가맹점별 폐기 기록 건수·입고 대비 폐기율
+        // 가맹점별 폐기 기록 건수·입고 대비 폐기율·기부 완료 건수
         Map<Long, List<WasteRecord>> wasteByStore = wastes.stream().collect(Collectors.groupingBy(WasteRecord::getStoreId));
+        Map<Long, Long> donationsByStore = donations.stream().collect(Collectors.groupingBy(DonationRecord::getStoreId, Collectors.counting()));
         Map<Long, List<OrderRequest>> ordersByStore = orders.stream().collect(Collectors.groupingBy(o -> o.getStore().getId()));
         List<Map<String, Object>> stores = new ArrayList<>();
         for (Store s : storeRepository.findAll()) {
             List<WasteRecord> w = wasteByStore.getOrDefault(s.getId(), List.of());
-            if (w.isEmpty()) continue;
+            long donated = donationsByStore.getOrDefault(s.getId(), 0L);
+            if (w.isEmpty() && donated == 0) continue;
             Map<String, Object> item = new LinkedHashMap<>();
             item.put("storeId", s.getId());
             item.put("storeName", s.getStoreName());
             item.put("wasteCount", w.size());
             item.put("wasteRate", wasteRate(w, ordersByStore.getOrDefault(s.getId(), List.of())));
+            item.put("donationCount", donated);
             stores.add(item);
         }
 
@@ -61,6 +70,7 @@ public class StatsService {
         result.put("monthly", monthlyList);
         result.put("stores", stores);
         result.put("recommendation", recommendationStats(orders));
+        result.put("donationCount", donations.size());
         return result;
     }
 

@@ -1,0 +1,6 @@
+# Model comparison experiment only (backtest.py --compare). Not for the service or CI.
+-r requirements-dev.txt
+prophet==1.1.6
+torch==2.5.1
+# prophet 1.1.6's bundled cmdstan fails validation with cmdstanpy>=1.2.5 (missing makefile)
+cmdstanpy==1.2.4

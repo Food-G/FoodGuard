@@ -2,7 +2,8 @@ import { api } from './api';
 
 export interface HqStats {
   monthly: { month: string; revenue: number; wasteCount: number }[];
-  stores: { storeId: number; storeName: string; wasteCount: number; wasteRate: number | null }[];
+  stores: { storeId: number; storeName: string; wasteCount: number; wasteRate: number | null; donationCount: number }[];
+  donationCount: number;
   recommendation: {
     totalOrders: number;
     autoOrders: number;

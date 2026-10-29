@@ -56,12 +56,15 @@ const Stats = () => {
     ]
   };
 
+  const wasteStores = stats.stores.filter((s) => s.wasteCount > 0);
+
   const storeWasteOption = {
     tooltip: {
       trigger: 'item',
       formatter: (p: any) => {
-        const s = stats.stores[p.dataIndex];
-        return `${s.storeName}<br/>폐기 기록 ${s.wasteCount}건` + (s.wasteRate != null ? `<br/>입고 대비 폐기율 ${s.wasteRate}%` : '');
+        const s = wasteStores[p.dataIndex];
+        return `${s.storeName}<br/>폐기 기록 ${s.wasteCount}건` + (s.wasteRate != null ? `<br/>입고 대비 폐기율 ${s.wasteRate}%` : '')
+          + (s.donationCount > 0 ? `<br/>기부 완료 ${s.donationCount}건` : '');
       },
     },
     series: [
@@ -72,7 +75,7 @@ const Stats = () => {
         avoidLabelOverlap: false,
         itemStyle: { borderRadius: 10, borderColor: '#fff', borderWidth: 2 },
         label: { show: false },
-        data: stats.stores.map((s, i) => ({
+        data: wasteStores.map((s, i) => ({
           value: s.wasteCount,
           name: s.storeName,
           itemStyle: { color: PIE_COLORS[i % PIE_COLORS.length] },
@@ -95,7 +98,7 @@ const Stats = () => {
         <Grid item xs={12} lg={4}>
           <Paper sx={{ p: 4, height: 450, border: `1px solid ${theme.palette.divider}`, borderRadius: 5, bgcolor: 'background.paper' }}>
             <Typography variant="h6" fontWeight={700} mb={3}>가맹점별 폐기 기록 비중</Typography>
-            {stats.stores.length > 0
+            {wasteStores.length > 0
               ? <ReactEChart option={storeWasteOption} echarts={echarts} sx={{ height: 350 }} />
               : <Typography color="text.secondary">아직 폐기 기록이 없습니다. 재고 화면의 "폐기" 버튼으로 기록됩니다.</Typography>}
           </Paper>
@@ -119,7 +122,11 @@ const Stats = () => {
                     </>
                   )}
                 </Typography>
-             </Stack>          </Paper>
+             </Stack>
+             <Typography variant="body2" color="primary.dark" mt={1}>
+               💚 기부 완료 {stats.donationCount}건 — 폐기될 뻔한 식자재를 이웃에게 전달했습니다.
+             </Typography>
+          </Paper>
         </Grid>
       </Grid>
     </Stack>

@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -44,7 +45,34 @@ public class DonationService {
             record.setUnit((String) body.get("unit"));
         }
 
+        // 재고에서 이미 기부 예정으로 잡힌 양을 뺀 만큼만 기부할 수 있다 (같은 재고 중복 등록 방지)
+        if (record.getIngredientId() != null && record.getQuantity() != null) {
+            double qty = record.getQuantity().doubleValue();
+            if (qty <= 0) {
+                throw new RuntimeException("기부 수량은 0보다 커야 합니다.");
+            }
+            Inventory inv = inventoryRepository.findByStoreIdAndIngredientId(storeId, record.getIngredientId())
+                    .orElseThrow(() -> new RuntimeException("재고에 없는 식자재입니다."));
+            double planned = plannedByIngredient(donationRecordRepository.findByStoreIdAndStatus(storeId, "PLANNED"))
+                    .getOrDefault(record.getIngredientId(), 0.0);
+            double available = inv.getCurrentQty().doubleValue() - planned;
+            if (qty > available + 1e-9) {
+                throw new RuntimeException("기부 가능 수량(" + Math.max(0, Math.round(available * 10) / 10.0) + ")을 넘었습니다.");
+            }
+        }
+
         return donationRecordRepository.save(record);
+    }
+
+    // 식자재별 기부 예정(PLANNED) 수량 합계
+    static Map<Long, Double> plannedByIngredient(List<DonationRecord> planned) {
+        Map<Long, Double> sums = new HashMap<>();
+        for (DonationRecord d : planned) {
+            if (d.getIngredientId() != null && d.getQuantity() != null) {
+                sums.merge(d.getIngredientId(), d.getQuantity().doubleValue(), Double::sum);
+            }
+        }
+        return sums;
     }
 
     @Transactional

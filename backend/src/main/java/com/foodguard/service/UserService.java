@@ -60,4 +60,32 @@ public class UserService {
         // 로그인 성공 → JWT 토큰 발급
         return jwtUtil.generateToken(user.getEmail(), user.getRole(), user.getId());
     }
+
+    public User getByEmail(String email) {
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("유저를 찾을 수 없습니다."));
+    }
+
+    // 프로필 이름 수정
+    public User updateUserName(String email, String userName) {
+        if (userName == null || userName.isBlank()) {
+            throw new RuntimeException("이름을 입력해주세요.");
+        }
+        User user = getByEmail(email);
+        user.setUserName(userName.trim());
+        return userRepository.save(user);
+    }
+
+    // 비밀번호 변경 (프론트와 같은 규칙: 6자 이상)
+    public void changePassword(String email, String oldPassword, String newPassword) {
+        User user = getByEmail(email);
+        if (!passwordEncoder.matches(oldPassword, user.getPassword())) {
+            throw new RuntimeException("현재 비밀번호가 맞지 않습니다.");
+        }
+        if (newPassword == null || newPassword.length() < 6) {
+            throw new RuntimeException("비밀번호는 6자 이상이어야 합니다.");
+        }
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+    }
 }

@@ -17,6 +17,7 @@
 | `5148f74` | P1-2: 식자재 단위 conformal 안전재고 (`ml/calibration.py`) | 10절 P1-2 |
 | `c8496e8` | P1-3: 보관기한·리드타임·발주 주기를 반영한 식자재별 발주 기간 | 10절 P1-3 |
 | `865af64` | GitHub Actions CI (pytest · compileJava · tsc) | `.github/workflows/ci.yml` |
+| (2026-10-29) | 모델 비교 실험(Prophet·LSTM, `backtest.py --compare`), 기부 수량 검사·폐기 예측 반영, 프로필 API 복구, 본사 발주 관리·가게 등록 메뉴 연결 | PROJECT_STATUS 12절 |
 | (2026-10-29) | 부분 입력일 제외, 발주 시뮬레이션(`simulate_orders.py`), 본사 통계 실데이터(`/api/stats/hq`), 주간 매출 API 복구, CI 백엔드 단위 테스트 | PROJECT_STATUS 11절 |
 
 **공유 TiDB 반영 상태** (백엔드 `ddl-auto=update` 가 엔티티대로 바꾼다)
@@ -27,6 +28,8 @@
 
 1. **P1-3 실제 확인**: 백엔드를 띄우면 `INGREDIENT`에 컬럼 3개가 추가된다(공유 DB라 팀에 알리고 실행). 식자재 관리 화면 수정 행에서 보관기한·입고·주기를 넣고 저장되는지, `GET /api/orders/recommend/{storeId}` 결과가 기간만큼 줄어드는지 확인한다. 테스트로 바꾼 값은 되돌린다
    - 같이 확인: 본사 통계 페이지(`/api/stats/hq`)와 대시보드 주간 매출이 뜨는지 (11절, 백엔드를 띄워야 확인 가능)
+   - 같이 확인 (12절): 기부 등록 수량 제한·폐기 예측 반영, 프로필 이름·비밀번호 변경, 본사 "발주 관리" 메뉴, 점주 "가게 등록" 화면
+   - 이 PC 에는 `backend/.env` 가 없어 bootRun 을 못 했다 (2026-10-29)
 2. ~~발주 시뮬레이션~~ 완료 (11절). **결론을 바꿀 결정이 남아 있다**: 짧은 발주 주기에서는 여유를 둔 관행 규칙이 비용상 낫다. 목표 분위수 0.6(`COST_RATIO`)이 재고 이월을 고려하지 않기 때문. 팀에서 원가 가정을 정하면 `simulate_orders.py --db` 로 다시 비교
 3. ~~데이터 품질(부분 입력일)~~ 완료 (11절)
 4. **결과보고서 정합성** (분석 문서 체크리스트)
@@ -72,10 +75,11 @@
 | 확인 | 명령 (위치) | 기대값 |
 |---|---|---|
 | AI 단위 테스트 | `python -m pytest tests` (ai-service) | 24 passed |
-| 백엔드 단위 테스트 | `gradlew.bat test --tests "com.foodguard.service.*"` (backend) | BUILD SUCCESSFUL (3개) |
+| 백엔드 단위 테스트 | `gradlew.bat test --tests "com.foodguard.service.*"` (backend) | BUILD SUCCESSFUL (7개) |
 | 프론트 타입체크 | `npx tsc --noEmit` (frontend) | 오류 0 |
 | DB 백테스트 | `python backtest.py --db --step 7` (ai-service) | 1,765 평가일, 글로벌 모델 wMAPE **9.2%** / MASE **0.902**, 요일 평균(4주) 9.9% / 0.952, 식자재 7일 커버리지 **55.4%** (평균 잉여율 4.3%, 부족률 3.0%) |
 | 합성 백테스트 | `python backtest.py --synthetic` (ai-service) | 글로벌 모델 14.8% / 0.817 |
+| DB 모델 비교 | `python backtest.py --db --step 7 --compare` (ai-service, 약 15분, requirements-experiment.txt) | XGBoost 9.2% / 0.902, Prophet 9.7% / 0.965, LSTM 12.6% / 1.490 |
 | DB 발주 시뮬레이션 | `python simulate_orders.py --db` (ai-service, 약 5분) | 주 1회 시나리오 FoodGuard 폐기율 4.7% / 품절률 11.0% / 비용 21.2 |
 
 출력에 한글이 깨지면 `PYTHONIOENCODING=utf-8` 을 설정한다.

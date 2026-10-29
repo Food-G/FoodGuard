@@ -39,13 +39,20 @@ const WastePrediction = ({ user }: any) => {
     description: '',
   });
 
-  useEffect(() => {
-    if (!storeId) { if (!storeLoading) setLoading(false); return; }
-    wastePredictionService.predict(storeId)
+  const load = (sid: number) =>
+    wastePredictionService.predict(sid)
       .then((data: any[]) => setRows((data ?? []).map((item: any, idx: number) => ({ ...item, id: item.inventoryId ?? idx }))))
       .catch(() => setError('폐기 예측 데이터를 불러오지 못했습니다.'))
       .finally(() => setLoading(false));
+
+  useEffect(() => {
+    if (!storeId) { if (!storeLoading) setLoading(false); return; }
+    load(storeId);
   }, [storeId, storeLoading]);
+
+  // 기부 수량 기본값 = 폐기 예측량, 상한 = 재고 - 이미 기부 예정인 양
+  const donationQty = donationForm.quantity ? Number(donationForm.quantity) : donationTarget?.wastePrediction;
+  const donationQtyInvalid = donationTarget != null && (!(donationQty > 0) || donationQty > donationTarget.donatableQty);
 
   const handleDonate = async () => {
     if (!storeId || !donationTarget) return;
@@ -54,14 +61,15 @@ const WastePrediction = ({ user }: any) => {
         ...donationForm,
         ingredientId: donationTarget.ingredientId,
         ingredientName: donationTarget.ingredientName,
-        quantity: donationForm.quantity ? Number(donationForm.quantity) : donationTarget.wastePrediction,
+        quantity: donationQty,
         unit: donationTarget.unit,
       });
       setSuccess(`${donationTarget.ingredientName} 기부 등록이 완료되었습니다.`);
       setDonationTarget(null);
       setDonationForm({ donationType: 'INGREDIENT', orgName: '', orgType: 'FOOD_BANK', orgContact: '', quantity: '', description: '' });
-    } catch {
-      setError('기부 등록에 실패했습니다.');
+      load(storeId);
+    } catch (e: any) {
+      try { setError(JSON.parse(e.message).error); } catch { setError('기부 등록에 실패했습니다.'); }
     }
   };
 
@@ -90,6 +98,12 @@ const WastePrediction = ({ user }: any) => {
     {
       field: 'expectedConsumption', headerName: '소비 예상', width: 110, align: 'right', headerAlign: 'right',
       renderCell: (p) => <Typography fontSize={13}>{p.value} <span style={{ color: '#999' }}>{p.row.unit}</span></Typography>,
+    },
+    {
+      field: 'plannedDonation', headerName: '기부 예정', width: 100, align: 'right', headerAlign: 'right',
+      renderCell: (p) => p.value > 0
+        ? <Typography fontSize={13} color="secondary.main">{p.value} <span style={{ color: '#999' }}>{p.row.unit}</span></Typography>
+        : '-',
     },
     {
       field: 'wastePrediction', headerName: '폐기 예측량', width: 120, align: 'right', headerAlign: 'right',
@@ -194,7 +208,7 @@ const WastePrediction = ({ user }: any) => {
         <DialogContent>
           <Stack gap={2} pt={1}>
             <Alert severity="info" sx={{ py: 0.5 }}>
-              예측 폐기량: <strong>{donationTarget?.wastePrediction} {donationTarget?.unit}</strong>
+              예측 폐기량(기부 예정 제외): <strong>{donationTarget?.wastePrediction} {donationTarget?.unit}</strong>
               (유통기한: {donationTarget?.expiryDate}, D-{donationTarget?.daysUntilExpiry})
             </Alert>
             <TextField select label="기부 유형" value={donationForm.donationType}
@@ -215,6 +229,8 @@ const WastePrediction = ({ user }: any) => {
               placeholder={`${donationTarget?.wastePrediction}`}
               onChange={(e) => setDonationForm(f => ({ ...f, quantity: e.target.value }))}
               size="small" fullWidth type="number"
+              error={donationQtyInvalid}
+              helperText={`기부 가능 수량: ${donationTarget?.donatableQty ?? 0} ${donationTarget?.unit ?? ''} (재고 - 이미 기부 예정인 양)`}
             />
             <TextField label="메모 (선택)" value={donationForm.description}
               onChange={(e) => setDonationForm(f => ({ ...f, description: e.target.value }))}
@@ -224,7 +240,7 @@ const WastePrediction = ({ user }: any) => {
         <DialogActions>
           <Button onClick={() => setDonationTarget(null)}>취소</Button>
           <Button variant="contained" color="secondary" onClick={handleDonate}
-            disabled={!donationForm.orgName}
+            disabled={!donationForm.orgName || donationQtyInvalid}
             startIcon={<IconifyIcon icon="mingcute:heart-fill" width={14} />}>
             기부 등록
           </Button>

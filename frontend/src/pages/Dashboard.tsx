@@ -89,6 +89,7 @@ const OWNER_TILES: TileProps[] = [
 ];
 
 const ADMIN_TILES: TileProps[] = [
+  { title: '발주 관리',   icon: 'mingcute:truck-line',         color: '#1976d2', path: '/admin/orders' },
   { title: '가맹점 관리', icon: 'mingcute:grid-fill',         color: '#388e3c', path: '/admin/stores' },
   { title: '통계 분석',   icon: 'mingcute:chart-bar-fill',    color: '#7b1fa2', path: '/admin/stats' },
 ];

@@ -4,6 +4,7 @@ rolling-origin 백테스트 — 글로벌 DemandPredictor와 베이스라인 4�
     python backtest.py --synthetic            # 합성 데이터 (DB 불필요)
     python backtest.py --db [--store 60005]   # SALES_DATA 실데이터 (읽기 전용)
     python backtest.py --db --cold-start      # 신메뉴(이력 1·3·5일) 예측 비교
+    python backtest.py --db --compare         # Prophet·LSTM 비교 실험 추가 (requirements-experiment.txt)
 
 각 예측 시점(origin)마다 그날까지의 이력만으로 학습하고 다음 7일을 예측해 실제 판매량과 비교한다.
 글로벌 모델은 시점마다 그날까지의 전체 매장×메뉴 이력으로 한 번 학습해 그 시점의 메뉴들을 예측한다
@@ -130,7 +131,10 @@ def run(
     step: int,
     store: int | None = None,
     recipes: dict[int, list[tuple[int, float]]] | None = None,
+    compare: bool = False,
 ) -> None:
+    if compare:
+        from compare_models import LSTMForecaster, prophet_forecast
     series = {k: df.sort_values("ds").reset_index(drop=True) for k, df in series.items()}
     plan: dict[date, list[tuple[SeriesKey, int]]] = defaultdict(list)  # origin -> [(시계열, origin 행 위치)]
     scales: dict[SeriesKey, float] = {}
@@ -157,6 +161,8 @@ def run(
         past = {k: df for k, df in past.items() if len(df) > 0}
         model = DemandPredictor().fit(past)
         totals = store_totals(past)
+        if compare:
+            lstm = LSTMForecaster().fit(past, origin)
 
         # 운영과 같이 이전 주간 구간들의 식자재 비율로 보정 비율을 정하고 모델에 넣는다
         q = conformal_quantile(
@@ -186,6 +192,9 @@ def run(
             preds = baselines(df.iloc[: i + 1], targets, totals[key[0]])
             out = {p["date"]: p for p in model.predict(*key, days=HORIZON, start_date=origin)}
             preds[MODEL] = {t: out[t]["predicted_qty"] for t in targets}
+            if compare:
+                preds["Prophet (메뉴별)"] = prophet_forecast(df.iloc[: i + 1], targets)
+                preds["LSTM (글로벌)"] = lstm.predict(key, targets)
             for t in targets:
                 for method, p in preds.items():
                     records.append((method, key, (t - origin).days, actual[t], p[t]))
@@ -273,17 +282,18 @@ def main() -> None:
     src.add_argument("--db", action="store_true", help="DB SALES_DATA 의 모든 매장x메뉴")
     parser.add_argument("--store", type=int, help="--db 와 함께: 이 매장 메뉴만 평가 (학습은 전체)")
     parser.add_argument("--cold-start", action="store_true", help="--db 와 함께: 신메뉴(이력 1·3·5일) 예측 비교")
+    parser.add_argument("--compare", action="store_true", help="Prophet·LSTM 비교 실험 추가 (requirements-experiment.txt 필요)")
     parser.add_argument("--min-train", type=int, help="첫 예측 시점까지의 최소 학습 일수 (기본: 합성 90, DB 28)")
     parser.add_argument("--step", type=int, default=2, help="예측 시점 간격(일 단위 행 수, 기본 2)")
     args = parser.parse_args()
 
     if args.synthetic:
-        run({(0, 0): synthetic_series()}, args.min_train or 90, args.step)
+        run({(0, 0): synthetic_series()}, args.min_train or 90, args.step, compare=args.compare)
     elif args.cold_start:
         run_cold_start(db_series()[0])
     else:
         series, recipes = db_series()
-        run(series, args.min_train or 28, args.step, store=args.store, recipes=recipes)
+        run(series, args.min_train or 28, args.step, store=args.store, recipes=recipes, compare=args.compare)
 
 
 if __name__ == "__main__":
