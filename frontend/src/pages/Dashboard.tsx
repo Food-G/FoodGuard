@@ -86,6 +86,7 @@ const OWNER_TILES: TileProps[] = [
   { title: '판매 입력',        icon: 'mingcute:chart-line-line',   color: '#00897b', path: '/sales' },
   { title: '폐기예측 & 기부',  icon: 'mingcute:heart-fill',        color: '#c62828', path: '/waste-prediction' },
   { title: '기부 이력',        icon: 'mingcute:history-line',      color: '#6a1b9a', path: '/donations' },
+  { title: '가게 등록',        icon: 'mingcute:store-2-line',      color: '#5d4037', path: '/store' },
 ];
 
 const ADMIN_TILES: TileProps[] = [

@@ -124,7 +124,9 @@ const Stats = () => {
                 </Typography>
              </Stack>
              <Typography variant="body2" color="primary.dark" mt={1}>
-               💚 기부 완료 {stats.donationCount}건 — 폐기될 뻔한 식자재를 이웃에게 전달했습니다.
+               {stats.donationCount > 0
+                 ? <>💚 기부 완료 {stats.donationCount}건 — 폐기될 뻔한 식자재를 이웃에게 전달했습니다.</>
+                 : '💚 아직 기부 완료 기록이 없습니다. 폐기 예측 화면에서 기부를 등록할 수 있습니다.'}
              </Typography>
           </Paper>
         </Grid>

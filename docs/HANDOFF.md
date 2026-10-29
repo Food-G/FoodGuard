@@ -22,14 +22,15 @@
 
 **공유 TiDB 반영 상태** (백엔드 `ddl-auto=update` 가 엔티티대로 바꾼다)
 - 반영됨: `SALES_DAY_FLAG`, `WASTE_RECORD`(예전 테이블이 남아 있어 수량 컬럼명이 `waste_qty`), `ORDER_REQUEST.recommended_qty·order_source`
-- **아직 안 됨**: `INGREDIENT.shelf_life_days·lead_time_days·order_cycle_days` — 다음에 누가 새 코드로 bootRun 하면 추가된다
+- 반영됨 (2026-10-29 bootRun): `INGREDIENT.shelf_life_days·lead_time_days·order_cycle_days`. 값은 아직 비어 있다
 
 ## 2. 남은 작업 (권장 순서)
 
 1. **P1-3 실제 확인**: 백엔드를 띄우면 `INGREDIENT`에 컬럼 3개가 추가된다(공유 DB라 팀에 알리고 실행). 식자재 관리 화면 수정 행에서 보관기한·입고·주기를 넣고 저장되는지, `GET /api/orders/recommend/{storeId}` 결과가 기간만큼 줄어드는지 확인한다. 테스트로 바꾼 값은 되돌린다
    - 같이 확인: 본사 통계 페이지(`/api/stats/hq`)와 대시보드 주간 매출이 뜨는지 (11절, 백엔드를 띄워야 확인 가능)
    - 같이 확인 (12절): 기부 등록 수량 제한·폐기 예측 반영, 프로필 이름·비밀번호 변경, 본사 "발주 관리" 메뉴, 점주 "가게 등록" 화면
-   - 이 PC 에는 `backend/.env` 가 없어 bootRun 을 못 했다 (2026-10-29)
+   - 2026-10-29 bootRun 으로 확인함 (PROJECT_STATUS 12절). 기부 등록 한도는 유통기한 있는 재고가 없어 화면에서 못 봤고 단위 테스트로만 확인
+   - 이 PC 의 `backend/.env` 는 2026-10-29 새로 만들었고 JWT 시크릿을 새로 생성했다. DB 비밀번호를 바꿨다면 다른 PC 의 `backend/.env`·`ai-service/.env` 도 갱신해야 한다
 2. ~~발주 시뮬레이션~~ 완료 (11절). **결론을 바꿀 결정이 남아 있다**: 짧은 발주 주기에서는 여유를 둔 관행 규칙이 비용상 낫다. 목표 분위수 0.6(`COST_RATIO`)이 재고 이월을 고려하지 않기 때문. 팀에서 원가 가정을 정하면 `simulate_orders.py --db` 로 다시 비교
 3. ~~데이터 품질(부분 입력일)~~ 완료 (11절)
 4. **결과보고서 정합성** (분석 문서 체크리스트)

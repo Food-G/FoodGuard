@@ -319,6 +319,8 @@ DB (49개 메뉴, 258개 시점, 1,765 평가일 — 11절과 같은 평가셋):
 
 - **기부**: 기부 예정(PLANNED) 수량을 폐기 예측량에서 빼고(`WastePredictionService`), 등록 수량은 `재고 − 이미 기부 예정인 양` 이하만 허용한다(`DonationService`, 화면에도 기부 가능 수량 표시). 전에는 같은 재고를 여러 번 기부로 등록할 수 있었다. 본사 통계에 기부 완료 건수 추가. 검증: `DonationServiceTest`
 - **프로필 이름 수정·비밀번호 변경**: 프론트(`UserDropdown.tsx`)가 부르는 `/api/users/me`(GET·PUT), `/api/users/me/password`(PUT)가 커밋 `aafa11b` 에서 `UserController` 와 함께 지워져 동작하지 않았다. 세 개만 복구했고, 예전에 있던 전체 유저 조회(비밀번호 해시까지 응답)와 계정 삭제는 쓰는 곳이 없어 되살리지 않았다. 검증: `UserServiceTest`
-- **본사 발주 관리 진입점**: `/admin/orders`(발주 승인·발송·QR)로 가는 메뉴가 없었다. 타일 홈과 사이드바에 "발주 관리"를 넣고, 없는 라우트를 가리키던 사이드바 "통합 관리 센터"(`/admin`)는 타일 홈(`/`)으로 연결
-- **가게 등록**: 사이드바 "가게 등록"(`/store`)의 라우트가 커밋 `61f0aa7` 에서 빠져 홈으로 튕겼다. `StoreRegister` 라우트 복구
-- 남은 정리 대상 (쓰는 곳 없음, 지우지 않음): `pages/admin/AdminDashboard.tsx`, `pages/Profile.tsx`, `pages/SalesStats.tsx` (라우트 없음), `salesService.getTodaySummary·getWeeklySummary` (백엔드 API 없음)
+- **본사 발주 관리 진입점**: `/admin/orders`(발주 승인·발송·QR)로 가는 메뉴가 없었다. 본사 타일 홈에 "발주 관리" 타일 추가
+- **가게 등록**: `/store` 라우트가 커밋 `61f0aa7` 에서 빠져 `StoreRegister` 화면에 갈 수 없었다. 라우트 복구 + 점주 타일 홈에 "가게 등록" 타일 추가
+- 사이드바(`layouts/main-layout/Sidebar`)는 `61f0aa7` 부터 레이아웃에서 그려지지 않는다 (이동은 타일 홈과 상단 로고). 사이드바 메뉴 목록도 맞춰 고쳤지만 화면에는 보이지 않는다
+- 브라우저 확인 (2026-10-29, 검증용 계정): 본사 타일 → 발주 관리(진행 중 48건 실데이터), 통계 페이지 월별 매출 차트, 프로필 API·비밀번호 변경
+- 남은 정리 대상 (쓰는 곳 없음, 지우지 않음): `layouts/main-layout/Sidebar`, `pages/admin/AdminDashboard.tsx`, `pages/Profile.tsx`, `pages/SalesStats.tsx` (라우트 없음), `salesService.getTodaySummary·getWeeklySummary` (백엔드 API 없음)
