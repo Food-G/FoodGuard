@@ -83,6 +83,7 @@ ai-service/
 ├── main.py                      # FastAPI 진입점
 ├── config.py                    # 환경설정 (.env: DB_URL, KMA_API_KEY)
 ├── backtest.py                  # rolling-origin 백테스트 (모델 vs 베이스라인 3종, wMAPE·MASE)
+├── simulate_orders.py           # 발주 시뮬레이션 (관행 규칙 vs FoodGuard 발주의 폐기·품절 비교)
 ├── tests/                       # pytest (requirements-dev.txt)
 ├── ml/
 │   ├── demand_predictor.py      # 전체 매장·메뉴 글로벌 XGBoost (점 추정, 추천량 = 점추정 × safety_factor)
@@ -101,7 +102,7 @@ ai-service/
 ```
 POST /api/predict/store/{id}
   → 기상청 단기예보(1~3일) + 중기예보(4~7일) 조회
-  → SALES_DATA에서 전체 매장×메뉴 판매 이력 조회 → 매장 영업일 달력으로 정렬 (판매 없는 영업일 0, 휴무·미입력일 제외, 품절일 표시)
+  → SALES_DATA에서 전체 매장×메뉴 판매 이력 조회 → 매장 영업일 달력으로 정렬 (판매 없는 영업일 0, 휴무·미입력일·부분 입력일 제외, 품절일 표시)
   → Open-Meteo로 매장별 과거 날씨 조회 (학습용)
   → 글로벌 XGBoost 점 추정 모델 1회 학습 + 최근 4주 재학습으로 식자재 단위 안전재고 비율 보정 → 이 매장 메뉴별 7일 예측
   → PREDICTION_RESULT 테이블 저장 (predicted_qty + recommended_order_qty)
@@ -125,6 +126,9 @@ lag 피처(`lag_7`, `lag_14`)는 행 위치가 아니라 **달력 기준 같은 
 
 ### 성능 검증 (백테스트)
 `ai-service`에서 `python backtest.py --synthetic` 또는 `python backtest.py --db --step 7`. 모델 변경 시 계절 나이브·요일 평균(4주)·이동평균(7일) 대비 wMAPE·MASE와 추천 발주량 커버리지(목표 60%)를 함께 확인한다.
+발주 방법을 바꾸면 `python simulate_orders.py --db`(약 5분)로 폐기율·품절률·비용 지수를 관행 규칙과 비교한다 (PROJECT_STATUS 11절).
+
+부분 입력일: 매장 전체 판매량이 직전 28영업일 중앙값의 40% 미만인 날은 수요가 아니라 입력 누락으로 보고 휴무처럼 뺀다 (`data_service.partial_entry_dates`).
 
 신뢰도(confidence)는 R² 대신 **wMAPE** 기반: `clip(100 - wMAPE, 15, 95)`. 예측일이 멀수록 하루당 1.5% 감소 (최소 15%).
 

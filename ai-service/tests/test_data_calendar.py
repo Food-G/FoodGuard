@@ -4,7 +4,7 @@ from datetime import date, timedelta
 
 import pandas as pd
 
-from services.data_service import build_daily_calendar
+from services.data_service import build_daily_calendar, partial_entry_dates
 
 D = [date(2026, 5, 1) + timedelta(days=i) for i in range(10)]
 
@@ -28,6 +28,15 @@ def test_registered_closure_and_sold_out_flags():
 
     assert list(cal["ds"]) == [D[0], D[1], D[2]]
     assert list(cal["sold_out"]) == [0, 1, 0]
+
+
+def test_partial_entry_day_is_judged_against_prior_median():
+    days = [date(2026, 5, 1) + timedelta(days=i) for i in range(12)]
+    # 평소 100개 안팎, 9번째 날만 13개 (부분 입력). 첫 7일은 비교할 이력이 부족해 판단하지 않는다
+    totals = pd.Series([5, 100, 90, 110, 100, 95, 105, 100, 13, 60, 100, 100], index=days, dtype=float)
+
+    # 60 은 중앙값 100 의 40% 이상이라 정상, 첫날 5 는 이력이 없어 판단하지 않음
+    assert partial_entry_dates(totals) == {days[8]}
 
 
 def test_no_sales_returns_empty_frame():

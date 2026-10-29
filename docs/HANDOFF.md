@@ -17,6 +17,7 @@
 | `5148f74` | P1-2: 식자재 단위 conformal 안전재고 (`ml/calibration.py`) | 10절 P1-2 |
 | `c8496e8` | P1-3: 보관기한·리드타임·발주 주기를 반영한 식자재별 발주 기간 | 10절 P1-3 |
 | `865af64` | GitHub Actions CI (pytest · compileJava · tsc) | `.github/workflows/ci.yml` |
+| (2026-10-29) | 부분 입력일 제외, 발주 시뮬레이션(`simulate_orders.py`), 본사 통계 실데이터(`/api/stats/hq`), 주간 매출 API 복구, CI 백엔드 단위 테스트 | PROJECT_STATUS 11절 |
 
 **공유 TiDB 반영 상태** (백엔드 `ddl-auto=update` 가 엔티티대로 바꾼다)
 - 반영됨: `SALES_DAY_FLAG`, `WASTE_RECORD`(예전 테이블이 남아 있어 수량 컬럼명이 `waste_qty`), `ORDER_REQUEST.recommended_qty·order_source`
@@ -25,16 +26,18 @@
 ## 2. 남은 작업 (권장 순서)
 
 1. **P1-3 실제 확인**: 백엔드를 띄우면 `INGREDIENT`에 컬럼 3개가 추가된다(공유 DB라 팀에 알리고 실행). 식자재 관리 화면 수정 행에서 보관기한·입고·주기를 넣고 저장되는지, `GET /api/orders/recommend/{storeId}` 결과가 기간만큼 줄어드는지 확인한다. 테스트로 바꾼 값은 되돌린다
-2. **발주 시뮬레이션 (P2)**: 같은 수요 이력을 "지난주 판매량 × 여유율" 같은 관행 규칙과 FoodGuard 발주에 각각 흘려 폐기량·품절량(비용)을 비교한다 (Huber et al. 2019 의 평가 설계). 계획서의 "폐기율 15~20% 절감"을 보일 유일한 근거다. 보관기한·리드타임 규칙을 반영하고, 백테스트처럼 스크립트 한 번으로 재현되게 만든다
-3. **데이터 품질**: 매장 전체 판매량이 평소의 40% 미만인 부분 입력일(예: 60005 의 06-05, 13개)이 7일차 오차를 키운다. 휴무처럼 학습·평가에서 빼는 방법이 필요하다 (PROJECT_STATUS 10절 "7일차 오차 튐")
+   - 같이 확인: 본사 통계 페이지(`/api/stats/hq`)와 대시보드 주간 매출이 뜨는지 (11절, 백엔드를 띄워야 확인 가능)
+2. ~~발주 시뮬레이션~~ 완료 (11절). **결론을 바꿀 결정이 남아 있다**: 짧은 발주 주기에서는 여유를 둔 관행 규칙이 비용상 낫다. 목표 분위수 0.6(`COST_RATIO`)이 재고 이월을 고려하지 않기 때문. 팀에서 원가 가정을 정하면 `simulate_orders.py --db` 로 다시 비교
+3. ~~데이터 품질(부분 입력일)~~ 완료 (11절)
 4. **결과보고서 정합성** (분석 문서 체크리스트)
-   - 본사 통계 페이지 `frontend/src/pages/admin/Stats.tsx` 의 하드코딩 값("폐기율 12.5% 감소·소나무 124그루") → 실데이터(`WASTE_RECORD`)로 바꾸거나 "예시 화면" 표시
+   - ~~본사 통계 페이지 하드코딩~~ 완료 (11절)
+   - 폐기율 절감 문장: 11절 "해석"을 따를 것. 폐기량만 떼어 "52% 절감"이라 쓰면 품절 증가를 숨기는 것이다
    - 시스템 구성도: AWS EC2·MySQL·LSTM·Prophet → TiDB Cloud·FastAPI·XGBoost 글로벌 모델로, 바꾼 이유(데이터량 대비 모델 복잡도, M5·Montero-Manso & Hyndman) 한 문단
    - "요일별 더미 데이터 생성 엔진": 저장소에 스크립트가 없다. 커밋하거나, 성능 수치가 데모 데이터에서 나왔다고 명시
-   - "GitHub Actions CI/CD 적용": 워크플로는 생겼다. GitHub 에서 실제로 초록불인지 확인 (배포 단계는 없음)
-   - 보고서 수치는 PROJECT_STATUS 10절 표를 쓰고 측정 조건(데이터·기간·베이스라인)을 함께 적는다
-5. **추천 적용률·점주 수정 분석 (P2)**: `ORDER_REQUEST.recommended_qty·order_source` 로 자동 발주 유지율, 수동 발주의 추천 대비 수정량을 집계 (Fildes et al. 2009, Kesavan & Kushwaha 2020)
-6. 작은 일: CI backend job 이 `compileJava` 만 돌린다. DB 없는 단위 테스트(`OrderRequestServiceRecommendTest`)는 CI 에서 돌릴 수 있다
+   - "GitHub Actions CI/CD 적용": 워크플로는 생겼다. GitHub 에서 실제로 초록불인지 확인 (배포 단계는 없음). 2026-10-29 에 공개 API 로 보려 했더니 Not Found — 저장소가 비공개로 바뀐 것으로 보인다. 로그인한 사람이 Actions 탭에서 확인
+   - 보고서 수치는 PROJECT_STATUS 11절 표(최신 평가셋)를 쓰고 측정 조건(데이터·기간·베이스라인)을 함께 적는다
+5. **추천 적용률·점주 수정 분석 (P2)**: 집계는 `/api/stats/hq` 와 본사 통계 화면에 넣었다 (11절). 남은 것은 실제 발주 기록이 쌓인 뒤 수정의 손익 분석 (Fildes et al. 2009, Kesavan & Kushwaha 2020)
+6. ~~CI 백엔드 단위 테스트~~ 완료: `gradlew test --tests 'com.foodguard.service.*'` (contextLoads 제외)
 
 **직접(사람이) 해야 할 일**: TiDB 비밀번호·JWT 시크릿 교체 (예전 값이 공개 저장소 git 히스토리에 있음), TiDB 접속 허용 IP 를 팀원 IP 로 제한
 
@@ -48,7 +51,8 @@
 
 - 모델: 메뉴별 로컬 모델이 아니라 전체 매장×메뉴 **글로벌 XGBoost 1개**, L1 손실, scale = 메뉴 규모 × 매장 요일 비율
 - lag 는 달력 기준 같은 요일(`weekday_lag`), `lag_1` 은 쓰지 않음 (7일 앞을 한 모델로 예측)
-- 판매 이력: 매장에 판매가 1건이라도 있는 날 = 영업일. 영업일에 메뉴 판매가 없으면 0, 매장 전체 판매가 없는 날은 행 제외
+- 판매 이력: 매장에 판매가 1건이라도 있는 날 = 영업일. 영업일에 메뉴 판매가 없으면 0, 매장 전체 판매가 없는 날은 행 제외. 매장 전체 판매가 직전 28영업일 중앙값의 40% 미만인 부분 입력일도 행 제외
+- 책임 기간별(k일) conformal 보정은 실험했으나 효과가 없어 넣지 않음 (PROJECT_STATUS 11절)
 - 안전재고: 메뉴·일자 분위수를 더하지 않고 **식자재 7일 사용량 기준으로 0.6 분위수를 한 번만** (`safety_factor`, 전 매장·식자재 공통, 최근 4주 재학습)
 - 백테스트에는 날씨를 넣지 않음 (과거 실측 날씨를 예보 대신 쓰면 성능이 부풀려짐)
 - 발주 기간: 식자재마다 `리드타임 − 1 + min(발주 주기, 보관기한)`일, 값이 비면 7일치 (기존과 같음)
@@ -67,11 +71,14 @@
 
 | 확인 | 명령 (위치) | 기대값 |
 |---|---|---|
-| AI 단위 테스트 | `python -m pytest tests` (ai-service) | 17 passed |
-| 백엔드 단위 테스트 | `gradlew.bat test --tests com.foodguard.service.OrderRequestServiceRecommendTest` (backend) | BUILD SUCCESSFUL |
+| AI 단위 테스트 | `python -m pytest tests` (ai-service) | 24 passed |
+| 백엔드 단위 테스트 | `gradlew.bat test --tests "com.foodguard.service.*"` (backend) | BUILD SUCCESSFUL (3개) |
 | 프론트 타입체크 | `npx tsc --noEmit` (frontend) | 오류 0 |
-| DB 백테스트 | `python backtest.py --db --step 7` (ai-service) | 글로벌 모델 wMAPE **11.6%** / MASE **1.037**, 요일 평균(4주) 12.0% / 1.084, 식자재 7일 커버리지 **56.7%** (평균 잉여율 4.7%, 부족률 4.0%) |
+| DB 백테스트 | `python backtest.py --db --step 7` (ai-service) | 1,765 평가일, 글로벌 모델 wMAPE **9.2%** / MASE **0.902**, 요일 평균(4주) 9.9% / 0.952, 식자재 7일 커버리지 **55.4%** (평균 잉여율 4.3%, 부족률 3.0%) |
 | 합성 백테스트 | `python backtest.py --synthetic` (ai-service) | 글로벌 모델 14.8% / 0.817 |
+| DB 발주 시뮬레이션 | `python simulate_orders.py --db` (ai-service, 약 5분) | 주 1회 시나리오 FoodGuard 폐기율 4.7% / 품절률 11.0% / 비용 21.2 |
+
+출력에 한글이 깨지면 `PYTHONIOENCODING=utf-8` 을 설정한다.
 
 백엔드 전체 `gradlew test` 는 `contextLoads` 가 실제 TiDB 에 접속하고 스키마를 바꿀 수 있으니 돌리지 않는다.
 

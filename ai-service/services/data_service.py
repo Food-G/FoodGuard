@@ -47,6 +47,23 @@ def build_daily_calendar(
     })
 
 
+# 매장 전체 판매량이 직전 영업일 중앙값의 이 비율 미만이면 부분 입력일로 본다
+PARTIAL_ENTRY_RATIO = 0.4
+PARTIAL_ENTRY_WINDOW = 28
+PARTIAL_ENTRY_MIN_DAYS = 7
+
+
+def partial_entry_dates(store_totals: pd.Series) -> set[date]:
+    """
+    매출이 일부만 입력된 날 (예: 평소 900~1,300개인 매장에 13개). 이날 판매량은 수요가 아니므로
+    휴무처럼 학습·평가에서 뺀다. 기준은 직전 PARTIAL_ENTRY_WINDOW 영업일 매장 판매량의 중앙값
+    (그날 이후 데이터는 보지 않는다. 직전 영업일이 PARTIAL_ENTRY_MIN_DAYS 보다 적으면 판단하지 않음).
+    store_totals: 영업일 -> 매장 전체 판매량, 날짜순
+    """
+    prior = store_totals.shift(1).rolling(PARTIAL_ENTRY_WINDOW, min_periods=PARTIAL_ENTRY_MIN_DAYS).median()
+    return set(store_totals.index[store_totals < PARTIAL_ENTRY_RATIO * prior])
+
+
 def _flag_dates(db: Session, store_id: int, flag_type: str, menu_id: int | None = None) -> set[date]:
     """SALES_DAY_FLAG(휴무·품절 기록) 날짜 집합."""
     sql = "SELECT flag_date FROM SALES_DAY_FLAG WHERE store_id = :sid AND flag_type = :ftype"
@@ -71,6 +88,7 @@ def get_all_sales_data(db: Session) -> dict[tuple[int, int], pd.DataFrame]:
     """
     전체 매장×메뉴의 일별 판매 이력 (글로벌 모델 학습용, 키: (store_id, menu_id)).
     각 값은 is_deleted=0 만, 영업일 달력 기준(build_daily_calendar), 컬럼: ds, y, sold_out
+    휴무 등록일과 부분 입력일(partial_entry_dates)은 행에서 뺀다
     """
     rows = db.execute(
         text(
@@ -105,6 +123,10 @@ def get_all_sales_data(db: Session) -> dict[tuple[int, int], pd.DataFrame]:
             closed.setdefault(int(sid), set()).add(d)
         elif ftype == "SOLD_OUT" and mid is not None:
             sold_out.setdefault((int(sid), int(mid)), set()).add(d)
+    # 부분 입력일도 휴무처럼 뺀다
+    for sid, g in sales.groupby("store_id"):
+        totals = g.groupby("ds")["y"].sum().sort_index()
+        closed.setdefault(int(sid), set()).update(partial_entry_dates(totals))
 
     out = {}
     for (sid, mid), g in sales.groupby(["store_id", "menu_id"]):
