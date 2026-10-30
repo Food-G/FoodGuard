@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from config import settings
-from routers import events, explain, prediction, training
+from routers import events, explain, prediction, recipes, training
 from schemas.schemas import HealthResponse
 
 app = FastAPI(
@@ -25,6 +25,7 @@ app.include_router(prediction.router, prefix="/api/predict", tags=["Prediction"]
 app.include_router(training.router, prefix="/api/train", tags=["Training"])
 app.include_router(explain.router, prefix="/api/explain", tags=["Explain"])
 app.include_router(events.router, prefix="/api/events", tags=["Events"])
+app.include_router(recipes.router, prefix="/api/recipes", tags=["Recipes"])
 
 
 @app.get("/health", response_model=HealthResponse, tags=["Health"])

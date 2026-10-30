@@ -14,6 +14,10 @@ export const menuIngredientService = {
   add: async (data: { menuId: number; ingredientId: number; qtyPerUnit: number; unit: string }) => {
     return api.post('/menu-ingredients', data);
   },
+  // AI 레시피 초안 (저장하지 않음): 이 매장 식자재 중 들어갈 것과 1개당 사용량, 목록에 없는 주재료
+  draft: async (menuId: number) => {
+    return api.post(`/menu-ingredients/menu/${menuId}/draft`, {});
+  },
   delete: async (id: number) => {
     return api.delete(`/menu-ingredients/${id}`);
   },

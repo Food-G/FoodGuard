@@ -26,6 +26,7 @@ public class StoreAccessInterceptor implements HandlerInterceptor {
             entry("/api/menus/{id}", "Menu"),
             entry("/api/menu-ingredients/{id}", "MenuIngredient"),
             entry("/api/menu-ingredients/menu/{menuId}", "Menu"),
+            entry("/api/menu-ingredients/menu/{menuId}/draft", "Menu"),
             entry("/api/ingredients/{id}", "Ingredient"),
             entry("/api/notifications/{id}/read", "Notification"),
             entry("/api/orders/{id}", "OrderRequest"),

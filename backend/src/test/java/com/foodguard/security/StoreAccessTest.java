@@ -89,6 +89,12 @@ class StoreAccessTest {
         interceptor.preHandle(byId, null, null);
         verify(mockAccess).checkEntity("OrderRequest", 42L);
 
+        MockHttpServletRequest byMenu = new MockHttpServletRequest();
+        byMenu.setAttribute(HandlerMapping.URI_TEMPLATE_VARIABLES_ATTRIBUTE, Map.of("menuId", "7"));
+        byMenu.setAttribute(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE, "/api/menu-ingredients/menu/{menuId}/draft");
+        interceptor.preHandle(byMenu, null, null);
+        verify(mockAccess).checkEntity("Menu", 7L);
+
         MockHttpServletRequest byParam = new MockHttpServletRequest();
         byParam.setParameter("storeId", "6");
         interceptor.preHandle(byParam, null, null);

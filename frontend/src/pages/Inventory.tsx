@@ -13,6 +13,7 @@ import { menuIngredientService, MenuIngredient } from '../services/menuIngredien
 import IconifyIcon from '../components/base/IconifyIcon';
 import { api } from '../services/api';
 import { useConfirm } from '../hooks/useConfirm';
+import RecipeDraftDialog from '../components/RecipeDraftDialog';
 
 const Inventory = ({ user }: any) => {
   const theme = useTheme();
@@ -36,6 +37,9 @@ const Inventory = ({ user }: any) => {
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ ingredientId: '', qtyPerUnit: '', unit: '' });
   const [submitting, setSubmitting] = useState(false);
+
+  // AI 레시피 초안
+  const [showDraft, setShowDraft] = useState(false);
 
   // 폐기 기록 (실제 폐기량 → 폐기율 측정 기준)
   const [wasteTarget, setWasteTarget] = useState<any | null>(null);
@@ -228,14 +232,24 @@ const Inventory = ({ user }: any) => {
               <Typography variant="subtitle1" fontWeight={700}>
                 {selectedMenu.menuName} 식자재 목록
               </Typography>
-              <Button
-                size="small"
-                variant="outlined"
-                startIcon={<IconifyIcon icon="mingcute:add-line" />}
-                onClick={() => setShowForm((v) => !v)}
-              >
-                식자재 추가
-              </Button>
+              <Stack direction="row" gap={1}>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  startIcon={<IconifyIcon icon="mingcute:sparkles-line" />}
+                  onClick={() => setShowDraft(true)}
+                >
+                  AI 초안
+                </Button>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  startIcon={<IconifyIcon icon="mingcute:add-line" />}
+                  onClick={() => setShowForm((v) => !v)}
+                >
+                  식자재 추가
+                </Button>
+              </Stack>
             </Stack>
 
             {/* 추가 폼 */}
@@ -364,6 +378,21 @@ const Inventory = ({ user }: any) => {
           )}
         </Box>
       </Paper>
+
+      {selectedMenu && (
+        <RecipeDraftDialog
+          open={showDraft}
+          menu={selectedMenu}
+          ingredients={allIngredients}
+          toRecipeUnit={toRecipeUnit}
+          onClose={() => setShowDraft(false)}
+          onSaved={(count) => {
+            setShowDraft(false);
+            setSuccess(`AI 초안에서 식자재 ${count}개를 연결했습니다.`);
+            loadMenuIngredients(selectedMenu.id);
+          }}
+        />
+      )}
 
       <Dialog open={!!wasteTarget} onClose={() => setWasteTarget(null)} maxWidth="xs" fullWidth>
         <DialogTitle>폐기 기록 — {wasteTarget?.name}</DialogTitle>

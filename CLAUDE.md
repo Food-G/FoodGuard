@@ -102,7 +102,8 @@ ai-service/
     ├── prediction.py            # /api/predict/*
     ├── training.py              # /api/train/*
     ├── explain.py               # /api/explain/order — 발주 추천 근거 설명 (숫자는 바꾸지 않음)
-    └── events.py                # /api/events/parse — 점주 특이사항 메모 → 유형·증감 배율 (claude)
+    ├── events.py                # /api/events/parse — 점주 특이사항 메모 → 유형·증감 배율 (claude)
+    └── recipes.py               # /api/recipes/draft — 메뉴명 → 매장 식자재 1개당 사용량 초안 (claude, 저장은 점주 확인 후)
 ```
 
 ### AI 예측 흐름
