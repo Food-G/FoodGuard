@@ -68,6 +68,7 @@ const Sidebar = ({ open, role, setMobileOpen, onMouseEnter, onMouseLeave }: Side
     { title: '통합 관리 센터', icon: 'mingcute:home-5-line', path: '/admin', active: true },
     { title: '가맹점 네트워크', icon: 'mingcute:grid-fill', path: '/admin/stores', active: true },
     { title: '환경 통계 분석', icon: 'mingcute:chart-bar-fill', path: '/admin/stats', active: true },
+    { title: 'AI 승인함', icon: 'mingcute:robot-line', path: '/agent-inbox', active: true },
   ] : [
     { title: '에코 대시보드', icon: 'mingcute:leaf-line', path: '/', active: true },
     { title: '가게 등록', icon: 'mingcute:store-2-line', path: '/store', active: true },
@@ -76,6 +77,7 @@ const Sidebar = ({ open, role, setMobileOpen, onMouseEnter, onMouseLeave }: Side
     { title: '식자재 발주', icon: 'mingcute:refresh-2-line', path: '/orders', active: true },
     { title: '식자재 관리', icon: 'ph:carrot-fill', path: '/ingredients', active: true },
     { title: '자원 현황', icon: 'mingcute:inventory-line', path: '/inventory', active: true },
+    { title: 'AI 승인함', icon: 'mingcute:robot-line', path: '/agent-inbox', active: true },
     // 폐기예측 & 기부(/waste-prediction), 기부 이력(/donations)은 백엔드 API 가 없어 임시로 숨김
     // → DEV_ROADMAP AG-2/AG-3 완료 시 복구
   ];

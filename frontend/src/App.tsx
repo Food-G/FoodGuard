@@ -21,6 +21,7 @@ import Signup from './pages/auth/Signup';
 import DeliveryDriver from './pages/DeliveryDriver';
 import WastePrediction from './pages/WastePrediction';
 import DonationHistory from './pages/DonationHistory';
+import AgentInbox from './pages/AgentInbox';
 import { useAuth } from './hooks/useAuth';
 import { ConfirmProvider } from './hooks/useConfirm';
 
@@ -109,6 +110,13 @@ function App() {
             <Route path="/donations" element={
               <ProtectedRoute role="OWNER">
                 <DonationHistory user={user} />
+              </ProtectedRoute>
+            } />
+
+            {/* AI 승인함: 점주(자기 매장)·본사(전 매장) 공용 */}
+            <Route path="/agent-inbox" element={
+              <ProtectedRoute>
+                <AgentInbox user={user} />
               </ProtectedRoute>
             } />
 
