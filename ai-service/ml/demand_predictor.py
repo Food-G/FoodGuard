@@ -170,21 +170,18 @@ class DemandPredictor:
         self,
         days: int = 7,
         forecast_df: Optional[pd.DataFrame] = None,
-        base_date: Optional[date] = None,
     ) -> list[dict]:
         """
         Returns list of dicts:
             {'date': date, 'predicted_qty': int, 'confidence': float}
         forecast_df: optional 7-day weather forecast DataFrame
-        base_date: 예측 시작 전날. 생략하면 max(마지막 판매일, 오늘). 백테스트에서 과거 시점을 지정할 때 사용
         """
         if self._history is None or len(self._history) == 0:
             return self._zero_predictions(days)
 
-        if base_date is None:
-            last_date = pd.to_datetime(self._history["ds"]).dt.date.max()
-            # 판매 데이터가 오래됐을 경우 오늘 기준으로 예측 (과거 날짜에 저장 방지)
-            base_date = max(last_date, date.today())
+        last_date = pd.to_datetime(self._history["ds"]).dt.date.max()
+        # 판매 데이터가 오래됐을 경우 오늘 기준으로 예측 (과거 날짜에 저장 방지)
+        base_date = max(last_date, date.today())
 
         if not self.is_trained:
             return self._simple_avg_predictions(base_date, days)

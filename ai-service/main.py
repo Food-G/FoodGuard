@@ -9,7 +9,7 @@ from schemas.schemas import HealthResponse
 
 app = FastAPI(
     title="FoodGuard AI Service",
-    description="식품 수요 예측 AI 서비스 (XGBoost 기반)",
+    description="식품 수요 예측 AI 서비스 (Random Forest 기반)",
     version="1.0.0",
 )
 

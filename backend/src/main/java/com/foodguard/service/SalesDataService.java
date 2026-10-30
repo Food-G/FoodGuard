@@ -11,7 +11,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -64,16 +63,5 @@ public class SalesDataService {
         sales.setIsDeleted(true);
         salesDataRepository.save(sales);
         return "매출 데이터 삭제 완료";
-    }
-
-    // 전체 가맹점 최근 7일(오늘 포함) 매출 합계 — {storeId: 금액}, 판매 기록이 없는 매장은 빠짐
-    @Transactional(readOnly = true)
-    public Map<Long, Long> getAllStoreWeeklyRevenue() {
-        LocalDate today = LocalDate.now();
-        Map<Long, Long> result = new LinkedHashMap<>();
-        for (Object[] row : salesDataRepository.sumRevenueByStore(today.minusDays(6), today)) {
-            result.put(((Number) row[0]).longValue(), ((Number) row[1]).longValue());
-        }
-        return result;
     }
 }

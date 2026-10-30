@@ -142,16 +142,10 @@ def make_future_feature_row(
 
     sorted_hist = history_df.sort_values("ds").reset_index(drop=True)
     y_vals = sorted_hist["y"].values
-    y_by_date = dict(zip(sorted_hist["ds"], y_vals))
 
     def _get_lag(n: int) -> float:
-        # #13: 학습 때와 같은 의미가 되도록 예측일 기준 n일 전 실측값을 쓴다 (lag_7 = 지난주 같은 요일).
-        # 그날이 마지막 실측일 이후라 값이 없으면(예: 3일 뒤 예측의 lag_1) 마지막 실측값을 쓴다.
-        lag_date = target_date - pd.Timedelta(days=n).to_pytimedelta()
-        if lag_date in y_by_date:
-            return float(y_by_date[lag_date])
-        if len(y_vals) > 0 and lag_date > sorted_hist["ds"].iloc[-1]:
-            return float(y_vals[-1])
+        if len(y_vals) >= n:
+            return float(y_vals[-n])
         return float(y_vals.mean()) if len(y_vals) > 0 else 0.0
 
     row["lag_1"] = _get_lag(1)
