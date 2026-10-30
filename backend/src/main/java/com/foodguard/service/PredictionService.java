@@ -1,9 +1,7 @@
 package com.foodguard.service;
 
 import com.foodguard.dto.PredictionResultDto;
-import com.foodguard.entity.PredictionResult;
 import com.foodguard.repository.PredictionResultRepository;
-import com.foodguard.repository.SalesDataRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -22,7 +20,6 @@ import java.util.stream.Collectors;
 public class PredictionService {
 
     private final PredictionResultRepository predictionResultRepository;
-    private final SalesDataRepository salesDataRepository;
     private final RestTemplate restTemplate;
 
     @Value("${ai.service.url:http://localhost:8000}")

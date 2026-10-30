@@ -1,6 +1,6 @@
 """DB 데이터 접근 레이어 (순수 SQL로 Spring Boot의 기존 스키마 읽기/쓰기)."""
 
-from datetime import date, datetime
+from datetime import date
 from sqlalchemy import text
 from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.orm import Session
@@ -178,27 +178,6 @@ def get_recipes(db: Session) -> dict[int, list[tuple[int, float]]]:
             per_unit /= 1000.0
         recipes.setdefault(int(menu_id), []).append((int(ingredient_id), per_unit))
     return recipes
-
-
-def get_store_sales_last_n_days(db: Session, store_id: int, n_days: int = 30) -> list[dict]:
-    """대시보드용 매장 전체 최근 판매 데이터."""
-    rows = db.execute(
-        text(
-            "SELECT sd.sales_date, m.menu_id, m.menu_name, SUM(sd.quantity) as qty "
-            "FROM SALES_DATA sd "
-            "JOIN MENU m ON sd.menu_id = m.menu_id "
-            "WHERE sd.store_id = :sid "
-            "  AND sd.is_deleted = 0 "
-            "  AND sd.sales_date >= DATE_SUB(CURDATE(), INTERVAL :n DAY) "
-            "GROUP BY sd.sales_date, m.menu_id, m.menu_name "
-            "ORDER BY sd.sales_date ASC"
-        ),
-        {"sid": store_id, "n": n_days},
-    ).fetchall()
-    return [
-        {"date": str(r[0]), "menu_id": r[1], "menu_name": r[2], "qty": int(r[3])}
-        for r in rows
-    ]
 
 
 def save_predictions_bulk(

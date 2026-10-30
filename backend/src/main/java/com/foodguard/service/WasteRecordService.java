@@ -10,7 +10,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.List;
 import java.util.Map;
 
 @Service
@@ -46,9 +45,5 @@ public class WasteRecordService {
         record.setWasteDate(body.get("wasteDate") != null
                 ? LocalDate.parse(body.get("wasteDate").toString()) : LocalDate.now());
         return wasteRecordRepository.save(record);
-    }
-
-    public List<WasteRecord> getByStore(Long storeId) {
-        return wasteRecordRepository.findByStoreIdOrderByWasteDateDesc(storeId);
     }
 }

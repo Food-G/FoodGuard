@@ -24,14 +24,6 @@ class StorePredictionResponse(BaseModel):
     model_versions: dict[int, str] = {}
 
 
-class SingleMenuPredictionResponse(BaseModel):
-    store_id: int
-    menu_id: int
-    menu_name: str
-    generated_at: datetime
-    predictions: list[PredictionItem]
-
-
 class TriggerResponse(BaseModel):
     status: str
     message: str

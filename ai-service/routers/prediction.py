@@ -5,14 +5,13 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 from schemas.schemas import (
-    SingleMenuPredictionResponse,
     StorePredictionResponse,
     TriggerResponse,
     MenuPrediction,
     PredictionItem,
 )
-from services.data_service import get_active_menus, get_saved_predictions
-from services.prediction_service import predict_and_save_menu, predict_and_save_store
+from services.data_service import get_saved_predictions
+from services.prediction_service import predict_and_save_store
 
 router = APIRouter()
 
@@ -27,38 +26,6 @@ def trigger_store_prediction(store_id: int, db: Session = Depends(get_db)):
             message=f"Store {store_id} prediction complete",
             store_id=store_id,
             menus_predicted=len(results),
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.post("/store/{store_id}/menu/{menu_id}", response_model=SingleMenuPredictionResponse)
-def trigger_menu_prediction(
-    store_id: int, menu_id: int, db: Session = Depends(get_db)
-):
-    """특정 메뉴 예측 실행."""
-    menus = get_active_menus(db, store_id)
-    menu = next((m for m in menus if m["menu_id"] == menu_id), None)
-    if not menu:
-        raise HTTPException(status_code=404, detail="Menu not found")
-
-    try:
-        raw_preds = predict_and_save_menu(db, store_id, menu_id)
-        items = [
-            PredictionItem(
-                prediction_date=p["date"],
-                predicted_qty=p["predicted_qty"],
-                recommended_order_qty=p["recommended_order_qty"],
-                confidence=p["confidence"],
-            )
-            for p in raw_preds
-        ]
-        return SingleMenuPredictionResponse(
-            store_id=store_id,
-            menu_id=menu_id,
-            menu_name=menu["menu_name"],
-            generated_at=datetime.now(),
-            predictions=items,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
