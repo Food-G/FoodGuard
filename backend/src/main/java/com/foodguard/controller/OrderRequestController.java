@@ -3,7 +3,6 @@ package com.foodguard.controller;
 import com.foodguard.entity.Inventory;
 import com.foodguard.entity.OrderRequest;
 import com.foodguard.service.OrderRequestService;
-import com.foodguard.service.StoreAccessService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -18,14 +17,11 @@ import java.util.Map;
 public class OrderRequestController {
 
     private final OrderRequestService orderRequestService;
-    private final StoreAccessService storeAccessService;
 
     @PostMapping
     public ResponseEntity<OrderRequest> create(@RequestBody Map<String, Object> body) {
-        Long storeId = Long.parseLong(body.get("storeId").toString());
-        storeAccessService.checkStore(storeId);
         return ResponseEntity.ok(orderRequestService.create(
-                storeId,
+                Long.parseLong(body.get("storeId").toString()),
                 Long.parseLong(body.get("ingredientId").toString()),
                 Double.parseDouble(body.get("quantity").toString())
         ));
@@ -38,7 +34,6 @@ public class OrderRequestController {
 
     @GetMapping("/{storeId}")
     public ResponseEntity<List<OrderRequest>> getByStore(@PathVariable Long storeId) {
-        storeAccessService.checkStore(storeId);
         return ResponseEntity.ok(orderRequestService.getByStore(storeId));
     }
 
@@ -74,7 +69,6 @@ public class OrderRequestController {
     // 가맹점주 전용 QR 스캔 — DRIVER_RECEIVED→DONE+재고
     @GetMapping("/owner-scan")
     public ResponseEntity<?> ownerScan(@RequestParam String token) {
-        storeAccessService.checkStore(orderRequestService.getByQrToken(token).getStore().getId());
         try {
             return ResponseEntity.ok(orderRequestService.ownerQrScan(token));
         } catch (RuntimeException e) {
@@ -91,42 +85,29 @@ public class OrderRequestController {
     // 3단계: 가맹점주 수령 확인
     @PostMapping("/{id}/owner-receive")
     public ResponseEntity<OrderRequest> ownerReceive(@PathVariable Long id) {
-        checkOrderStore(id);
         return ResponseEntity.ok(orderRequestService.ownerReceive(id));
     }
 
     @PutMapping("/{id}/status")
     public ResponseEntity<OrderRequest> updateStatus(@PathVariable Long id,
                                                      @RequestBody Map<String, Object> body) {
-        String status = body.get("status").toString();
-        // 승인·반려는 본사만, 그 외 상태 변경은 해당 매장 점주 또는 본사
-        if ("APPROVED".equals(status) || "REJECTED".equals(status)) {
-            storeAccessService.checkHqAdmin();
-        } else {
-            checkOrderStore(id);
-        }
-        return ResponseEntity.ok(orderRequestService.updateStatus(id, status));
+        return ResponseEntity.ok(orderRequestService.updateStatus(
+                id, body.get("status").toString()
+        ));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<String> cancel(@PathVariable Long id) {
-        checkOrderStore(id);
         return ResponseEntity.ok(orderRequestService.cancel(id));
     }
 
     @GetMapping("/recommend/{storeId}")
     public ResponseEntity<List<Map<String, Object>>> recommend(@PathVariable Long storeId) {
-        storeAccessService.checkStore(storeId);
         return ResponseEntity.ok(orderRequestService.recommend(storeId));
     }
 
     @PostMapping("/auto/{storeId}")
     public ResponseEntity<List<Long>> autoOrder(@PathVariable Long storeId) {
-        storeAccessService.checkStore(storeId);
         return ResponseEntity.ok(orderRequestService.autoOrder(storeId));
-    }
-
-    private void checkOrderStore(Long orderId) {
-        storeAccessService.checkStore(orderRequestService.getById(orderId).getStore().getId());
     }
 }

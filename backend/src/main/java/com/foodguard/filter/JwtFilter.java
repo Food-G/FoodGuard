@@ -1,20 +1,18 @@
 package com.foodguard.filter;
 
 import com.foodguard.util.JwtUtil;
-import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.List;
+import java.util.Collections;
 
 @Component
 @RequiredArgsConstructor
@@ -39,19 +37,11 @@ public class JwtFilter extends OncePerRequestFilter {
             // 3. 토큰 유효성 검사
             if (jwtUtil.validateToken(token)) {
 
-                // 4. 토큰의 이메일·role로 인증 처리 (권한: ROLE_OWNER / ROLE_HQ_ADMIN)
-                Claims claims = jwtUtil.getClaims(token);
-                String role = claims.get("role", String.class);
-                List<SimpleGrantedAuthority> authorities = role != null
-                        ? List.of(new SimpleGrantedAuthority("ROLE_" + role))
-                        : List.of();
+                // 4. 토큰에서 이메일 꺼내서 인증 처리
+                String email = jwtUtil.getEmail(token);
                 UsernamePasswordAuthenticationToken authentication =
                         new UsernamePasswordAuthenticationToken(
-                                claims.getSubject(), null, authorities);
-
-                // 매장 소유 확인용 사용자 id (StoreAccessService에서 사용)
-                Number userId = claims.get("id", Number.class);
-                authentication.setDetails(userId != null ? userId.longValue() : null);
+                                email, null, Collections.emptyList());
 
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             }

@@ -31,13 +31,14 @@ public class JwtUtil {
                 .compact();
     }
 
-    // 토큰 클레임 추출 (sub=이메일, role, id)
-    public Claims getClaims(String token) {
+    // 토큰에서 이메일 추출
+    public String getEmail(String token) {
         return Jwts.parserBuilder()
                 .setSigningKey(key)
                 .build()
                 .parseClaimsJws(token)
-                .getBody();
+                .getBody()
+                .getSubject();
     }
 
     // 토큰 유효성 검사

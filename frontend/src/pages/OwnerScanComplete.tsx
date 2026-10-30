@@ -17,18 +17,9 @@ const OwnerScanComplete = () => {
 
     let cancelled = false;
 
-    // 점주 로그인 + 매장 소유 확인이 필요한 API라 로그인 토큰을 함께 보낸다
-    const authToken = localStorage.getItem('token');
-    fetch(`/api/orders/owner-scan?token=${encodeURIComponent(token)}`, {
-      headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
-    })
+    fetch(`/api/orders/owner-scan?token=${encodeURIComponent(token)}`)
       .then(async (res) => {
         if (cancelled) return;
-        if (res.status === 401 || res.status === 403) {
-          setState('error');
-          setErrorMsg('해당 매장 점주 계정으로 로그인한 뒤 다시 스캔해주세요.');
-          return;
-        }
         const data = await res.json();
         if (!res.ok) {
           if (data?.error === '이미 처리된 발주입니다.') {

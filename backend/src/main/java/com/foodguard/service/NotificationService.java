@@ -32,12 +32,6 @@ public class NotificationService {
         return notificationRepository.findByStoreIdAndIsReadFalse(storeId);
     }
 
-    // 알림 단건 조회
-    public Notification getById(Long id) {
-        return notificationRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("알림을 찾을 수 없습니다."));
-    }
-
     // 알림 읽음 처리
     public String markAsRead(Long id) {
         Notification notification = notificationRepository.findById(id)

@@ -267,6 +267,7 @@ const Signup = () => {
                 }}
               >
                 <MenuItem value="OWNER">가맹점 점주</MenuItem>
+                <MenuItem value="HQ_ADMIN">본사 관리자</MenuItem>
               </Select>
             </FormControl>
 

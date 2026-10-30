@@ -67,13 +67,6 @@ public class OrderRequestService {
                 .orElseThrow(() -> new RuntimeException("발주 요청을 찾을 수 없습니다."));
     }
 
-    // QR 토큰으로 조회
-    @Transactional(readOnly = true)
-    public OrderRequest getByQrToken(String token) {
-        return orderRequestRepository.findByQrToken(token)
-                .orElseThrow(() -> new RuntimeException("유효하지 않은 QR 코드입니다."));
-    }
-
     // 가맹점 발주 내역 조회
     @Transactional(readOnly = true)
     public List<OrderRequest> getByStore(Long storeId) {

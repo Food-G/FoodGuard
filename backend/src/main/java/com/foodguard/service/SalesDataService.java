@@ -49,12 +49,6 @@ public class SalesDataService {
                 .findByStoreIdAndSaleDateBetweenAndIsDeletedFalse(storeId, start, end);
     }
 
-    // 매출 단건 조회
-    public SalesData getById(Long id) {
-        return salesDataRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("매출 데이터를 찾을 수 없습니다."));
-    }
-
     // Soft Delete (실제 삭제 X, 삭제 표시만)
     @Transactional
     public String delete(Long id) {
