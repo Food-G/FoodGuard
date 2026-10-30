@@ -324,3 +324,38 @@ DB (49개 메뉴, 258개 시점, 1,765 평가일 — 11절과 같은 평가셋):
 - 사이드바(`layouts/main-layout/Sidebar`)는 `61f0aa7` 부터 레이아웃에서 그려지지 않는다 (이동은 타일 홈과 상단 로고). 사이드바 메뉴 목록도 맞춰 고쳤지만 화면에는 보이지 않는다
 - 브라우저 확인 (2026-10-29, 검증용 계정): 본사 타일 → 발주 관리(진행 중 48건 실데이터), 통계 페이지 월별 매출 차트, 프로필 API·비밀번호 변경
 - 남은 정리 대상 (쓰는 곳 없음, 지우지 않음): `layouts/main-layout/Sidebar`, `pages/admin/AdminDashboard.tsx`, `pages/Profile.tsx`, `pages/SalesStats.tsx` (라우트 없음), `salesService.getTodaySummary·getWeeklySummary` (백엔드 API 없음)
+
+## 13. 계획서 대비 보완 · 권한 검사 (2026-10-30)
+
+계획서(「26학년도 캡스톤 디자인 1조 최종본」)의 결과물 4개·정량 목표 3개와 배포 안정성을 다시 점검해 빈 곳을 채웠다.
+
+### 정량 목표 "메뉴별 판매량 예측 정확도: 주간 단위 ±10% 오차 이내"
+
+`backtest.py` 에 주간 합계 지표를 추가했다 (메뉴×예측 시점마다 7일 예측 합계 vs 실제 합계). `--db --step 7`, 메뉴×7일 258개:
+
+| 방법 | 주간 wMAPE | 주간 오차 중앙값 | ±10% 이내 비율 |
+|---|---|---|---|
+| 계절 나이브 | 5.4% | 3.6% | 85.7% |
+| 요일 평균(4주) | 4.7% | 2.8% | 86.0% |
+| 매장 요일비율×28일 평균 | 4.8% | 2.9% | 86.4% |
+| **DemandPredictor (글로벌)** | **4.7%** | **2.9%** | **87.2%** |
+
+- 목표(±10%)는 메뉴-주의 87% 에서 만족한다. 다만 주간 합계로 보면 일별 오차가 상쇄되어 단순 베이스라인도 85~86% 로 거의 같다. 보고서에는 "주간 ±10% 달성(87%)"과 함께 베이스라인과 차이가 작다는 점, 데모 데이터라는 점을 같이 쓴다
+- 같은 실행의 일별 정확도: 글로벌 모델 9.2% / MASE 0.900 (11절 기준 수치 0.902 와 소수 셋째 자리만 다름)
+
+### 결과물 3 "매출 계획 수립 지원" (미착수였음)
+
+- `SALES_TARGET` (매장·주 월요일·목표 매출), `GET /api/sales-plan/{storeId}?week=`, `PUT /api/sales-plan/{storeId}/target`
+- 예상 주간 매출 = 지난 날 실제 매출(판매량 × 메뉴 가격) + 남은 날 AI 예측 매출(예측 판매량 × 메뉴 가격). 목표 대비 달성률·차액
+- AI 예측 화면에 "이번 주 매출 계획" 카드 (`components/SalesPlanCard.tsx`). 예측이 없는 날은 0 으로 계산하고 표시
+- `SalesPlanServiceTest` (DB 없음)
+
+### 권한 검사 (배포 차단 문제였음)
+
+이전에는 로그인만 하면 다른 가맹점의 매출·재고·발주를 조회·수정할 수 있었고, 회원가입에서 본사 관리자(HQ_ADMIN)를 스스로 고를 수 있었다.
+- 회원가입은 점주(OWNER)만. 본사 관리자 계정은 DB 에서 직접 만든다 (기존 5개 유지)
+- JWT 의 role 을 권한(`ROLE_HQ_ADMIN`/`ROLE_OWNER`)으로 반영. 본사 전용: 전체 발주(`/api/orders/admin/**`)·통계(`/api/stats/**`)·전 매장 매출(`/api/sales/all-stores/**`)·매장 목록(`GET /api/stores`)·발주 승인/거절(`PUT /api/orders/*/status`)·발송(`POST /api/orders/*/hq-send`)
+- 매장 소유 검사 (`security/StoreAccess`): 경로의 `{storeId}`·`{userId}`·`?storeId=`·엔티티 `{id}` 는 `StoreAccessInterceptor`, 요청 본문의 `storeId`·`userId`·`menuId` 는 `StoreAccessBodyAdvice` 가 검사. 점주는 자기 매장만, 본사는 전체. 위반 시 403
+- 매장이 없는 공용 데이터(`store_id` 가 빈 기존 식자재 29개)는 누구나 수정할 수 있다 — 공용 식자재를 본사 전용으로 할지는 정해야 한다
+- 새 컨트롤러에 엔티티 `{id}` 경로를 만들면 `StoreAccessInterceptor.ID_ENTITY` 에 추가해야 검사된다
+- `StoreAccessTest`, `UserServiceTest`(회원가입 제한). CI 백엔드 job 에 security 패키지 테스트 추가

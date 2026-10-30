@@ -17,4 +17,10 @@ public interface PredictionResultRepository extends JpaRepository<PredictionResu
     List<PredictionResult> findByStore_IdAndPredictionDateGreaterThanEqualOrderByPredictionDateAsc(
             @Param("storeId") Long storeId,
             @Param("fromDate") LocalDate fromDate);
+
+    @Query("SELECT p FROM PredictionResult p JOIN FETCH p.menu WHERE p.store.id = :storeId AND p.predictionDate BETWEEN :start AND :end")
+    List<PredictionResult> findByStoreIdAndPredictionDateBetween(
+            @Param("storeId") Long storeId,
+            @Param("start") LocalDate start,
+            @Param("end") LocalDate end);
 }

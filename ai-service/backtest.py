@@ -197,7 +197,7 @@ def run(
                 preds["LSTM (글로벌)"] = lstm.predict(key, targets)
             for t in targets:
                 for method, p in preds.items():
-                    records.append((method, key, (t - origin).days, actual[t], p[t]))
+                    records.append((method, key, origin, (t - origin).days, actual[t], p[t]))
                 covered.append(actual[t] <= out[t]["recommended_order_qty"])
             n_origins += 1
 
@@ -205,7 +205,7 @@ def run(
         print("평가할 구간이 없습니다 (--min-train 을 줄여 보세요).")
         return
 
-    r = pd.DataFrame(records, columns=["method", "series", "h", "y", "pred"])
+    r = pd.DataFrame(records, columns=["method", "series", "origin", "h", "y", "pred"])
     r["ae"] = (r["y"] - r["pred"]).abs()
 
     print(f"시계열 {len(scales)}개, 예측 시점 {n_origins}개, 평가 일수 {len(r) // r['method'].nunique()}개\n")
@@ -217,6 +217,17 @@ def run(
         mase = np.mean([mae[s] / scales[s] for s in mae.index if scales.get(s, 0) > 0])
         by_h = [wmape(g[g["h"] == h]) for h in range(1, HORIZON + 1)]
         print(f"| {method} | {wmape(g):.1f}% | {mase:.3f} | " + " | ".join(f"{v:.1f}%" for v in by_h) + " |")
+
+    # 계획서 정량 목표 "메뉴별 판매량 예측 정확도: 주간 단위 ±10% 오차 이내" — 메뉴×예측 시점마다 7일 합계로 비교
+    weekly = r.groupby(["method", "series", "origin"], sort=False)[["y", "pred"]].sum().reset_index()
+    weekly = weekly[weekly["y"] > 0]
+    weekly["ape"] = (weekly["pred"] - weekly["y"]).abs() / weekly["y"] * 100
+    print(f"\n주간 합계 오차 (메뉴×7일 {len(weekly) // weekly['method'].nunique()}개, 계획서 목표 ±10%)\n")
+    print("| 방법 | 주간 wMAPE | 주간 오차 중앙값 | ±10% 이내 비율 |")
+    print("|---|---|---|---|")
+    for method, g in weekly.groupby("method", sort=False):
+        w = (g["pred"] - g["y"]).abs().sum() / g["y"].sum() * 100
+        print(f"| {method} | {w:.1f}% | {g['ape'].median():.1f}% | {(g['ape'] <= 10).mean() * 100:.1f}% |")
 
     print(f"\n추천 발주량 커버리지(실제 <= 추천): {np.mean(covered) * 100:.1f}% (목표 {CRITICAL_FRACTILE * 100:.0f}%)")
 

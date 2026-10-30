@@ -24,6 +24,10 @@ public class UserService {
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new RuntimeException("이미 존재하는 이메일입니다.");
         }
+        // 회원가입으로는 점주 계정만 만든다. 본사 관리자를 스스로 고르면 모든 가맹점 데이터에 접근할 수 있게 되므로
+        if (!"OWNER".equals(request.getRole())) {
+            throw new RuntimeException("본사 관리자 계정은 회원가입으로 만들 수 없습니다. 관리자에게 요청하세요.");
+        }
 
         User user = new User();
         user.setEmail(request.getEmail());

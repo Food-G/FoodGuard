@@ -36,7 +36,7 @@ jobs:
       # DB 없는 단위 테스트(service 패키지, Mockito)만 돌림. contextLoads(@SpringBootTest)는 실제 TiDB 접속(DB_PASSWORD)이
       # 필요하고 ddl-auto=update로 운영 DB 스키마를 바꿀 수 있어서 CI에서는 제외.
       # gradlew가 git에 실행 권한 없이(100644) 올라가 있어 chmod 필요.
-      - run: chmod +x gradlew && ./gradlew test --tests 'com.foodguard.service.*'
+      - run: chmod +x gradlew && ./gradlew test --tests 'com.foodguard.service.*' --tests 'com.foodguard.security.*'
 
   frontend:
     runs-on: ubuntu-latest
