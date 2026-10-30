@@ -35,9 +35,9 @@ const SalesEntry = ({ user }: any) => {
       const sales = await salesService.getByStore(sid);
       setRows(sales.map((item: any) => ({
         id: item.id,
-        menuName: item.menu?.menuName ?? '-',
+        menuName: item.menuName ?? '-',
         quantity: item.quantity,
-        totalPrice: item.menu ? item.menu.price * item.quantity : 0,
+        totalPrice: (item.menuPrice ?? 0) * item.quantity,
         saleDate: item.saleDate,
       })));
     } catch (err) {

@@ -1,6 +1,7 @@
 package com.foodguard.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -44,5 +45,21 @@ public class SalesData {
     
     public void setIsDeleted(boolean isDeleted) {
         this.isDeleted = isDeleted;
+    }
+
+    // menu 는 직렬화하지 않으므로 판매 내역 화면에 필요한 메뉴 정보만 내려준다
+    @JsonProperty("menuId")
+    public Long getMenuId() {
+        return menu != null ? menu.getId() : null;
+    }
+
+    @JsonProperty("menuName")
+    public String getMenuName() {
+        return menu != null ? menu.getMenuName() : null;
+    }
+
+    @JsonProperty("menuPrice")
+    public Integer getMenuPrice() {
+        return menu != null ? menu.getPrice() : null;
     }
 }
