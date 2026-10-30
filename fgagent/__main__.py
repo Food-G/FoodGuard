@@ -19,6 +19,7 @@ from datetime import datetime
 from pathlib import Path
 
 from fgagent import advisor, executor
+from fgagent.advisor import apply_review
 from fgcli.auth import get_token
 from fgcli.planner import ObserveError, build_plan, observe
 
@@ -65,19 +66,6 @@ def show_review(rev: dict) -> None:
             print(f"  - {it['ingredientId']}: {it['verdict']} → {it['suggestedQty']}  ({it['reason']})")
     for c in rev["concerns"]:
         print(f"  ⚠ {c}")
-
-
-def apply_review(items: list[dict], rev: dict) -> list[dict]:
-    """참모 조정안 적용. 줄이거나 빼는 것만 받아들인다 (늘리는 제안은 무시)."""
-    by_id = {r["ingredientId"]: r for r in rev["items"]}
-    out = []
-    for it in items:
-        r = by_id.get(it["ingredientId"])
-        if r is None or r["verdict"] == "approve":
-            out.append(it)
-        elif r["verdict"] == "reduce" and 0 < r["suggestedQty"] < it["orderQty"]:
-            out.append({**it, "orderQty": round(r["suggestedQty"], 1), "adjustedBy": "advisor"})
-    return out
 
 
 def save_run(record: dict) -> Path:

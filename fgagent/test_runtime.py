@@ -11,7 +11,7 @@ import types
 import unittest
 from types import SimpleNamespace
 
-from fgagent.agents import AGENTS, echo
+from fgagent.agents import AGENTS, echo, order_advisor
 from fgagent.runtime import loop
 from fgagent.runtime.tools import MAX_ITEMS, build_tools, run_command
 
@@ -151,6 +151,69 @@ class LoopTest(unittest.TestCase):
         sys.modules["anthropic"] = mod
         with self.assertRaises(loop.AgentError):
             loop._run_api("sys", "in", [], echo.OUTPUT_SCHEMA, "m", FakeClient([]), max_turns=4)
+
+
+def _plan(items, risks=(), freshness="fresh"):
+    return {"storeId": 60006, "asOf": "2026-10-30", "planId": "abcd1234", "items": list(items),
+            "risks": list(risks), "warnings": [{"message": "w"}],
+            "prediction": {"freshness": freshness}}
+
+
+def _item(iid, qty):
+    return {"ingredientId": iid, "ingredientName": f"식자재{iid}", "unit": "kg", "orderQty": qty,
+            "requiredQty": qty + 1, "currentStock": 1, "pendingQty": 0, "reason": "산식"}
+
+
+class OrderAdvisorTest(unittest.TestCase):
+    def review(self, rec, *verdicts):
+        return {"summary": "요약", "concerns": ["c"], "recommendation": rec,
+                "items": [{"ingredientId": i, "verdict": v, "suggestedQty": q, "reason": "r"} for i, v, q in verdicts]}
+
+    def test_registered_and_scheduled(self):
+        from fgagent.runtime.scheduler import SCHEDULES
+        self.assertIs(AGENTS["order_advisor"], order_advisor)
+        self.assertEqual(SCHEDULES["order_advisor"], "0 8 * * *")
+
+    def test_one_bundled_proposal_with_plan_fingerprint(self):
+        (p,) = order_advisor.to_proposals({"plan": _plan([_item(1, 5), _item(2, 3)])}, None)
+        self.assertEqual((p["type"], p["fingerprint"]), ("ORDER_CREATE", "abcd1234"))
+        self.assertEqual([i["orderQty"] for i in p["payload"]["items"]], [5, 3])
+
+    def test_review_can_only_reduce_or_hold(self):
+        rev = self.review("revise", (1, "reduce", 2), (2, "hold", 0), (3, "reduce", 99))
+        (p,) = order_advisor.to_proposals({"plan": _plan([_item(1, 5), _item(2, 3), _item(3, 4)])}, rev)
+        got = {i["ingredientId"]: (i["planQty"], i["orderQty"]) for i in p["payload"]["items"]}
+        self.assertEqual(got, {1: (5, 2), 3: (4, 4)})   # 3: 늘리는 제안은 무시
+        self.assertEqual(p["payload"]["held"], ["식자재2"])
+        self.assertEqual(p["rationale"], "요약")
+
+    def test_wait_means_no_proposal_but_stable_notification(self):
+        d = {"plan": _plan([_item(1, 5)])}
+        rev = self.review("wait", (1, "approve", 5))
+        self.assertEqual(order_advisor.to_proposals(d, rev), [])
+        (n1,) = order_advisor.notifications(d, rev)
+        (n2,) = order_advisor.notifications(d, {**rev, "summary": "다른 요약"})
+        self.assertEqual(n1, n2)  # 문구가 같아야 서버 24h 중복 금지가 동작
+
+    def test_nothing_to_order(self):
+        self.assertEqual(order_advisor.to_proposals({"plan": _plan([])}, None), [])
+
+    def test_stale_prediction_triggers_then_replans(self):
+        calls = []
+        orig_trigger, orig_plan = order_advisor.executor.trigger_prediction, order_advisor.plan_for
+        order_advisor.executor.trigger_prediction = lambda c, s: (calls.append("trigger"), (True, "ok"))[1]
+        order_advisor.plan_for = lambda c, s: (calls.append("plan"), _plan([_item(1, 2)]))[1]
+        try:
+            plan, trig = order_advisor.refresh_if_stale(None, 60006, _plan([], freshness="missing"))
+        finally:
+            order_advisor.executor.trigger_prediction, order_advisor.plan_for = orig_trigger, orig_plan
+        self.assertEqual(calls, ["trigger", "plan"])
+        self.assertTrue(trig["ok"])
+        self.assertEqual(len(plan["items"]), 1)
+
+    def test_schema_is_strict_for_structured_output(self):
+        self.assertFalse(order_advisor.OUTPUT_SCHEMA["additionalProperties"])
+        self.assertFalse(order_advisor.OUTPUT_SCHEMA["properties"]["items"]["items"]["additionalProperties"])
 
 
 if __name__ == "__main__":

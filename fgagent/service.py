@@ -2,6 +2,7 @@
 
     GET  /health
     POST /run/{agent}?storeId=&trigger=   Spring 만 호출 (X-Internal-Token). 실행은 백그라운드, runId 를 바로 돌려준다.
+    POST /fingerprint/{storeId}            승인 직전 발주안 ID 재계산 (Spring ProposalExecutor.ORDER_CREATE)
 """
 
 from __future__ import annotations
@@ -13,7 +14,10 @@ import uuid
 
 from fastapi import Depends, FastAPI, Header, HTTPException
 
-from fgagent.agents import AGENTS
+from fgagent.agents import AGENTS, order_advisor
+from fgagent.executor import WriteClient
+from fgcli.auth import get_token
+from fgcli.planner import ObserveError
 from fgagent.runtime import runner
 from fgcli.auth import _load_env
 
@@ -50,3 +54,13 @@ def run(agent: str, storeId: int, trigger: str = "MANUAL"):
     run_id = str(uuid.uuid4())
     threading.Thread(target=_run_safely, args=(agent, storeId, trigger, run_id), daemon=True).start()
     return {"status": "accepted", "runId": run_id, "agent": agent, "storeId": storeId}
+
+
+@app.post("/fingerprint/{store_id}", dependencies=[Depends(verify_internal_token)])
+def fingerprint(store_id: int):
+    """제안 때와 같은 planner 로 지금 발주안 ID 를 계산한다 (읽기만, 재예측하지 않음)."""
+    try:
+        plan = order_advisor.plan_for(WriteClient(get_token("agent")), store_id)
+    except (ObserveError, RuntimeError, SystemExit) as e:
+        raise HTTPException(status_code=503, detail=f"발주안을 계산하지 못했습니다: {e}")
+    return {"storeId": store_id, "planId": plan["planId"]}

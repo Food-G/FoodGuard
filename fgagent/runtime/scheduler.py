@@ -14,8 +14,9 @@ from fgcli.auth import get_token
 log = logging.getLogger(__name__)
 
 # agent → crontab (분 시 일 월 요일). echo 는 검증용이라 수동 실행만 한다.
-# 예) "order_advisor": "0 8 * * *"   (AG-1 에서 추가)
-SCHEDULES: dict[str, str] = {}
+SCHEDULES: dict[str, str] = {
+    "order_advisor": "0 8 * * *",
+}
 
 
 def store_ids() -> list[int]:

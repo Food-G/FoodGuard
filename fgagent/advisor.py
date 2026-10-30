@@ -33,13 +33,30 @@ SCHEMA = {
                     "reason": {"type": "string"},
                 },
                 "required": ["ingredientId", "verdict", "suggestedQty", "reason"],
+                "additionalProperties": False,
             },
         },
         "concerns": {"type": "array", "items": {"type": "string"}},
         "recommendation": {"type": "string", "enum": ["execute", "revise", "wait"]},
     },
     "required": ["summary", "items", "concerns", "recommendation"],
+    "additionalProperties": False,  # Claude API 구조화 출력(output_config) 요구사항
 }
+
+
+def apply_review(items: list[dict], rev: dict) -> list[dict]:
+    """참모 조정안 적용. 줄이거나 빼는 것만 받아들인다 (늘리는 제안은 무시)."""
+    by_id = {r["ingredientId"]: r for r in rev["items"]}
+    out = []
+    for it in items:
+        r = by_id.get(it["ingredientId"])
+        if r is None or r["verdict"] == "approve":
+            out.append(it)
+        elif r["verdict"] == "reduce" and 0 < r["suggestedQty"] < it["orderQty"]:
+            out.append({**it, "orderQty": round(r["suggestedQty"], 1), "adjustedBy": "advisor"})
+        elif r["verdict"] == "reduce" and r["suggestedQty"] >= it["orderQty"]:
+            out.append(it)  # 늘리거나 그대로인 '감축'은 무시하고 원래 수량 유지 (예전엔 항목이 빠졌다)
+    return out
 
 
 class AdvisorError(RuntimeError):
