@@ -6,7 +6,6 @@ import {
   TableHead, TableRow, LinearProgress,
 } from '@mui/material';
 import ReactEChart from '../components/base/ReactEChart';
-import SalesPlanCard from '../components/SalesPlanCard';
 import * as echarts from 'echarts';
 import { storeService } from '../services/storeService';
 import {
@@ -378,13 +377,6 @@ const Predictions = ({ user }: any) => {
                 </Table>
               </TableContainer>
             </Paper>
-          </Grid>
-        )}
-
-        {/* 매출 계획 (목표 매출 vs AI 예측 매출) */}
-        {storeId && (
-          <Grid item xs={12}>
-            <SalesPlanCard storeId={storeId} refreshKey={predictions} />
           </Grid>
         )}
 

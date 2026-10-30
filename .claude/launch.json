@@ -2,6 +2,12 @@
   "version": "0.0.1",
   "configurations": [
     {
+      "name": "ai-service",
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": ["/c", "cd ai-service && venv\\Scripts\\python.exe main.py"],
+      "port": 8000
+    },
+    {
       "name": "backend",
       "runtimeExecutable": "backend\\gradlew.bat",
       "runtimeArgs": ["-p", "backend", "bootRun"],
