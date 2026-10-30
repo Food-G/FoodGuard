@@ -10,6 +10,7 @@ import { notificationService } from '../services/notificationService';
 import { api } from '../services/api';
 import IconifyIcon from '../components/base/IconifyIcon';
 import QrScanner from '../components/QrScanner';
+import OrderExplainDialog from '../components/OrderExplainDialog';
 import { useMyStore } from '../hooks/useMyStore';
 import { useConfirm } from '../hooks/useConfirm';
 import AlertMessages from '../components/AlertMessages';
@@ -44,6 +45,7 @@ const Orders = ({ user }: any) => {
   const [success, setSuccess] = useState('');
   const [scanning, setScanning] = useState(false);
   const [orderDialog, setOrderDialog] = useState(false);
+  const [explainOpen, setExplainOpen] = useState(false);
   const [ingredients, setIngredients] = useState<any[]>([]);
   const [orderForm, setOrderForm] = useState({ ingredientId: '', quantity: '' });
   const [submitting, setSubmitting] = useState(false);
@@ -211,6 +213,15 @@ const Orders = ({ user }: any) => {
           발주 신청
         </Button>
         <Button
+          variant="outlined"
+          startIcon={<IconifyIcon icon="mingcute:question-line" />}
+          onClick={() => setExplainOpen(true)}
+          disabled={!storeId}
+          sx={{ px: 3, py: 1.5, borderRadius: 3 }}
+        >
+          AI 추천 근거 보기
+        </Button>
+        <Button
           variant="contained"
           startIcon={ordering
             ? <CircularProgress size={16} color="inherit" />
@@ -222,6 +233,8 @@ const Orders = ({ user }: any) => {
           {ordering ? '발주 등록 중...' : 'AI 예측 기반 자동 발주'}
         </Button>
       </Stack>
+
+      {storeId && <OrderExplainDialog open={explainOpen} storeId={storeId} onClose={() => setExplainOpen(false)} />}
 
       <Dialog open={orderDialog} onClose={() => setOrderDialog(false)} maxWidth="xs" fullWidth>
         <DialogTitle fontWeight={700}>발주 신청</DialogTitle>

@@ -177,6 +177,10 @@ public class OrderRequestService {
         Map<Long, Double> required = new LinkedHashMap<>();
         Map<Long, String> ingName = new LinkedHashMap<>();
         Map<Long, String> ingUnit = new LinkedHashMap<>();
+        // 근거 설명용 (AI 서비스 /api/explain/order): 안전재고 빼고 본 필요량, 메뉴별 기여, 식자재 설정
+        Map<Long, Double> pointRequired = new LinkedHashMap<>();
+        Map<Long, List<Map<String, Object>>> contributions = new LinkedHashMap<>();
+        Map<Long, Ingredient> ingredients = new LinkedHashMap<>();
 
         for (Map.Entry<Long, List<PredictionResult>> entry : menuPredictions.entrySet()) {
             for (MenuIngredient mi : menuIngredientRepository.findByMenuId(entry.getKey())) {
@@ -184,15 +188,25 @@ public class OrderRequestService {
                 String baseUnit = mi.getIngredient().getUnit();
                 String recipeUnit = mi.getUnit();
                 LocalDate until = today.plusDays(coverageDays(mi.getIngredient()));
-                int menuQty = entry.getValue().stream()
+                List<PredictionResult> inWindow = entry.getValue().stream()
                         .filter(p -> !p.getPredictionDate().isAfter(until))
+                        .toList();
+                int menuQty = inWindow.stream()
                         .mapToInt(p -> p.getRecommendedOrderQty() != null ? p.getRecommendedOrderQty() : p.getPredictedQty())
                         .sum();
-                double rawQty = mi.getQtyPerUnit().doubleValue() * menuQty;
-                double qty = convertToBaseUnit(rawQty, recipeUnit, baseUnit);
-                required.merge(ingId, qty, Double::sum);
+                int pointMenuQty = inWindow.stream().mapToInt(PredictionResult::getPredictedQty).sum();
+                double perUnit = convertToBaseUnit(mi.getQtyPerUnit().doubleValue(), recipeUnit, baseUnit);
+                required.merge(ingId, perUnit * menuQty, Double::sum);
+                pointRequired.merge(ingId, perUnit * pointMenuQty, Double::sum);
                 ingName.putIfAbsent(ingId, mi.getIngredient().getName());
                 ingUnit.putIfAbsent(ingId, baseUnit);
+                ingredients.putIfAbsent(ingId, mi.getIngredient());
+
+                Map<String, Object> c = new LinkedHashMap<>();
+                c.put("menuName", inWindow.isEmpty() ? null : inWindow.get(0).getMenu().getMenuName());
+                c.put("menuQty", menuQty);
+                c.put("perUnit", perUnit);
+                contributions.computeIfAbsent(ingId, k -> new ArrayList<>()).add(c);
             }
         }
 
@@ -225,6 +239,15 @@ public class OrderRequestService {
             item.put("requiredQty", req);
             item.put("currentStock", cur);
             item.put("orderQty", orderQty);
+            // 아래는 근거 설명용 (발주량 계산에는 쓰지 않음)
+            Ingredient ing = ingredients.get(ingId);
+            item.put("pendingQty", alreadyOrdered);
+            item.put("pointQty", round1(pointRequired.get(ingId)));
+            item.put("coverageDays", coverageDays(ing));
+            item.put("shelfLifeDays", ing.getShelfLifeDays());
+            item.put("leadTimeDays", ing.getLeadTimeDays());
+            item.put("orderCycleDays", ing.getOrderCycleDays());
+            item.put("contributions", contributions.get(ingId));
             result.add(item);
         }
 

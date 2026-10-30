@@ -2,6 +2,7 @@ package com.foodguard.controller;
 
 import com.foodguard.entity.Inventory;
 import com.foodguard.entity.OrderRequest;
+import com.foodguard.service.OrderExplainService;
 import com.foodguard.service.OrderRequestService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +18,7 @@ import java.util.Map;
 public class OrderRequestController {
 
     private final OrderRequestService orderRequestService;
+    private final OrderExplainService orderExplainService;
 
     @PostMapping
     public ResponseEntity<OrderRequest> create(@RequestBody Map<String, Object> body) {
@@ -104,6 +106,12 @@ public class OrderRequestController {
     @GetMapping("/recommend/{storeId}")
     public ResponseEntity<List<Map<String, Object>>> recommend(@PathVariable Long storeId) {
         return ResponseEntity.ok(orderRequestService.recommend(storeId));
+    }
+
+    // 추천 발주량 + AI(claude CLI) 근거 설명. 10~20초 걸린다
+    @PostMapping("/recommend/{storeId}/explain")
+    public ResponseEntity<Map<String, Object>> explainRecommend(@PathVariable Long storeId) {
+        return ResponseEntity.ok(orderExplainService.explain(storeId));
     }
 
     @PostMapping("/auto/{storeId}")

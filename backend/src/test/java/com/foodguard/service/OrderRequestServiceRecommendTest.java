@@ -41,6 +41,7 @@ class OrderRequestServiceRecommendTest {
     void 식자재마다_보관기한과_발주주기_안의_수요만_발주한다() {
         Menu menu = new Menu();
         menu.setId(10L);
+        menu.setMenuName("비빔밥");
 
         // 메뉴 1개가 내일부터 7일간 하루 10개 팔린다고 추천
         LocalDate today = LocalDate.now();
@@ -64,12 +65,25 @@ class OrderRequestServiceRecommendTest {
         when(inventoryRepository.findByStoreId(STORE_ID)).thenReturn(List.of());
         when(orderRequestRepository.findByStoreIdAndStatusIn(eq(STORE_ID), anyList())).thenReturn(List.of());
 
-        Map<String, Double> orderQty = service.recommend(STORE_ID).stream().collect(Collectors.toMap(
+        List<Map<String, Object>> recs = service.recommend(STORE_ID);
+        Map<String, Double> orderQty = recs.stream().collect(Collectors.toMap(
                 r -> (String) r.get("ingredientName"), r -> ((Number) r.get("orderQty")).doubleValue()));
 
         assertThat(orderQty).containsEntry("쌀", 14.0);   // 7일 × 10개 × 0.2kg
         assertThat(orderQty).containsEntry("상추", 2.0);  // 2일 × 10개 × 0.1kg
         assertThat(orderQty).containsEntry("양파", 2.0);  // 4일 × 10개 × 0.05kg
+
+        // 근거 설명용 필드: 책임 기간, 보관기한, 메뉴별 기여 (설명 문장의 재료)
+        Map<String, Object> lettuceRec = recs.stream().filter(r -> "상추".equals(r.get("ingredientName"))).findFirst().orElseThrow();
+        assertThat(lettuceRec.get("coverageDays")).isEqualTo(2);
+        assertThat(lettuceRec.get("shelfLifeDays")).isEqualTo(2);
+        assertThat(lettuceRec.get("pointQty")).isEqualTo(2.0);
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> contributions = (List<Map<String, Object>>) lettuceRec.get("contributions");
+        assertThat(contributions).singleElement().satisfies(c -> {
+            assertThat(c.get("menuName")).isEqualTo("비빔밥");
+            assertThat(c.get("menuQty")).isEqualTo(20);
+        });
     }
 
     private static Ingredient ingredient(Long id, String name, Integer shelfLife, Integer leadTime, Integer orderCycle) {

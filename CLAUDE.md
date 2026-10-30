@@ -94,12 +94,14 @@ ai-service/
 │   ├── calibration.py           # 식자재 단위 conformal 안전재고 보정 비율 (safety_factor)
 │   └── feature_engineering.py  # 피처 생성 (날짜 + 날씨 + lag/rolling)
 ├── services/
+│   ├── claude_cli.py           # claude -p 헤드리스 호출 (발주 근거 설명, 도구 없음·짧은 시스템 프롬프트·JSON 출력)
 │   ├── prediction_service.py   # 예측 비즈니스 로직
 │   ├── data_service.py         # DB 읽기/쓰기 (순수 SQL)
 │   └── weather_service.py      # 기상청 API + Open-Meteo
 └── routers/
     ├── prediction.py            # /api/predict/*
-    └── training.py              # /api/train/*
+    ├── training.py              # /api/train/*
+    └── explain.py               # /api/explain/order — 발주 추천 근거 설명 (숫자는 바꾸지 않음)
 ```
 
 ### AI 예측 흐름

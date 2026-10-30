@@ -358,3 +358,22 @@ DB (49개 메뉴, 258개 시점, 1,765 평가일 — 11절과 같은 평가셋):
 - 매장이 없는 공용 데이터(`store_id` 가 빈 기존 식자재 29개)는 누구나 수정할 수 있다 — 공용 식자재를 본사 전용으로 할지는 정해야 한다
 - 새 컨트롤러에 엔티티 `{id}` 경로를 만들면 `StoreAccessInterceptor.ID_ENTITY` 에 추가해야 검사된다
 - `StoreAccessTest`, `UserServiceTest`(회원가입 제한). CI 백엔드 job 에 security 패키지 테스트 추가
+
+## 14. 발주 추천 근거 설명 — claude CLI 에이전트 (2026-10-30)
+
+시제품 단계라 Claude API 대신 로그인된 Claude Code CLI(`claude -p`)를 AI 서비스가 하위 프로세스로 호출한다.
+
+**원칙**: 발주량은 지금처럼 수요 예측 모델(XGBoost)과 발주 규칙이 정하고, LLM 은 그 계산 근거를 문장으로만 쓴다. 숫자를 새로 계산·변경하지 않도록 시스템 프롬프트로 막고, 입력에 없는 식자재 설명은 버린다.
+
+**XGBoost 에 에이전트를 붙일지**: 붙이지 않는다. 숫자 시계열 예측은 백테스트로 검증된 XGBoost 가 낫고(일별 9.2%, 주간 ±10% 87%), LLM 이 예측을 고치면 재현이 안 되고 판단 수정은 대개 손해다(Fildes et al. 2009). 에이전트는 예측 주변(설명·데이터 점검·이벤트 후보 정리)에만 둔다.
+
+**구성**
+- AI 서비스 `services/claude_cli.py`: `claude -p --output-format json --tools "" --system-prompt <짧은 프롬프트> --json-schema <스키마> --no-session-persistence`, 임시 폴더에서 실행(프로젝트 CLAUDE.md 가 섞이지 않게), 50초 제한. 기본 Claude Code 시스템 프롬프트(약 2.5만 토큰)를 짧은 것으로 바꿔 호출당 비용이 $0.21 → 약 $0.01
+- `--bare` 는 로그인(OAuth)을 건너뛰어 쓸 수 없다. Windows 는 `claude.cmd` 대신 `claude.exe` 경로를 `CLAUDE_CLI` 에 둔다 (`.env.example`)
+- AI 서비스 `POST /api/explain/order` (`routers/explain.py`): 식자재별 설명 + 전체 요약 (구조화 출력)
+- 백엔드 `recommend()` 결과에 근거 필드 추가(발주량 계산에는 안 씀): `pendingQty`, `pointQty`(안전재고 전), `coverageDays`·`shelfLifeDays`·`leadTimeDays`·`orderCycleDays`, `contributions`(메뉴별 수량·1개당 사용량)
+- 백엔드 `POST /api/orders/recommend/{storeId}/explain` (`OrderExplainService`): 매장 소유 검사 적용
+- 프론트 발주 화면 "AI 추천 근거 보기" 대화상자 (`components/OrderExplainDialog.tsx`)
+- 백엔드 `RestTemplate` 을 HTTP/1.1(`SimpleClientHttpRequestFactory`)로 고정: 기본 JDK HttpClient 의 h2c 업그레이드 요청에서 uvicorn 이 POST 본문을 버려 422 가 났다 (본문 없는 예측 호출은 영향 없었음)
+
+**확인**: 실제 CLI 로 식자재 2개 설명 약 12초, 입력 숫자만 써서 설명(보관기한 때문에 2일분만, 재고 0.4kg 차감 등). 백엔드→AI→CLI 연결과 화면 대화상자 확인. 다만 지금 데모 DB 는 세 매장 모두 재고·진행 중 발주가 예측을 덮어 추천이 0건이라, 실제 추천이 있는 상태의 화면은 아직 못 봤다. 테스트: `tests/test_claude_cli.py`(가짜 subprocess), `OrderRequestServiceRecommendTest`(근거 필드)
