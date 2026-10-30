@@ -31,12 +31,19 @@ def _actuals(db: Session, store_ids: list[int]) -> pd.DataFrame:
         {"actual": float})
 
 
-def latest_run_id(db: Session, source: str) -> str | None:
-    return db.execute(
-        text("SELECT run_id FROM PREDICTION_LOG WHERE source = :src "
-             "ORDER BY predicted_at DESC, log_id DESC LIMIT 1"),
-        {"src": source},
-    ).scalar()
+def latest_run_id(db: Session, source: str, store_id: int | None = None) -> str | None:
+    """매장을 지정하면 그 매장이 포함된 실행 중에서 고른다.
+
+    한계: 백테스트의 predicted_at 은 실행 시각이 아니라 기준일이고 TiDB 의 log_id 는 단조 증가가 아니라서,
+    같은 매장을 여러 번 백테스트했을 때 '가장 최근 실행'을 정확히 고르지 못할 수 있다
+    (실행 시각 컬럼이 생기기 전까지는 run_id 를 직접 지정하는 것이 확실하다).
+    """
+    q = "SELECT run_id FROM PREDICTION_LOG WHERE source = :src"
+    params: dict = {"src": source}
+    if store_id is not None:
+        q += " AND store_id = :sid"
+        params["sid"] = store_id
+    return db.execute(text(q + " ORDER BY predicted_at DESC, log_id DESC LIMIT 1"), params).scalar()
 
 
 def _metrics(g: pd.DataFrame) -> dict:
@@ -63,7 +70,7 @@ def _metrics(g: pd.DataFrame) -> dict:
 
 def evaluate(db: Session, source: str = "backtest", run_id: str | None = None,
              store_id: int | None = None) -> dict:
-    run_id = run_id or latest_run_id(db, source)
+    run_id = run_id or latest_run_id(db, source, store_id)
     if run_id is None:
         return {"error": "no_log", "message": f"source={source} 예측 이력이 없습니다."}
 
