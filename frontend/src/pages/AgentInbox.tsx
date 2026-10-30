@@ -59,6 +59,58 @@ const PayloadView = ({ payload }: { payload: Record<string, any> }) => (
   </Stack>
 );
 
+const RISK_LABEL: Record<string, { label: string; color: any }> = {
+  stockout: { label: '품절 위험', color: 'error' },
+  below_threshold: { label: '임계치 미만', color: 'warning' },
+  awaiting_delivery: { label: '입고 대기 의존', color: 'info' },
+  waste: { label: '폐기 위험', color: 'secondary' },
+  no_demand: { label: '수요 없음', color: 'default' },
+};
+const VERDICT_LABEL: Record<string, string> = { approve: '그대로', reduce: '감축', hold: '보류' };
+
+/** 발주 참모(AG-1) 발주안: 품목 표 + 위험 배지 + 경고·우려 */
+const OrderPlanView = ({ payload }: { payload: Record<string, any> }) => (
+  <Stack gap={1.5} mt={1.5}>
+    {payload.risks?.length > 0 && (
+      <Stack direction="row" gap={0.5} flexWrap="wrap">
+        {payload.risks.map((r: any, i: number) => (
+          <Chip key={i} size="small" color={RISK_LABEL[r.risk]?.color ?? 'default'}
+            label={`${RISK_LABEL[r.risk]?.label ?? r.risk} · ${r.ingredientName}`} />
+        ))}
+      </Stack>
+    )}
+    <Table size="small">
+      <TableHead>
+        <TableRow>
+          <TableCell>식자재</TableCell><TableCell align="right">필요량</TableCell>
+          <TableCell align="right">재고</TableCell><TableCell align="right">대기발주</TableCell>
+          <TableCell align="right">계획량</TableCell><TableCell align="right">발주량</TableCell>
+          <TableCell>참모 판정</TableCell>
+        </TableRow>
+      </TableHead>
+      <TableBody>
+        {(payload.items ?? []).map((it: any) => (
+          <TableRow key={it.ingredientId}>
+            <TableCell>{it.ingredientName}</TableCell>
+            <TableCell align="right">{it.requiredQty}{it.unit}</TableCell>
+            <TableCell align="right">{it.currentStock}{it.unit}</TableCell>
+            <TableCell align="right">{it.pendingQty}{it.unit}</TableCell>
+            <TableCell align="right">{it.planQty}{it.unit}</TableCell>
+            <TableCell align="right"><b>{it.orderQty}{it.unit}</b></TableCell>
+            <TableCell title={it.reason}>{VERDICT_LABEL[it.verdict] ?? it.verdict}</TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+    {payload.held?.length > 0 && (
+      <Typography variant="body2" color="text.secondary">보류(발주 안 함): {payload.held.join(', ')}</Typography>
+    )}
+    {[...(payload.warnings ?? []), ...(payload.concerns ?? [])].map((c: string, i: number) => (
+      <Typography key={i} variant="body2" color="warning.main">⚠ {c}</Typography>
+    ))}
+  </Stack>
+);
+
 const ProposalCard = ({ p, onApprove, onReject, onReplan }: {
   p: AgentProposal; onApprove: () => void; onReject: () => void; onReplan: () => void;
 }) => {
@@ -78,8 +130,9 @@ const ProposalCard = ({ p, onApprove, onReject, onReplan }: {
         </Typography>
       </Stack>
       <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>{p.rationale}</Typography>
+      {p.type === 'ORDER_CREATE' && <OrderPlanView payload={p.payload} />}
       <Collapse in={open}>
-        <Box mt={2}><PayloadView payload={p.payload} /></Box>
+        {p.type !== 'ORDER_CREATE' && <Box mt={2}><PayloadView payload={p.payload} /></Box>}
         {p.execResult && (
           <Typography variant="caption" color="text.secondary" component="pre" mt={1}>
             실행 결과: {JSON.stringify(p.execResult, null, 2)}
@@ -87,7 +140,9 @@ const ProposalCard = ({ p, onApprove, onReject, onReplan }: {
         )}
       </Collapse>
       <Stack direction="row" gap={1} mt={2}>
-        <Button size="small" onClick={() => setOpen(!open)}>{open ? '근거 접기' : '근거 보기'}</Button>
+        <Button size="small" onClick={() => setOpen(!open)}>
+          {open ? '접기' : p.type === 'ORDER_CREATE' ? '실행 결과 보기' : '근거 보기'}
+        </Button>
         <Box flex={1} />
         {p.status === 'PENDING' && (
           <>
@@ -189,10 +244,16 @@ const AgentInbox = ({ user }: any) => {
         <Chip label={`승인 대기 ${proposals.filter((p) => p.status === 'PENDING').length}건`} color="warning" size="small" />
         <Box flex={1} />
         {!isHq && storeId && (
-          <Button variant="outlined" startIcon={<IconifyIcon icon="mingcute:play-line" />}
-            onClick={() => handleRun('echo', storeId)}>
-            재고 점검 실행(테스트)
-          </Button>
+          <>
+            <Button variant="outlined" startIcon={<IconifyIcon icon="mingcute:play-line" />}
+              onClick={() => handleRun('echo', storeId)}>
+              재고 점검 실행(테스트)
+            </Button>
+            <Button variant="contained" startIcon={<IconifyIcon icon="mingcute:refresh-2-line" />}
+              onClick={() => handleRun('order_advisor', storeId)}>
+              발주안 지금 만들기
+            </Button>
+          </>
         )}
       </Stack>
       <Typography variant="body2" color="text.secondary">
