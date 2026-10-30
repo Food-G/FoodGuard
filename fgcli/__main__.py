@@ -135,6 +135,9 @@ COMMANDS: dict[str, tuple[Callable[[argparse.Namespace], str], Trimmer, str]] = 
     "weekly-all":  (lambda a: "/api/sales/all-stores/weekly-summary", None,
                     "전 매장 주간 매출 (HQ 전용)"),
     "ai-health":   (lambda a: "/health", None, "AI 예측 서비스 가동 확인"),
+    "accuracy":    (lambda a: "/api/accuracy?source=" + a.source
+                    + (f"&store_id={a.store}" if a.store else ""), None,
+                    "예측 정확도 (예측 이력 × 실제 판매, WAPE·MAPE·편향·기준선 대비)"),
     "plan":        (lambda a: "", None,
                     "발주 참모 발주안: 관찰→판단→발주안 + 서버 추천과 대조 (읽기 전용, 발주하지 않음)"),
 }
@@ -177,6 +180,9 @@ def build_parser() -> argparse.ArgumentParser:
             sp.add_argument("store_id", type=int, help="매장 ID")
         if name in NEEDS_MENU_ID:
             sp.add_argument("menu_id", type=int, help="메뉴 ID")
+        if name == "accuracy":
+            sp.add_argument("--source", choices=["backtest", "live"], default="backtest")
+            sp.add_argument("--store", type=int, help="매장 ID (생략 시 전체)")
         if name == "sales":
             sp.add_argument("--start", required=True, help="시작일 YYYY-MM-DD")
             sp.add_argument("--end", required=True, help="종료일 YYYY-MM-DD")
@@ -235,7 +241,7 @@ def main(argv: list[str] | None = None) -> int:
     else:
         path = path_fn(args)
 
-    base = AI_BASE if args.command == "ai-health" else None
+    base = AI_BASE if args.command in ("ai-health", "accuracy") else None
     result = client.get(path, base=base) if base else client.get(path)
 
     if isinstance(result, list) and trimmer and not args.full:
