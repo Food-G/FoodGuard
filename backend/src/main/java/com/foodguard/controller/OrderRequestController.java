@@ -58,7 +58,7 @@ public class OrderRequestController {
         return ResponseEntity.ok(orderRequestService.initInventoryFromOrders(storeId));
     }
 
-    @PreAuthorize("hasRole('HQ_ADMIN')")
+    @PreAuthorize("hasAnyRole('HQ_ADMIN', 'AGENT')")
     @GetMapping("/admin/all")
     public ResponseEntity<List<OrderRequest>> getAll() {
         return ResponseEntity.ok(orderRequestService.getAll());

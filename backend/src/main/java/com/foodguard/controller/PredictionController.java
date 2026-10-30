@@ -29,7 +29,7 @@ public class PredictionController {
         }
         if (storeId != null) {
             guard.assertCanAccessStore(storeId);
-        } else if (!guard.currentUser().isHqAdmin()) {
+        } else if (!guard.currentUser().isHqAdmin() && !guard.currentUser().isAgent()) {
             throw new AccessDeniedException("전 매장 정확도는 본사만 조회할 수 있습니다.");
         }
         try {

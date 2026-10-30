@@ -43,6 +43,7 @@ public class SalesDataController {
             @PathVariable Long storeId,
             @RequestParam String start,
             @RequestParam String end) {
+        guard.assertCanAccessStore(storeId);
         return ResponseEntity.ok(salesDataService.getByDateRange(
                 storeId,
                 LocalDate.parse(start),
@@ -68,7 +69,7 @@ public class SalesDataController {
         return ResponseEntity.ok(salesDataService.getWeeklySummary(storeId));
     }
 
-    @PreAuthorize("hasRole('HQ_ADMIN')")
+    @PreAuthorize("hasAnyRole('HQ_ADMIN', 'AGENT')")
     @GetMapping("/all-stores/weekly-summary")
     public ResponseEntity<Map<Long, Long>> getAllStoreWeeklySummary() {
         return ResponseEntity.ok(salesDataService.getAllStoreWeeklySummary());

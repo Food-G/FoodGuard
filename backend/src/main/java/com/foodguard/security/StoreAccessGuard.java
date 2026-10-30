@@ -13,6 +13,8 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.util.Objects;
 
@@ -25,6 +27,7 @@ import java.util.Objects;
  * 서버에서 직접 막는다.
  *
  * HQ_ADMIN 은 전 매장을 볼 수 있으므로 모든 검사를 통과한다.
+ * AGENT 는 조회(GET)일 때만 HQ 처럼 통과한다. 그 밖의 요청은 소유 매장이 없으므로 거부된다.
  */
 @Component
 @RequiredArgsConstructor
@@ -53,7 +56,7 @@ public class StoreAccessGuard {
     /** 해당 매장의 소유 점주이거나 HQ_ADMIN 이어야 한다. */
     public void assertCanAccessStore(Long storeId) {
         AuthUser user = currentUser();
-        if (user.isHqAdmin()) return;
+        if (user.isHqAdmin() || isAgentRead(user)) return;
 
         Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new AccessDeniedException("가맹점을 찾을 수 없습니다."));
@@ -66,10 +69,16 @@ public class StoreAccessGuard {
     /** 본인 userId 로만 조회 가능 (예: GET /api/stores/my/{userId}). */
     public void assertIsSelf(Long userId) {
         AuthUser user = currentUser();
-        if (user.isHqAdmin()) return;
+        if (user.isHqAdmin() || isAgentRead(user)) return;
         if (!Objects.equals(userId, user.id())) {
             throw new AccessDeniedException("본인 계정이 아닙니다.");
         }
+    }
+
+    private static boolean isAgentRead(AuthUser user) {
+        if (!user.isAgent()) return false;
+        return RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes attrs
+                && "GET".equals(attrs.getRequest().getMethod());
     }
 
     // ── 엔티티 id 기준 검사 ────────────────────────────────────────────

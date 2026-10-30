@@ -37,7 +37,7 @@ public class StoreController {
         return ResponseEntity.ok(storeService.getMyStores(userId));
     }
 
-    @PreAuthorize("hasRole('HQ_ADMIN')")
+    @PreAuthorize("hasAnyRole('HQ_ADMIN', 'AGENT')")
     @GetMapping
     public ResponseEntity<List<Store>> getAll() {
         return ResponseEntity.ok(storeService.getAll());

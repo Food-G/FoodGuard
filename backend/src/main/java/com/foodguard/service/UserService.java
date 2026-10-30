@@ -21,6 +21,10 @@ public class UserService {
 
     // 회원가입
     public String signup(SignupRequest request) {
+        // AGENT 등 서비스 계정 역할은 가입으로 만들 수 없다 (DB 에서 직접 지정)
+        if (!"OWNER".equals(request.getRole()) && !"HQ_ADMIN".equals(request.getRole())) {
+            throw new IllegalStateException("가입할 수 없는 역할입니다: " + request.getRole());
+        }
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new RuntimeException("이미 존재하는 이메일입니다.");
         }
