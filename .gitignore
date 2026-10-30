@@ -24,3 +24,4 @@ ai-service/trained_models/*.joblib
 .DS_Store
 **/__pycache__/
 agent-runs/
+*.log
