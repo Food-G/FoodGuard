@@ -154,7 +154,7 @@ def _common_options(parser: argparse.ArgumentParser, *, suppress: bool) -> None:
     덮어쓰지 않게 한다.
     """
     d: dict = {"default": argparse.SUPPRESS} if suppress else {}
-    parser.add_argument("--as", dest="role", choices=["owner", "hq"],
+    parser.add_argument("--as", dest="role", choices=["owner", "hq", "agent"],
                         help="어느 계정 권한으로 조회할지 (기본 owner)",
                         **({} if suppress else {"default": "owner"}), **d)
     parser.add_argument("--full", action="store_true",

@@ -2,6 +2,8 @@
 
     python -m fgagent order 60006            # 관찰 → 판단 → 발주안 → Claude 검토 → 승인 → 실행 → 검증
     python -m fgagent order 60006 --no-llm   # Claude 없이 결정적 코어만
+    python -m fgagent run echo 60006         # 공통 런타임으로 에이전트 1회 실행 (제안은 웹 승인함으로)
+    python -m fgagent serve                  # agent-service :8100 + 스케줄러
 
 쓰기(재예측, 발주)는 반드시 이 터미널에서 사람이 입력한 답을 받은 뒤에만 일어난다.
 실행 직전에 발주안을 다시 계산해 planId 가 바뀌었으면(그 사이 재고·발주가 바뀌면) 멈춘다.
@@ -184,7 +186,26 @@ def main(argv: list[str] | None = None) -> int:
     o.add_argument("--as", dest="role", choices=["owner", "hq"], default="owner")
     o.add_argument("--no-llm", action="store_true", help="Claude 검토 없이 실행")
     o.add_argument("--model", help="Claude 모델 (기본: 계정 기본값)")
+    r = sub.add_parser("run", help="공통 런타임으로 에이전트 1회 실행 (AGENT 계정, 제안은 승인함으로)")
+    r.add_argument("agent")
+    r.add_argument("store_id", type=int)
+    r.add_argument("--no-llm", action="store_true", help="Claude 없이 결정적 코어만")
+    s = sub.add_parser("serve", help="agent-service (FastAPI) + 스케줄러")
+    s.add_argument("--port", type=int, default=8100)
     a = p.parse_args(argv)
+
+    if a.command == "run":
+        from fgagent.runtime import runner
+        rec = runner.run(a.agent, a.store_id, use_llm=not a.no_llm)
+        print(json.dumps(rec, ensure_ascii=False, indent=2, default=str))
+        return 0 if rec.get("status") == "OK" else 1
+    if a.command == "serve":
+        import uvicorn
+        from fgagent.runtime import scheduler
+        from fgagent.service import app
+        scheduler.start()
+        uvicorn.run(app, host="127.0.0.1", port=a.port)
+        return 0
     return run_order(a.store_id, a.role, not a.no_llm, a.model)
 
 

@@ -27,6 +27,18 @@ class WriteClient(FoodGuardClient):
             return r.status_code, r.text.strip()
 
 
+    def put(self, path: str, body: dict | None = None, base: str = API_BASE) -> tuple[int, Any]:
+        headers = {"Authorization": f"Bearer {self.token}"}
+        try:
+            r = requests.put(f"{base}{path}", json=body, headers=headers, timeout=120)
+        except requests.RequestException as e:
+            return 0, str(e)
+        try:
+            return r.status_code, r.json()
+        except ValueError:
+            return r.status_code, r.text.strip()
+
+
 def ai_service_up() -> bool:
     try:
         return requests.get(f"{AI_BASE}/health", timeout=3).status_code == 200

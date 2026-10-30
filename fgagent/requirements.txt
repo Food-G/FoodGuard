@@ -1,0 +1,6 @@
+# agent-service (python -m fgagent serve). fgcli 단독 실행은 requests 만 있으면 된다.
+requests
+anthropic
+apscheduler
+fastapi
+uvicorn

@@ -27,6 +27,8 @@ ENV_PATH = Path(__file__).resolve().parent.parent / "ai-service" / ".env"
 ROLES = {
     "owner": ("FOODGUARD_OWNER_EMAIL", "FOODGUARD_OWNER_PASSWORD"),
     "hq": ("FOODGUARD_HQ_EMAIL", "FOODGUARD_HQ_PASSWORD"),
+    # 에이전트 서비스 계정 (ROLE_AGENT): 전 매장 조회 + 제안·실행기록 쓰기만 (DEV_ROADMAP AG-0)
+    "agent": ("FOODGUARD_AGENT_EMAIL", "FOODGUARD_AGENT_PASSWORD"),
 }
 
 
@@ -46,7 +48,7 @@ def _load_env() -> dict[str, str]:
 
 def credentials(role: str) -> tuple[str, str]:
     if role not in ROLES:
-        raise SystemExit(f"알 수 없는 역할: {role} (owner 또는 hq)")
+        raise SystemExit(f"알 수 없는 역할: {role} (owner, hq, agent)")
     email_key, pw_key = ROLES[role]
     env = _load_env()
     email, password = env.get(email_key), env.get(pw_key)
