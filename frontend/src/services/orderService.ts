@@ -46,6 +46,10 @@ export const orderService = {
   recommend: async (storeId: number) => {
     return api.get(`/orders/recommend/${storeId}`);
   },
+  // 추천 발주량 + AI(claude CLI) 근거 설명 (10~20초)
+  explainRecommend: async (storeId: number) => {
+    return api.post(`/orders/recommend/${storeId}/explain`, {});
+  },
   autoOrder: async (storeId: number) => {
     return api.post(`/orders/auto/${storeId}`, {});
   },

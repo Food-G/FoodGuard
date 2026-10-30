@@ -14,30 +14,16 @@ WEATHER_FEATURE_COLS = [
     "is_rainy", "is_hot", "is_cold",
 ]
 
-FULL_FEATURE_COLS = [
-    "day_of_week", "day_of_month", "month", "week_of_year",
-    "is_weekend", "is_holiday",
-    "is_monday", "is_friday", "is_saturday", "is_sunday",
-    "lag_1", "lag_7", "lag_14",
+# 글로벌 모델(demand_predictor) 피처. lag·rolling 은 메뉴 규모(scale)로 나눈 비율로 들어간다
+# lag_1(어제 판매량)은 쓰지 않는다: 한 모델로 1~7일 뒤를 예측하므로 2일차부터는 예측 시점에 알 수 없는 값이다
+# month·day_of_month 는 뺐다: 이력이 3~4개월뿐이라 연 계절성을 배울 수 없고 우연한 패턴만 외운다
+GLOBAL_FEATURE_COLS = [
+    "day_of_week", "is_weekend", "is_holiday",
+    "lag_7", "lag_14",
     "rolling_mean_7", "rolling_mean_14",
     "rolling_std_7",
-]
-
-# #6: 15~29개 데이터용 중간 피처셋 (lag 추가, week_of_year·요일별 플래그 제외)
-MID_FEATURE_COLS = [
-    "day_of_week", "day_of_month", "month",
-    "is_weekend", "is_holiday",
-    "is_saturday", "is_sunday",
-    "lag_1", "lag_7",
-    "rolling_mean_7", "rolling_mean_14",
-    "rolling_std_7",
-]
-
-MINIMAL_FEATURE_COLS = [
-    "day_of_week", "day_of_month", "month",
-    "is_weekend", "is_holiday",
-    "is_saturday", "is_sunday",
-    "rolling_mean_7",
+    "store_dow_ratio", "log_level", "n_obs",
+    "store_id", "menu_id",
 ]
 
 # #2: 날씨 API 실패 시 월별 계절 기온 기본값 (서울 기준, °C)
@@ -61,10 +47,35 @@ def add_date_features(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def add_lag_features(df: pd.DataFrame, lags: list[int] = (1, 7, 14)) -> pd.DataFrame:
+def weekday_lag(history_df: pd.DataFrame, dates, k: int) -> np.ndarray:
+    """
+    각 날짜의 k일 전(k는 7의 배수) 같은 요일 판매량. 그날이 휴무·미입력이면 그 이전 같은 요일 값.
+    행 위치가 아니라 달력으로 계산해야 판매 없는 날이 빠져도 '지난주 같은 요일'이 유지된다.
+    학습(add_lag_features)과 예측(make_future_feature_row)이 이 함수를 같이 써서 정의를 맞춘다.
+    """
+    y = pd.Series(history_df["y"].to_numpy(dtype=float), index=pd.to_datetime(history_df["ds"]))
+    targets = pd.DatetimeIndex(pd.to_datetime(list(dates)))
+    full = y.reindex(pd.date_range(y.index.min(), max(y.index.max(), targets.max()), freq="D"))
+    filled = full.groupby(full.index.dayofweek).ffill()
+    return filled.shift(k).reindex(targets).to_numpy()
+
+
+def store_weekday_ratio(store_totals: pd.Series, dow: int, window: int = 28) -> float:
+    """
+    매장 요일 비율: 매장 전체 일 판매량(영업일 순 Series, index=날짜)의 최근 window 영업일 중
+    dow 요일 평균 / 전체 평균. 같은 매장 메뉴들이 요일 패턴을 함께 추정하게 하는 값이다. 계산할 수 없으면 1.
+    """
+    recent = store_totals.tail(window)
+    same = recent[pd.to_datetime(recent.index).dayofweek == dow]
+    if same.empty or recent.mean() <= 0:
+        return 1.0
+    return float(same.mean() / recent.mean())
+
+
+def add_lag_features(df: pd.DataFrame, lags: list[int] = (7, 14)) -> pd.DataFrame:
     df = df.copy().sort_values("ds").reset_index(drop=True)
     for lag in lags:
-        df[f"lag_{lag}"] = df["y"].shift(lag)
+        df[f"lag_{lag}"] = weekday_lag(df, df["ds"], lag)
     return df
 
 
@@ -143,14 +154,10 @@ def make_future_feature_row(
     sorted_hist = history_df.sort_values("ds").reset_index(drop=True)
     y_vals = sorted_hist["y"].values
 
-    def _get_lag(n: int) -> float:
-        if len(y_vals) >= n:
-            return float(y_vals[-n])
-        return float(y_vals.mean()) if len(y_vals) > 0 else 0.0
-
-    row["lag_1"] = _get_lag(1)
-    row["lag_7"] = _get_lag(7)
-    row["lag_14"] = _get_lag(14)
+    # 목표일 기준 달력으로 같은 요일 값을 찾는다 (학습 때 lag 와 같은 정의). 없으면 이력 평균
+    for k in (7, 14):
+        v = weekday_lag(sorted_hist, [target_date], k)[0] if len(y_vals) > 0 else np.nan
+        row[f"lag_{k}"] = float(v) if not np.isnan(v) else (float(y_vals.mean()) if len(y_vals) > 0 else 0.0)
 
     last_7 = y_vals[-7:] if len(y_vals) >= 7 else y_vals
     last_14 = y_vals[-14:] if len(y_vals) >= 14 else y_vals

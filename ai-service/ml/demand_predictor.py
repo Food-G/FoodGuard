@@ -1,15 +1,21 @@
 """
-FoodGuard 수요 예측 모델.
+FoodGuard 수요 예측 모델 — 매장·메뉴 통합 글로벌 모델.
 
-데이터 양에 따라 세 가지 전략:
-- 데이터 >= MIN_POINTS_FULL : XGBoost + 전체 피처 + 날씨
-- MIN_POINTS_MID <= 데이터  : XGBoost + 중간 피처 + 날씨
-- MIN_POINTS_MINIMAL <= 데이터: XGBoost + 최소 피처
-- 데이터 < MIN_POINTS_MINIMAL: 요일별 평균 단순 예측
+메뉴마다 따로 학습하던 로컬 XGBoost(메뉴당 30~90행) 대신, 모든 매장×메뉴 판매 이력을
+하나의 XGBoost 로 학습한다 (Montero-Manso & Hyndman 2021, M5 상위권 방법들).
+- 정답은 판매량 / scale. scale = 메뉴 규모(level) × 매장 요일 비율.
+  level 은 최근 28영업일 판매량을 그날의 매장 요일 비율로 나눈 평균 (요일 효과를 뺀 규모)
+  규모가 다른 메뉴가 같은 패턴을 공유하고, 모델은 이 기준값에 대한 보정 비율을 학습한다
+- 매장 요일 비율(feature_engineering.store_weekday_ratio)은 같은 매장 메뉴 전체 판매량으로 추정해
+  메뉴 하나의 요일별 표본 4개보다 잡음이 적다
+- 매장·메뉴 ID(범주형), 메뉴 규모(log_level), 이력 길이(n_obs)로 매장·메뉴별 차이를 보정
+- 손실은 L1(절대오차): 평가지표 wMAPE·MASE 가 절대오차 기준이라 중앙값 예측이 맞다
+- 데이터가 적어 깊이 3, 트리 100개, min_child_weight 100 으로 보정 폭을 작게 제한
+- 이력 1~6일인 신메뉴도 같은 모델로 예측한다 (규모와 매장 요일 비율로 시작). 이력이 없으면 0
 
-평가지표는 R² 대신 wMAPE(가중 평균 절대 백분율 오차)를 사용한다.
-추천 발주량(recommended_order_qty)은 품절비용 vs 폐기비용의 critical fractile
-(뉴스벤더 모델)을 목표 분위수로 하는 별도 quantile 모델로 산출한다.
+추천 발주량(recommended_order_qty) = 점추정 × safety_factor.
+safety_factor 는 식자재 7일 사용량 기준으로 품절비용 vs 폐기비용의 critical fractile
+(뉴스벤더 모델)을 맞추는 conformal 보정 비율이다 (ml/calibration.py, prediction_service 가 설정).
 원가 데이터가 없어 COST_RATIO(판매가 대비 원가 비율 근사치, config.py)로 근사한다.
 """
 
@@ -23,17 +29,16 @@ from typing import Optional
 import joblib
 import numpy as np
 import pandas as pd
-from sklearn.model_selection import cross_val_predict
+from sklearn.model_selection import KFold, cross_val_predict
 from xgboost import XGBRegressor
 
 from config import settings
 from ml.feature_engineering import (
-    FULL_FEATURE_COLS,
-    MID_FEATURE_COLS,
-    MINIMAL_FEATURE_COLS,
+    GLOBAL_FEATURE_COLS,
     WEATHER_FEATURE_COLS,
     build_features,
     make_future_feature_row,
+    store_weekday_ratio,
 )
 
 # 예측일이 멀어질수록 신뢰도 감소폭 (일당 %)
@@ -45,20 +50,52 @@ CONFIDENCE_DECAY_PER_DAY = 1.5
 # 판매가 대비 비율만 쓰므로 실제 price 값 없이도 계산 가능.
 CRITICAL_FRACTILE = round(1.0 - settings.COST_RATIO, 4)
 
+# 메뉴 규모(level)를 재는 최근 영업일 수
+LEVEL_WINDOW = 28
+# scale 로 나눠 비율로 넣는 피처
+SCALED_COLS = ["lag_7", "lag_14", "rolling_mean_7", "rolling_mean_14", "rolling_std_7"]
+# 학습 행이 이보다 적은 메뉴는 out-of-fold 오차가 불안정해 confidence 를 보수적 고정값으로 둔다
+MIN_ROWS_FOR_SCORE = 10
+DEFAULT_CONFIDENCE = 25.0
+
+XGB_PARAMS = dict(
+    n_estimators=100,
+    max_depth=3,
+    learning_rate=0.03,
+    min_child_weight=100,
+    subsample=0.8,
+    colsample_bytree=0.8,
+    tree_method="hist",
+    enable_categorical=True,
+    max_cat_to_onehot=1,
+    random_state=42,
+    n_jobs=-1,
+)
+
+SeriesKey = tuple[int, int]  # (store_id, menu_id)
+
+# 학습 이력에 점주 특이사항 날이 있을 때만 쓰는 min_child_weight (위 XGB_PARAMS 의 100 대신)
+EVENT_MIN_CHILD_WEIGHT = 10
+
 
 class DemandPredictor:
-    def __init__(self, store_id: int, menu_id: int):
-        self.store_id = store_id
-        self.menu_id = menu_id
+    def __init__(self):
         self.model: XGBRegressor | None = None
-        self.quantile_model: XGBRegressor | None = None
         self.critical_fractile: float = CRITICAL_FRACTILE
-        self.feature_cols: list[str] = FULL_FEATURE_COLS
-        self.score: float = 0.0  # wMAPE 기반 confidence 기준값 (0~100, 이미 최종 스케일)
+        # 식자재 단위 conformal 보정 비율 (ml/calibration.safety_factor). 1.0 이면 점추정 그대로
+        self.safety_factor: float = 1.0
+        self.feature_cols: list[str] = GLOBAL_FEATURE_COLS
+        # 이력 있는 메뉴별 wMAPE 기반 confidence 기준값 (0~100, 학습 행이 적으면 DEFAULT_CONFIDENCE)
+        self.scores: dict[SeriesKey, float] = {}
         self.is_trained: bool = False
         self.use_weather: bool = False
-        self._history: pd.DataFrame | None = None
-        self.trained_at: datetime | None = None  # #8: 학습 시각 기록
+        self.use_events: bool = False
+        self._events: dict[int, dict[date, float]] = {}  # {store_id: {날짜: 특이사항 증감 배율}}
+        self._histories: dict[SeriesKey, pd.DataFrame] = {}
+        self._store_totals: dict[int, pd.Series] = {}
+        self._store_ratios: dict[int, dict[date, float]] = {}  # 매장별 {영업일: 그 전날까지 기준 요일 비율}
+        self._categories: dict[str, list[int]] = {}
+        self.trained_at: datetime | None = None
 
     # ------------------------------------------------------------------
     # Training
@@ -66,101 +103,100 @@ class DemandPredictor:
 
     def fit(
         self,
-        df: pd.DataFrame,
-        weather_df: Optional[pd.DataFrame] = None,
+        series: dict[SeriesKey, pd.DataFrame],
+        weather: Optional[dict[int, pd.DataFrame]] = None,
+        events: Optional[dict[int, dict[date, float]]] = None,
     ) -> "DemandPredictor":
         """
-        df: pandas DataFrame with columns ['ds' (date), 'y' (int quantity)]
-        weather_df: optional DataFrame with ['ds', 'temp_max', 'temp_min',
-                    'precipitation', 'is_rainy', 'is_hot', 'is_cold']
+        series: {(store_id, menu_id): DataFrame ['ds', 'y'(, 'sold_out')]} — 전체 매장×메뉴 영업일 이력
+        weather: {store_id: DataFrame ['ds', 'temp_max', 'temp_min', 'precipitation',
+                  'is_rainy', 'is_hot', 'is_cold']} — 없는 매장은 날씨 결측으로 학습
+        events: {store_id: {날짜: 예상 증감 배율}} — 점주 특이사항을 claude 가 숫자로 바꾼 값 (미래 날짜 포함).
+                학습 이력에 특이사항 날이 있을 때만 피처(event_lift)로 쓴다. 배율을 예측에 곱하지 않고
+                XGBoost 가 과거 특이사항 날의 실제 판매로 얼마나 믿을지 배운다
         """
-        df = df.copy()
-        df["ds"] = pd.to_datetime(df["ds"]).dt.date
-        df = df.sort_values("ds").reset_index(drop=True)
-        df["y"] = df["y"].clip(lower=0)
+        weather = {sid: w for sid, w in (weather or {}).items() if w is not None and not w.empty}
+        self._events = events or {}
+        self._histories = {key: _clean(df) for key, df in series.items() if len(df) > 0}
+        self._store_totals = _store_totals(self._histories)
+        self._store_ratios = {sid: _past_store_ratios(totals) for sid, totals in self._store_totals.items()}
 
-        # #11: 이상치 상한 클리핑 — 상위 1% × 3배 초과 데이터 제거
-        if len(df) >= 10:
-            upper = df["y"].quantile(0.99) * 3
-            df["y"] = df["y"].clip(upper=max(float(upper), 1.0))
-
-        n = len(df)
-        min_minimal = settings.MIN_DATA_POINTS
-        min_mid = settings.MIN_DATA_POINTS_MID
-        min_full = settings.MIN_DATA_POINTS_FULL
-
-        if n < min_minimal:
-            self._history = df
-            self.is_trained = False
+        parts = [
+            self._training_rows(key, df, weather.get(key[0]), self._store_ratios[key[0]])
+            for key, df in self._histories.items()
+        ]
+        train = pd.concat(parts, ignore_index=True) if parts else pd.DataFrame()
+        self.is_trained = len(train) >= settings.MIN_DATA_POINTS
+        if not self.is_trained:
             return self
 
-        # #6: 점진적 피처셋 선택 (급격한 전략 전환 방지)
-        if n >= min_full:
-            base_cols = FULL_FEATURE_COLS.copy()
-        elif n >= min_mid:
-            base_cols = MID_FEATURE_COLS.copy()
-        else:
-            base_cols = MINIMAL_FEATURE_COLS.copy()
+        self.use_weather = len(weather) > 0
+        # 특이사항 날이 없으면 피처를 빼서 기존 모델과 똑같이 학습한다 (상수 열도 열 샘플링을 바꾸므로)
+        self.use_events = bool((train["event_lift"] != 1.0).any())
+        self.feature_cols = (GLOBAL_FEATURE_COLS + (WEATHER_FEATURE_COLS if self.use_weather else [])
+                             + (["event_lift"] if self.use_events else []))
+        self._categories = {c: sorted(int(v) for v in train[c].unique()) for c in ("store_id", "menu_id")}
 
-        featured = build_features(df, weather_df)
+        # 시간순으로 정렬해 두면 아래 KFold 가 날짜 구간 단위 fold 가 된다
+        train = train.sort_values("ds", kind="stable").reset_index(drop=True)
+        X = self._design(train)
+        y = (train["y"] / train["scale"]).to_numpy()
 
-        # 날씨 피처 중 실제로 데이터가 있는 것만 추가
-        available_weather = [
-            c for c in WEATHER_FEATURE_COLS
-            if c in featured.columns and featured[c].notna().any()
-        ]
-        self.feature_cols = base_cols + available_weather
-        self.use_weather = len(available_weather) > 0
-
-        featured = featured.dropna(subset=base_cols)
-
-        X = featured[self.feature_cols].fillna(0).values
-        y = featured["y"].values
-
-        self.model = XGBRegressor(
-            n_estimators=200,
-            max_depth=4,
-            learning_rate=0.1,
-            min_child_weight=2,
-            subsample=0.8,
-            colsample_bytree=0.8,
-            random_state=42,
-            n_jobs=-1,
-        )
+        # 특이사항 날은 학습 행의 약 8% 라 min_child_weight 100 으로는 분할되지 않아 피처를 거의 못 배운다
+        # (합성 실험 backtest.py --events: 특이사항 날 wMAPE 37.1% → 17.8%). 특이사항이 있을 때만 낮춘다
+        params = {**XGB_PARAMS, "min_child_weight": EVENT_MIN_CHILD_WEIGHT} if self.use_events else XGB_PARAMS
+        self.model = XGBRegressor(objective="reg:absoluteerror", **params)
         self.model.fit(X, y)
 
-        # 안전재고용 quantile 모델 (critical fractile 목표) — 같은 피처, 같은 데이터로 학습
-        self.quantile_model = XGBRegressor(
-            objective="reg:quantileerror",
-            quantile_alpha=self.critical_fractile,
-            n_estimators=200,
-            max_depth=4,
-            learning_rate=0.1,
-            min_child_weight=2,
-            subsample=0.8,
-            colsample_bytree=0.8,
-            random_state=42,
-            n_jobs=-1,
-        )
-        self.quantile_model.fit(X, y)
+        # 메뉴별 confidence: out-of-fold 예측으로 메뉴마다 실제 오차율(wMAPE)을 잰다
+        oof = cross_val_predict(XGBRegressor(objective="reg:absoluteerror", **params), X, y, cv=KFold(5))
+        train["oof_ae"] = (train["y"] - np.clip(oof, 0, None) * train["scale"]).abs()
+        self.scores = {key: DEFAULT_CONFIDENCE for key in self._histories}
+        for (sid, mid), g in train.groupby(["store_id", "menu_id"]):
+            if len(g) >= MIN_ROWS_FOR_SCORE:
+                wmape = float(g["oof_ae"].sum() / max(g["y"].sum(), 1e-9) * 100)
+                self.scores[(int(sid), int(mid))] = float(np.clip(100.0 - wmape, 15.0, 95.0))
 
-        # wMAPE 기반 confidence: cross_val_predict로 out-of-fold 예측을 구해
-        # 실제 오차율을 측정 (R²보다 "몇 % 정도 틀리는지"가 발주 현장에서 더 직관적)
-        if len(X) >= 10:
-            oof_pred = cross_val_predict(
-                XGBRegressor(**self.model.get_params()), X, y, cv=min(5, len(X) // 2)
-            )
-            oof_pred = np.clip(oof_pred, 0, None)
-            wmape = float(np.sum(np.abs(y - oof_pred)) / max(np.sum(y), 1e-9) * 100)
-            self.score = float(np.clip(100.0 - wmape, 15.0, 95.0))
-        else:
-            # 데이터 7~9개: cross-validation 불가 → 보수적 confidence 고정값
-            self.score = 25.0
-
-        self._history = df
-        self.is_trained = True
         self.trained_at = datetime.now()  # #8
         return self
+
+    def _training_rows(
+        self,
+        key: SeriesKey,
+        df: pd.DataFrame,
+        weather_df: Optional[pd.DataFrame],
+        store_ratios: dict[date, float],
+    ) -> pd.DataFrame:
+        """메뉴 이력의 각 영업일을 '그 전날까지의 이력으로 그날을 맞히는' 학습 행으로 만든다."""
+        f = build_features(df, weather_df)
+        # 예측 때(make_future_feature_row)와 같은 규칙: 같은 요일 이력이 없으면 이력 평균, rolling 은 있는 만큼
+        hist_mean = f["y"].shift(1).expanding().mean()
+        for c in ("lag_7", "lag_14", "rolling_mean_7", "rolling_mean_14"):
+            f[c] = f[c].fillna(hist_mean)
+        f["store_dow_ratio"] = f["ds"].map(store_ratios)
+        f["level"] = _deseasoned(f, store_ratios).shift(1).rolling(LEVEL_WINDOW, min_periods=1).mean()
+        f["n_obs"] = np.arange(len(f))
+        f["store_id"], f["menu_id"] = key
+        f["event_lift"] = f["ds"].map(self._events.get(key[0], {})).fillna(1.0)
+        f = f.iloc[1:]  # 첫날은 이전 이력이 없다
+        if "sold_out" in f.columns:
+            # 품절일 판매량은 수요의 하한일 뿐이라 학습 정답에서 뺀다 (다른 날의 lag 값으로는 그대로 쓴다)
+            f = f[f["sold_out"] == 0]
+        return _with_scale(f)
+
+    def _design(self, f: pd.DataFrame) -> pd.DataFrame:
+        X = f.copy()
+        for c in SCALED_COLS:
+            X[c] = f[c] / f["scale"]
+        X["log_level"] = np.log1p(f["level"])
+        X["n_obs"] = np.minimum(f["n_obs"], LEVEL_WINDOW)
+        for c in ("store_id", "menu_id"):
+            # 학습에 없던 매장·메뉴(첫 판매 직후 신메뉴)는 결측으로 들어가 공통 패턴을 따른다
+            X[c] = pd.Categorical(f[c], categories=self._categories[c])
+        for c in self.feature_cols:
+            if c not in X.columns:
+                X[c] = np.nan  # 과거 날씨를 못 받은 매장
+        return X[self.feature_cols]
 
     # ------------------------------------------------------------------
     # Prediction
@@ -168,26 +204,31 @@ class DemandPredictor:
 
     def predict(
         self,
+        store_id: int,
+        menu_id: int,
         days: int = 7,
         forecast_df: Optional[pd.DataFrame] = None,
+        start_date: Optional[date] = None,
     ) -> list[dict]:
         """
         Returns list of dicts:
-            {'date': date, 'predicted_qty': int, 'confidence': float}
-        forecast_df: optional 7-day weather forecast DataFrame
+            {'date': date, 'predicted_qty': int, 'recommended_order_qty': int, 'confidence': float}
+        forecast_df: optional 7-day weather forecast DataFrame (이 매장 지역)
+        start_date: 이 날짜 다음 날부터 예측 (백테스트용). 없으면 max(마지막 판매일, 오늘)
         """
-        if self._history is None or len(self._history) == 0:
+        hist = self._histories.get((store_id, menu_id))
+        if hist is None:
             return self._zero_predictions(days)
 
-        last_date = pd.to_datetime(self._history["ds"]).dt.date.max()
         # 판매 데이터가 오래됐을 경우 오늘 기준으로 예측 (과거 날짜에 저장 방지)
-        base_date = max(last_date, date.today())
+        base_date = start_date or max(hist["ds"].max(), date.today())
 
         if not self.is_trained:
-            return self._simple_avg_predictions(base_date, days)
+            return self._simple_avg_predictions(hist, base_date, days)
 
-        predictions = []
-
+        totals = self._store_totals[store_id]
+        level = float(_deseasoned(hist.tail(LEVEL_WINDOW), self._store_ratios[store_id]).mean())
+        rows = []
         for i in range(1, days + 1):
             target = base_date + timedelta(days=i)
 
@@ -197,36 +238,47 @@ class DemandPredictor:
                 if not match.empty:
                     weather_row = match.iloc[0].to_dict()
 
-            # #1: 실제 이력(self._history)만 사용 — 예측값을 lag로 재사용하지 않음
-            # 이전 코드에서 history_working에 예측값을 누적하던 방식이 오차를 복리로 키웠음
-            feat_row = make_future_feature_row(target, self._history, weather_row=weather_row)
+            # #1: 실제 이력만 사용 — 예측값을 lag로 재사용하지 않음 (오차 복리 방지)
+            row = make_future_feature_row(target, hist, weather_row=weather_row)
+            row.update(
+                level=level,
+                n_obs=len(hist),
+                store_dow_ratio=store_weekday_ratio(totals, target.weekday()),
+                store_id=store_id,
+                menu_id=menu_id,
+                event_lift=self._events.get(store_id, {}).get(target, 1.0),
+            )
+            rows.append(row)
 
-            X = np.array([[feat_row.get(col, 0.0) for col in self.feature_cols]])
-            pred_qty = max(0, round(float(self.model.predict(X)[0])))
+        f = _with_scale(pd.DataFrame(rows))
+        X = self._design(f)
+        point = np.maximum(0, np.round(self.model.predict(X) * f["scale"].to_numpy()))
+        base_confidence = max(15.0, self.scores.get((store_id, menu_id), DEFAULT_CONFIDENCE))
 
-            # 안전재고 반영 추천 발주량: critical fractile quantile 예측값
-            # (점 추정치보다 낮게 나올 수 있으므로 점 추정치를 하한으로 사용)
-            q_pred = max(0, round(float(self.quantile_model.predict(X)[0])))
-            recommended_qty = max(pred_qty, q_pred)
+        # 안전재고 반영 추천 발주량 = 점추정 × safety_factor. 백엔드가 레시피로 합산하면 식자재 단위로
+        # 분위수를 한 번 적용한 값이 된다. 비율이 1에 가까워(≈1.01) 날마다 반올림하면 사라지므로,
+        # 기간 합계가 round(합계 × 비율)이 되도록 남는 단위를 소수부가 큰 날부터 1씩 더한다 (최대잔여 방식)
+        raw = point * self.safety_factor
+        recommended = np.floor(raw)
+        extra = int(round(raw.sum() - recommended.sum()))
+        recommended[np.argsort(-(raw - recommended), kind="stable")[:extra]] += 1
 
-            confidence = self._calc_confidence()
-            # 예측일이 멀수록 신뢰도 감소 (1일차: 0%, 7일차: -9%)
-            confidence = round(max(15.0, confidence - (i - 1) * CONFIDENCE_DECAY_PER_DAY), 2)
-
+        predictions = []
+        for i, (p, r) in enumerate(zip(point, recommended), start=1):
             predictions.append(
                 {
-                    "date": target,
-                    "predicted_qty": pred_qty,
-                    "recommended_order_qty": recommended_qty,
-                    "confidence": confidence,
+                    "date": base_date + timedelta(days=i),
+                    "predicted_qty": int(p),
+                    "recommended_order_qty": int(r),
+                    # 예측일이 멀수록 신뢰도 감소 (1일차: 0%, 7일차: -9%)
+                    "confidence": round(max(15.0, base_confidence - (i - 1) * CONFIDENCE_DECAY_PER_DAY), 2),
                 }
             )
-
         return predictions
 
-    def _simple_avg_predictions(self, last_date: date, days: int) -> list[dict]:
-        """요일별 평균으로 단순 예측 (데이터 부족 시 사용)."""
-        df = self._history.copy()
+    def _simple_avg_predictions(self, hist: pd.DataFrame, last_date: date, days: int) -> list[dict]:
+        """요일별 평균으로 단순 예측 (전체 학습 데이터가 MIN_DATA_POINTS 미만일 때만 사용)."""
+        df = hist.copy()
         n = len(df)
         df["dow"] = pd.to_datetime(df["ds"]).dt.dayofweek
         dow_mean = df.groupby("dow")["y"].mean().to_dict()
@@ -269,33 +321,53 @@ class DemandPredictor:
             for i in range(1, days + 1)
         ]
 
-    def _calc_confidence(self) -> float:
-        # self.score는 fit()에서 이미 0~100 스케일의 wMAPE 기반 confidence로 계산됨
-        return max(15.0, self.score)
-
     # ------------------------------------------------------------------
     # Persistence
     # ------------------------------------------------------------------
 
     def save(self) -> str:
-        path = self._model_path()
+        path = os.path.join(settings.MODEL_DIR, "global_model.joblib")
         Path(path).parent.mkdir(parents=True, exist_ok=True)
         joblib.dump(self, path)
         return path
 
-    @classmethod
-    def load(cls, store_id: int, menu_id: int) -> "DemandPredictor | None":
-        path = cls._build_path(store_id, menu_id)
-        if os.path.exists(path):
-            return joblib.load(path)
-        return None
 
-    def _model_path(self) -> str:
-        return self._build_path(self.store_id, self.menu_id)
+def _clean(df: pd.DataFrame) -> pd.DataFrame:
+    df = df.copy()
+    df["ds"] = pd.to_datetime(df["ds"]).dt.date
+    df = df.sort_values("ds").reset_index(drop=True)
+    df["y"] = df["y"].astype(float).clip(lower=0)
 
-    @staticmethod
-    def _build_path(store_id: int, menu_id: int) -> str:
-        return os.path.join(
-            settings.MODEL_DIR,
-            f"store_{store_id}_menu_{menu_id}.joblib",
-        )
+    # #11: 이상치 상한 클리핑 — 상위 1% × 3배 초과 데이터 제거
+    if len(df) >= 10:
+        upper = df["y"].quantile(0.99) * 3
+        df["y"] = df["y"].clip(upper=max(float(upper), 1.0))
+    return df
+
+
+def _store_totals(histories: dict[SeriesKey, pd.DataFrame]) -> dict[int, pd.Series]:
+    """매장별 전체 메뉴 일 판매량 합계 (영업일 순)."""
+    parts: dict[int, list[pd.Series]] = {}
+    for (sid, _), df in histories.items():
+        parts.setdefault(sid, []).append(df.set_index("ds")["y"])
+    return {sid: pd.concat(p).groupby(level=0).sum().sort_index() for sid, p in parts.items()}
+
+
+def _past_store_ratios(totals: pd.Series) -> dict[date, float]:
+    """각 영업일의 매장 요일 비율을 그 전날까지의 매장 판매량으로 계산 (학습 행용)."""
+    return {d: store_weekday_ratio(totals.iloc[:i], d.weekday()) for i, d in enumerate(totals.index)}
+
+
+def _deseasoned(df: pd.DataFrame, store_ratios: dict[date, float]) -> pd.Series:
+    """
+    판매량 / 그날의 매장 요일 비율. 메뉴 규모(level)를 요일 효과를 뺀 값으로 재서,
+    이력이 주말에 몰린 신메뉴도 규모가 부풀지 않게 한다.
+    """
+    ratio = df["ds"].map(store_ratios)
+    return df["y"] / ratio.where(ratio > 0, 1.0)
+
+
+def _with_scale(f: pd.DataFrame) -> pd.DataFrame:
+    f = f.copy()
+    f["scale"] = np.maximum(f["level"] * f["store_dow_ratio"], 1.0)
+    return f

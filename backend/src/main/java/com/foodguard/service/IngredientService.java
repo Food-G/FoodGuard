@@ -43,12 +43,16 @@ public class IngredientService {
 
     // 식자재 수정
     @Transactional
-    public Ingredient update(Long id, String name, String category, String unit) {
+    public Ingredient update(Long id, String name, String category, String unit,
+                             Integer shelfLifeDays, Integer leadTimeDays, Integer orderCycleDays) {
         Ingredient ingredient = ingredientRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("식자재를 찾을 수 없습니다."));
         ingredient.setName(name);
         ingredient.setCategory(category);
         ingredient.setUnit(unit);
+        ingredient.setShelfLifeDays(shelfLifeDays);
+        ingredient.setLeadTimeDays(leadTimeDays);
+        ingredient.setOrderCycleDays(orderCycleDays);
         return ingredientRepository.save(ingredient);
     }
 

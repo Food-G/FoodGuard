@@ -38,8 +38,20 @@ public class IngredientController {
                 id,
                 body.get("name").toString(),
                 body.getOrDefault("category", "").toString(),
-                body.get("unit").toString()
+                body.get("unit").toString(),
+                optionalDays(body, "shelfLifeDays", 1),
+                optionalDays(body, "leadTimeDays", 0),
+                optionalDays(body, "orderCycleDays", 1)
         ));
+    }
+
+    // 비어 있으면 null (발주 계산에서 기본값 사용)
+    private static Integer optionalDays(Map<String, Object> body, String key, int min) {
+        Object value = body.get(key);
+        if (value == null || value.toString().isBlank()) return null;
+        int days = Integer.parseInt(value.toString());
+        if (days < min) throw new RuntimeException(key + " 는 " + min + " 이상이어야 합니다.");
+        return days;
     }
     @DeleteMapping("/{id}")
     public ResponseEntity<String> delete(@PathVariable Long id) {

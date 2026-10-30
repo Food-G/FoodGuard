@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  ai-service:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ai-service
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: ai-service/requirements*.txt
+      - run: pip install -r requirements-dev.txt
+      # 테스트는 합성 데이터만 사용하고 database.py를 import하지 않음. .env가 없어도 config.py 기본값으로 동작.
+      - run: python -m pytest tests
+
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+      # DB 없는 단위 테스트(service 패키지, Mockito)만 돌림. contextLoads(@SpringBootTest)는 실제 TiDB 접속(DB_PASSWORD)이
+      # 필요하고 ddl-auto=update로 운영 DB 스키마를 바꿀 수 있어서 CI에서는 제외.
+      # gradlew가 git에 실행 권한 없이(100644) 올라가 있어 chmod 필요.
+      - run: chmod +x gradlew && ./gradlew test --tests 'com.foodguard.service.*' --tests 'com.foodguard.security.*'
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      # @mui/system@^9 가 @mui/x-data-grid@7 의 peer 범위(^5||^6||^7)와 충돌해 plain `npm ci`는 ERESOLVE로 실패함.
+      - run: npm ci --legacy-peer-deps
+      - run: npx tsc --noEmit

@@ -13,6 +13,7 @@ import Predictions from './pages/Predictions';
 import Orders from './pages/Orders';
 import StoreManagement from './pages/admin/StoreManagement';
 import MenuManagement from './pages/MenuManagement';
+import StoreRegister from './pages/StoreRegister';
 import Stats from './pages/admin/Stats';
 import AdminOrders from './pages/admin/AdminOrders';
 import POS from './pages/POS';
@@ -98,6 +99,12 @@ function App() {
             } />
 
 
+
+            <Route path="/store" element={
+              <ProtectedRoute role="OWNER">
+                <StoreRegister user={user} />
+              </ProtectedRoute>
+            } />
 
             <Route path="/menus" element={
               <ProtectedRoute role="OWNER">

@@ -7,10 +7,14 @@ import pandas as pd
 from sqlalchemy.orm import Session
 
 from config import settings
+from ml.calibration import safety_factor
 from ml.demand_predictor import DemandPredictor
 from services.data_service import (
+    get_event_lifts,
     get_active_menus,
-    get_sales_data,
+    get_all_sales_data,
+    get_closed_dates,
+    get_recipes,
     get_store_region,
     save_predictions_bulk,
 )
@@ -20,118 +24,102 @@ from services.weather_service import (
     get_coords,
 )
 
-MODEL_VERSION = "xgb_weather_v1.0"
+# v1.1: 판매 이력 영업일 달력 정렬(0 채움), lag 달력 기준·lag_1 제거, 품절일 학습 제외
+# v2.0: 메뉴별 로컬 모델 → 전체 매장·메뉴 글로벌 모델 (PROJECT_STATUS.md 10절)
+# v2.1: 추천 발주량을 메뉴·일자 분위수 대신 식자재 단위 conformal 보정 비율로 산출
+MODEL_VERSION = "xgb_global_v2.1"
+
+
+def train_global_model(db: Session) -> DemandPredictor:
+    """전체 매장×메뉴 판매 이력 + 매장별 과거 날씨로 글로벌 모델을 학습한다."""
+    series = get_all_sales_data(db)
+
+    # Open-Meteo로 과거 날씨 조회 (매장 지역별 1회, 모델 학습에 날씨 패턴 반영)
+    weather: dict[int, pd.DataFrame] = {}
+    for store_id in {sid for sid, _ in series}:
+        start_date = min(df["ds"].min() for (sid, _), df in series.items() if sid == store_id)
+        lat, lon = get_coords(get_store_region(db, store_id))
+        hist = fetch_historical_weather(lat, lon, start_date, date.today())
+        if not hist.empty:
+            weather[store_id] = hist
+
+    # 점주 특이사항 증감 배율 (claude 가 저장 시점에 숫자로 바꿔 둔 값, 미래 날짜 포함)
+    predictor = DemandPredictor().fit(series, weather=weather, events=get_event_lifts(db))
+    if predictor.is_trained:
+        # 최근 4주 시점을 다시 학습해 식자재 7일 사용량 기준 critical fractile 보정 비율을 구한다
+        predictor.safety_factor = safety_factor(series, get_recipes(db))
+        predictor.save()
+    return predictor
 
 
 def predict_and_save_store(db: Session, store_id: int) -> dict:
     """
     매장의 모든 활성 메뉴에 대해 예측 수행 후 DB 저장.
-    날씨 API는 매장당 1회만 호출해서 모든 메뉴가 공유한다.
+    글로벌 모델은 요청당 1회 학습해서 모든 메뉴가 공유한다.
     반환: {menu_id: predictions_list}
     """
     menus = get_active_menus(db, store_id)
     if not menus:
         return {}
 
-    region = get_store_region(db, store_id)
-
     # 기상청 7일 예보 (예측용) — API 키 없으면 빈 DataFrame
     forecast_df = fetch_forecast_weather(
-        region, settings.KMA_API_KEY, days=settings.PREDICTION_DAYS
+        get_store_region(db, store_id), settings.KMA_API_KEY, days=settings.PREDICTION_DAYS
     )
+    predictor = train_global_model(db)
 
-    # Open-Meteo 좌표 (과거 날씨 학습용)
-    lat, lon = get_coords(region)
-
-    results = {}
-    for menu in menus:
-        menu_id = menu["menu_id"]
-        predictions = predict_and_save_menu(
-            db, store_id, menu_id,
-            lat=lat, lon=lon, forecast_df=forecast_df,
-        )
-        results[menu_id] = predictions
-
-    return results
+    return {
+        menu["menu_id"]: _predict_and_save(db, predictor, store_id, menu["menu_id"], forecast_df)
+        for menu in menus
+    }
 
 
 def predict_and_save_menu(
     db: Session,
     store_id: int,
     menu_id: int,
-    days: int | None = None,
-    lat: float | None = None,
-    lon: float | None = None,
     forecast_df: Optional[pd.DataFrame] = None,
 ) -> list[dict]:
     """
     특정 메뉴 예측 수행 후 DB 저장.
-    lat/lon/forecast_df 미제공 시 내부에서 직접 날씨 API를 호출한다.
+    forecast_df 미제공 시 내부에서 직접 예보 API를 호출한다.
     반환: prediction dict list
     """
-    if days is None:
-        days = settings.PREDICTION_DAYS
-
-    if lat is None:
-        region = get_store_region(db, store_id)
-        lat, lon = get_coords(region)
+    if forecast_df is None:
         forecast_df = fetch_forecast_weather(
-            region, settings.KMA_API_KEY, days=days
+            get_store_region(db, store_id), settings.KMA_API_KEY, days=settings.PREDICTION_DAYS
         )
+    return _predict_and_save(db, train_global_model(db), store_id, menu_id, forecast_df)
 
-    sales_df = get_sales_data(db, store_id, menu_id)
 
-    # Open-Meteo로 과거 날씨 조회 (모델 학습에 날씨 패턴 반영)
-    weather_df: Optional[pd.DataFrame] = None
-    if not sales_df.empty:
-        start_date = sales_df["ds"].min()
-        hist = fetch_historical_weather(lat, lon, start_date, date.today())
-        if not hist.empty:
-            weather_df = hist
-
-    predictor = DemandPredictor.load(store_id, menu_id)
-    if predictor is None:
-        predictor = DemandPredictor(store_id, menu_id)
-
-    predictor.fit(sales_df, weather_df=weather_df)
-
-    if predictor.is_trained:
-        predictor.save()
-
+def _predict_and_save(
+    db: Session,
+    predictor: DemandPredictor,
+    store_id: int,
+    menu_id: int,
+    forecast_df: Optional[pd.DataFrame],
+) -> list[dict]:
     predictions = predictor.predict(
-        days=days,
+        store_id,
+        menu_id,
+        days=settings.PREDICTION_DAYS,
         forecast_df=forecast_df if (forecast_df is not None and not forecast_df.empty) else None,
     )
+    # 휴무로 등록된 날은 팔지 않으므로 발주 근거에서 뺀다
+    closed = get_closed_dates(db, store_id)
+    for p in predictions:
+        if p["date"] in closed:
+            p["predicted_qty"] = p["recommended_order_qty"] = 0
     save_predictions_bulk(db, store_id, menu_id, predictions, model_version=MODEL_VERSION)
 
     return predictions
 
 
 def train_store_models(db: Session, store_id: int) -> dict[int, float]:
-    """매장의 모든 메뉴 모델을 강제 재학습. 반환: {menu_id: model_score}"""
-    menus = get_active_menus(db, store_id)
-    scores: dict[int, float] = {}
-
-    region = get_store_region(db, store_id)
-    lat, lon = get_coords(region)
-
-    for menu in menus:
-        menu_id = menu["menu_id"]
-        sales_df = get_sales_data(db, store_id, menu_id)
-
-        weather_df = None
-        if not sales_df.empty:
-            hist = fetch_historical_weather(lat, lon, sales_df["ds"].min(), date.today())
-            if not hist.empty:
-                weather_df = hist
-
-        predictor = DemandPredictor(store_id, menu_id)
-        predictor.fit(sales_df, weather_df=weather_df)
-
-        if predictor.is_trained:
-            predictor.save()
-            scores[menu_id] = round(predictor.score, 1)  # score는 이미 0~100 스케일 (wMAPE 기반)
-        else:
-            scores[menu_id] = 0.0
-
-    return scores
+    """글로벌 모델을 강제 재학습. 반환: 이 매장 활성 메뉴의 {menu_id: model_score}"""
+    predictor = train_global_model(db)
+    # score는 이미 0~100 스케일 (wMAPE 기반). 판매 이력이 없는 메뉴는 0
+    return {
+        menu["menu_id"]: round(predictor.scores.get((store_id, menu["menu_id"]), 0.0), 1)
+        for menu in get_active_menus(db, store_id)
+    }

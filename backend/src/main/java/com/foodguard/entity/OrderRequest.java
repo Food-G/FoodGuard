@@ -62,6 +62,14 @@ public class OrderRequest {
     @Column(name = "qr_token", length = 64)
     private String qrToken;
 
+    // 발주 생성 시점의 AI 추천량 (추천 대비 실제 발주 비교용). 추천 목록에 없던 식자재는 0
+    @Column(name = "recommended_qty", precision = 10, scale = 2)
+    private BigDecimal recommendedQty;
+
+    // AUTO(추천 그대로 자동 발주) | MANUAL(점주 직접 입력)
+    @Column(name = "order_source", length = 10)
+    private String orderSource;
+
     @Column(name = "updated_at", insertable = false, updatable = false)
     private LocalDateTime updatedAt;
 

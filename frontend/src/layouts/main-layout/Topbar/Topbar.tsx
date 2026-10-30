@@ -51,6 +51,7 @@ const PAGE_SUBTITLES: Record<string, string> = {
   '/predictions': 'AI 수요 예측',
   '/inventory': '실시간 자원 및 재고 현황',
   '/ingredients': '식자재 관리',
+  '/store': '가게 등록',
   '/menus': '메뉴 관리',
   '/sales': '판매 실적 기록',
   '/waste-prediction': '폐기 예측 & 기부',

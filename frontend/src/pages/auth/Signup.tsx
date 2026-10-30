@@ -267,7 +267,7 @@ const Signup = () => {
                 }}
               >
                 <MenuItem value="OWNER">가맹점 점주</MenuItem>
-                <MenuItem value="HQ_ADMIN">본사 관리자</MenuItem>
+                {/* 본사 관리자 계정은 회원가입으로 만들 수 없다 (백엔드 UserService.signup) */}
               </Select>
             </FormControl>
 

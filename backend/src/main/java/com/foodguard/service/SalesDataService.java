@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -47,6 +48,16 @@ public class SalesDataService {
     public List<SalesData> getByDateRange(Long storeId, LocalDate start, LocalDate end) {
         return salesDataRepository
                 .findByStoreIdAndSaleDateBetweenAndIsDeletedFalse(storeId, start, end);
+    }
+
+    // 전 가맹점 최근 7일 매출 {storeId: 매출액} (본사 대시보드)
+    public Map<Long, Long> getAllStoreWeeklySummary() {
+        LocalDate today = LocalDate.now();
+        Map<Long, Long> result = new LinkedHashMap<>();
+        for (Object[] row : salesDataRepository.sumRevenueAllStoresBetween(today.minusDays(6), today)) {
+            result.put(((Number) row[0]).longValue(), ((Number) row[1]).longValue());
+        }
+        return result;
     }
 
     // Soft Delete (실제 삭제 X, 삭제 표시만)

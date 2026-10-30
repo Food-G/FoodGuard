@@ -43,13 +43,29 @@ public class OrderRequestService {
     private final ObjectMapper objectMapper;
     private final NotificationService notificationService;
 
-    // 발주 요청 생성
+    // 발주 요청 생성 (점주 직접 입력) — 그 시점의 AI 추천량을 함께 남긴다
     @Transactional
     public OrderRequest create(Long storeId, Long ingredientId, Double quantity) {
+        return create(storeId, ingredientId, quantity, null, "MANUAL");
+    }
+
+    // recommendedQty 가 null 이면 현재 추천 목록에서 찾는다 (추천에 없던 식자재는 0)
+    private OrderRequest create(Long storeId, Long ingredientId, Double quantity,
+                                Double recommendedQty, String orderSource) {
         Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new RuntimeException("가맹점을 찾을 수 없습니다."));
         Ingredient ingredient = ingredientRepository.findById(ingredientId)
                 .orElseThrow(() -> new RuntimeException("식자재를 찾을 수 없습니다."));
+
+        // 매장·식자재를 먼저 읽은 뒤 recommend()를 불러야 한다. 순서가 바뀌면 store가 지연로딩 프록시로 잡혀
+        // 응답 JSON 직렬화가 실패한다 (ByteBuddyInterceptor)
+        if (recommendedQty == null) {
+            recommendedQty = recommend(storeId).stream()
+                    .filter(r -> ((Number) r.get("ingredientId")).longValue() == ingredientId)
+                    .mapToDouble(r -> ((Number) r.get("orderQty")).doubleValue())
+                    .findFirst()
+                    .orElse(0.0);
+        }
 
         OrderRequest order = new OrderRequest();
         order.setStore(store);
@@ -57,6 +73,8 @@ public class OrderRequestService {
         order.setOrderedQty(BigDecimal.valueOf(quantity));
         order.setStatus("REQUESTED");
         order.setOrderedAt(LocalDateTime.now());
+        order.setRecommendedQty(BigDecimal.valueOf(recommendedQty));
+        order.setOrderSource(orderSource);
         return orderRequestRepository.save(order);
     }
 
@@ -147,28 +165,48 @@ public class OrderRequestService {
             return List.of();
         }
 
-        // 메뉴별 7일 추천 발주량(안전재고 반영) 합산 — recommendedOrderQty가 없는 구 데이터는 predictedQty로 대체
-        Map<Long, Integer> menuTotal = new LinkedHashMap<>();
+        // 메뉴별 날짜별 예측
+        Map<Long, List<PredictionResult>> menuPredictions = new LinkedHashMap<>();
         for (PredictionResult p : predictions) {
-            Integer qty = p.getRecommendedOrderQty() != null ? p.getRecommendedOrderQty() : p.getPredictedQty();
-            menuTotal.merge(p.getMenu().getId(), qty, Integer::sum);
+            menuPredictions.computeIfAbsent(p.getMenu().getId(), k -> new ArrayList<>()).add(p);
         }
 
         // 식자재별 총 필요량 계산 (레시피 소단위 → 발주 기준 단위로 변환)
+        // 식자재마다 이번 발주가 책임질 기간(coverageDays) 안의 추천 발주량(안전재고 반영)만 더한다
+        // — recommendedOrderQty가 없는 구 데이터는 predictedQty로 대체
         Map<Long, Double> required = new LinkedHashMap<>();
         Map<Long, String> ingName = new LinkedHashMap<>();
         Map<Long, String> ingUnit = new LinkedHashMap<>();
+        // 근거 설명용 (AI 서비스 /api/explain/order): 안전재고 빼고 본 필요량, 메뉴별 기여, 식자재 설정
+        Map<Long, Double> pointRequired = new LinkedHashMap<>();
+        Map<Long, List<Map<String, Object>>> contributions = new LinkedHashMap<>();
+        Map<Long, Ingredient> ingredients = new LinkedHashMap<>();
 
-        for (Map.Entry<Long, Integer> entry : menuTotal.entrySet()) {
+        for (Map.Entry<Long, List<PredictionResult>> entry : menuPredictions.entrySet()) {
             for (MenuIngredient mi : menuIngredientRepository.findByMenuId(entry.getKey())) {
                 Long ingId = mi.getIngredient().getId();
                 String baseUnit = mi.getIngredient().getUnit();
                 String recipeUnit = mi.getUnit();
-                double rawQty = mi.getQtyPerUnit().doubleValue() * entry.getValue();
-                double qty = convertToBaseUnit(rawQty, recipeUnit, baseUnit);
-                required.merge(ingId, qty, Double::sum);
+                LocalDate until = today.plusDays(coverageDays(mi.getIngredient()));
+                List<PredictionResult> inWindow = entry.getValue().stream()
+                        .filter(p -> !p.getPredictionDate().isAfter(until))
+                        .toList();
+                int menuQty = inWindow.stream()
+                        .mapToInt(p -> p.getRecommendedOrderQty() != null ? p.getRecommendedOrderQty() : p.getPredictedQty())
+                        .sum();
+                int pointMenuQty = inWindow.stream().mapToInt(PredictionResult::getPredictedQty).sum();
+                double perUnit = convertToBaseUnit(mi.getQtyPerUnit().doubleValue(), recipeUnit, baseUnit);
+                required.merge(ingId, perUnit * menuQty, Double::sum);
+                pointRequired.merge(ingId, perUnit * pointMenuQty, Double::sum);
                 ingName.putIfAbsent(ingId, mi.getIngredient().getName());
                 ingUnit.putIfAbsent(ingId, baseUnit);
+                ingredients.putIfAbsent(ingId, mi.getIngredient());
+
+                Map<String, Object> c = new LinkedHashMap<>();
+                c.put("menuName", inWindow.isEmpty() ? null : inWindow.get(0).getMenu().getMenuName());
+                c.put("menuQty", menuQty);
+                c.put("perUnit", perUnit);
+                contributions.computeIfAbsent(ingId, k -> new ArrayList<>()).add(c);
             }
         }
 
@@ -201,10 +239,32 @@ public class OrderRequestService {
             item.put("requiredQty", req);
             item.put("currentStock", cur);
             item.put("orderQty", orderQty);
+            // 아래는 근거 설명용 (발주량 계산에는 쓰지 않음)
+            Ingredient ing = ingredients.get(ingId);
+            item.put("pendingQty", alreadyOrdered);
+            item.put("pointQty", round1(pointRequired.get(ingId)));
+            item.put("coverageDays", coverageDays(ing));
+            item.put("shelfLifeDays", ing.getShelfLifeDays());
+            item.put("leadTimeDays", ing.getLeadTimeDays());
+            item.put("orderCycleDays", ing.getOrderCycleDays());
+            item.put("contributions", contributions.get(ingId));
             result.add(item);
         }
 
         return result;
+    }
+
+    // 식자재 설정이 비어 있을 때: 다음날 입고, 주 1회 입고 → 예측 7일치 전부 (이 설정이 생기기 전과 같음)
+    private static final int DEFAULT_LEAD_TIME_DAYS = 1;
+    private static final int DEFAULT_ORDER_CYCLE_DAYS = 7;
+
+    // 이번 발주가 책임질 기간 (오늘부터 일수) = 입고 전 기간(리드타임 - 1일, 현재 재고·진행 중 발주로 버팀)
+    // + 입고 후 다음 입고까지(발주 주기). 단 입고 후 보관기한을 넘기는 수요는 이번에 받으면 폐기되므로 뺀다
+    private static int coverageDays(Ingredient ingredient) {
+        int lead = ingredient.getLeadTimeDays() != null ? ingredient.getLeadTimeDays() : DEFAULT_LEAD_TIME_DAYS;
+        int cycle = ingredient.getOrderCycleDays() != null ? ingredient.getOrderCycleDays() : DEFAULT_ORDER_CYCLE_DAYS;
+        int usable = ingredient.getShelfLifeDays() != null ? Math.min(cycle, ingredient.getShelfLifeDays()) : cycle;
+        return lead - 1 + usable;
     }
 
     // ── 3단계 검수 흐름 ─────────────────────────────────────────────────────────
@@ -466,7 +526,7 @@ public class OrderRequestService {
         for (Map<String, Object> rec : recs) {
             Long ingId = ((Number) rec.get("ingredientId")).longValue();
             Double qty = ((Number) rec.get("orderQty")).doubleValue();
-            ids.add(create(storeId, ingId, qty).getId());
+            ids.add(create(storeId, ingId, qty, qty, "AUTO").getId());
         }
         return ids;
     }

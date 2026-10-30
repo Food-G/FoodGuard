@@ -65,7 +65,8 @@ const FoodGuardLogo = ({ open }: { open: boolean }) => (
 
 const Sidebar = ({ open, role, setMobileOpen, onMouseEnter, onMouseLeave }: SidebarProps): ReactElement => {
   const menuItems = role === 'HQ_ADMIN' ? [
-    { title: '통합 관리 센터', icon: 'mingcute:home-5-line', path: '/admin', active: true },
+    { title: '통합 관리 센터', icon: 'mingcute:home-5-line', path: '/', active: true },
+    { title: '발주 관리', icon: 'mingcute:truck-line', path: '/admin/orders', active: true },
     { title: '가맹점 네트워크', icon: 'mingcute:grid-fill', path: '/admin/stores', active: true },
     { title: '환경 통계 분석', icon: 'mingcute:chart-bar-fill', path: '/admin/stats', active: true },
   ] : [

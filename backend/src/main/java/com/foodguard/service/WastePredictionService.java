@@ -3,6 +3,7 @@ package com.foodguard.service;
 import com.foodguard.entity.Inventory;
 import com.foodguard.entity.MenuIngredient;
 import com.foodguard.entity.PredictionResult;
+import com.foodguard.repository.DonationRecordRepository;
 import com.foodguard.repository.InventoryRepository;
 import com.foodguard.util.UnitUtils;
 import com.foodguard.repository.MenuIngredientRepository;
@@ -25,6 +26,7 @@ public class WastePredictionService {
     private final InventoryRepository inventoryRepository;
     private final PredictionResultRepository predictionResultRepository;
     private final MenuIngredientRepository menuIngredientRepository;
+    private final DonationRecordRepository donationRecordRepository;
 
     @Transactional(readOnly = true)
     public List<Map<String, Object>> predict(Long storeId) {
@@ -33,6 +35,9 @@ public class WastePredictionService {
         List<Inventory> inventories = inventoryRepository.findByStoreId(storeId);
         List<PredictionResult> predictions = predictionResultRepository
                 .findByStore_IdAndPredictionDateGreaterThanEqualOrderByPredictionDateAsc(storeId, today);
+        // 이미 기부 예정으로 등록한 양은 폐기되지 않을 몫이라 폐기 예측에서 뺀다
+        Map<Long, Double> plannedDonation = DonationService.plannedByIngredient(
+                donationRecordRepository.findByStoreIdAndStatus(storeId, "PLANNED"));
 
         List<Map<String, Object>> result = new ArrayList<>();
 
@@ -57,7 +62,8 @@ public class WastePredictionService {
             }
 
             double currentQty = inv.getCurrentQty().doubleValue();
-            double wastePrediction = Math.max(0, round1(currentQty - expectedConsumption));
+            double planned = plannedDonation.getOrDefault(ingId, 0.0);
+            double wastePrediction = Math.max(0, round1(currentQty - expectedConsumption - planned));
             double wasteRate = currentQty > 0 ? Math.round(wastePrediction / currentQty * 1000.0) / 10.0 : 0;
 
             Map<String, Object> item = new LinkedHashMap<>();
@@ -69,6 +75,9 @@ public class WastePredictionService {
             item.put("expiryDate", expiryDate.toString());
             item.put("daysUntilExpiry", daysUntilExpiry);
             item.put("expectedConsumption", round1(expectedConsumption));
+            item.put("plannedDonation", round1(planned));
+            // 기부 등록 상한 = 재고 - 이미 기부 예정인 양
+            item.put("donatableQty", Math.max(0, round1(currentQty - planned)));
             item.put("wastePrediction", wastePrediction);
             item.put("wasteRate", wasteRate);
             result.add(item);

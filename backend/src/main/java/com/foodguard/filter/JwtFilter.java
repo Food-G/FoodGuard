@@ -1,18 +1,21 @@
 package com.foodguard.filter;
 
+import com.foodguard.security.AuthUser;
 import com.foodguard.util.JwtUtil;
+import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.Collections;
+import java.util.List;
 
 @Component
 @RequiredArgsConstructor
@@ -37,11 +40,14 @@ public class JwtFilter extends OncePerRequestFilter {
             // 3. 토큰 유효성 검사
             if (jwtUtil.validateToken(token)) {
 
-                // 4. 토큰에서 이메일 꺼내서 인증 처리
-                String email = jwtUtil.getEmail(token);
+                // 4. 토큰에서 이메일·역할·사용자 id 꺼내서 인증 처리
+                //    principal 은 기존처럼 이메일, 역할은 권한(ROLE_OWNER/ROLE_HQ_ADMIN), id·역할은 details(AuthUser)
+                Claims claims = jwtUtil.getClaims(token);
+                String role = claims.get("role", String.class);
                 UsernamePasswordAuthenticationToken authentication =
                         new UsernamePasswordAuthenticationToken(
-                                email, null, Collections.emptyList());
+                                claims.getSubject(), null, List.of(new SimpleGrantedAuthority("ROLE_" + role)));
+                authentication.setDetails(new AuthUser(claims.get("id", Long.class), role));
 
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             }
