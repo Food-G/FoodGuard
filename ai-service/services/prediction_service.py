@@ -51,6 +51,7 @@ def predict_and_save_store(db: Session, store_id: int) -> dict:
     # (예전에는 메뉴마다 같은 구간을 반복 호출했다)
     hist_weather_df: Optional[pd.DataFrame] = None
     start_date = get_store_sales_start_date(db, store_id)
+    db.commit()
     if start_date is not None:
         hist = fetch_historical_weather(lat, lon, start_date, date.today())
         if not hist.empty:
@@ -96,6 +97,8 @@ def predict_and_save_menu(
         )
 
     sales_df = get_sales_data(db, store_id, menu_id)
+    # 외부 API 호출·학습 동안 읽기 트랜잭션을 열어 두면 TiDB 가 연결을 끊는다 ('Lost connection'). 여기서 끝낸다.
+    db.commit()
 
     # Open-Meteo로 과거 날씨 조회 (모델 학습에 날씨 패턴 반영)
     weather_df: Optional[pd.DataFrame] = hist_weather_df
@@ -138,6 +141,7 @@ def train_store_models(db: Session, store_id: int) -> dict[int, float]:
     for menu in menus:
         menu_id = menu["menu_id"]
         sales_df = get_sales_data(db, store_id, menu_id)
+        db.commit()
 
         weather_df = None
         if not sales_df.empty:
