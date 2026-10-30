@@ -40,6 +40,13 @@ public class PredictionService {
         }
     }
 
+    /** ai-service /api/accuracy 프록시 (읽기 전용). 내부 토큰은 RestTemplate 인터셉터가 붙인다. */
+    public Map<?, ?> getAccuracy(String source, Long storeId) {
+        String url = aiServiceUrl + "/api/accuracy?source=" + source
+                + (storeId != null ? "&store_id=" + storeId : "");
+        return restTemplate.getForObject(url, Map.class);
+    }
+
     public List<PredictionResultDto> getPredictions(Long storeId) {
         return predictionResultRepository
                 .findByStore_IdAndPredictionDateGreaterThanEqualOrderByPredictionDateAsc(storeId, LocalDate.now())

@@ -83,8 +83,11 @@ const Predictions = ({ user }: any) => {
       const res = await predictionService.trigger(storeId);
       setSuccessMsg(res.status === 'success' ? 'AI 예측이 완료되었습니다.' : res.message);
       await loadData(storeId);
-    } catch {
-      setError('AI 예측 실행 중 오류가 발생했습니다. AI 서비스가 실행 중인지 확인하세요.');
+    } catch (e) {
+      // 실패 시 서버는 502 + {"status":"error","message":...} 를 돌려준다
+      let detail = '';
+      try { detail = JSON.parse((e as Error).message)?.message ?? ''; } catch { /* 본문이 JSON 이 아님 */ }
+      setError(`AI 예측 실행 중 오류가 발생했습니다. AI 서비스가 실행 중인지 확인하세요.${detail ? ` (${detail})` : ''}`);
     } finally {
       setTriggering(false);
     }
@@ -188,7 +191,11 @@ const Predictions = ({ user }: any) => {
         <Grid item xs={12}>
           <Paper sx={{ p: 4, bgcolor: 'background.paper', border: `1px solid ${theme.palette.divider}` }}>
             <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2.5}>
-              <Typography variant="h6" fontWeight={700}>향후 7일 수요 예측</Typography>
+              <Stack direction="row" alignItems="center" gap={1}>
+                <Typography variant="h6" fontWeight={700}>향후 7일 수요 예측</Typography>
+                {/* 학습 판매 데이터는 요일 효과 + ±10% 노이즈로 만든 합성 데이터 (agent-assets/05-data-inventory.md §3) */}
+                <Chip label="시범 데이터(합성) 기준" size="small" color="warning" variant="outlined" />
+              </Stack>
               <Chip
                 label={predictions.length > 0 ? `${predictions.length}건 예측` : '예측 데이터 없음'}
                 color={predictions.length > 0 ? 'primary' : 'default'}

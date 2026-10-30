@@ -35,7 +35,7 @@ def ai_service_up() -> bool:
 
 
 def trigger_prediction(client: WriteClient, store_id: int) -> tuple[bool, str]:
-    """재예측. 서버는 실패해도 200 에 {"status": "error"} 를 돌려주므로 본문을 확인한다."""
+    """재예측. 실패하면 서버가 502 + {"status": "error", "message": ...} 를 돌려준다."""
     status, body = client.post(f"/api/predictions/{store_id}/trigger")
     if status == 200 and isinstance(body, dict) and body.get("status") == "success":
         return True, "재예측 완료"

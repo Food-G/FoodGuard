@@ -135,8 +135,8 @@ COMMANDS: dict[str, tuple[Callable[[argparse.Namespace], str], Trimmer, str]] = 
     "weekly-all":  (lambda a: "/api/sales/all-stores/weekly-summary", None,
                     "전 매장 주간 매출 (HQ 전용)"),
     "ai-health":   (lambda a: "/health", None, "AI 예측 서비스 가동 확인"),
-    "accuracy":    (lambda a: "/api/accuracy?source=" + a.source
-                    + (f"&store_id={a.store}" if a.store else ""), None,
+    "accuracy":    (lambda a: "/api/predictions/accuracy?source=" + a.source
+                    + (f"&storeId={a.store}" if a.store else ""), None,
                     "예측 정확도 (예측 이력 × 실제 판매, WAPE·MAPE·편향·기준선 대비)"),
     "plan":        (lambda a: "", None,
                     "발주 참모 발주안: 관찰→판단→발주안 + 서버 추천과 대조 (읽기 전용, 발주하지 않음)"),
@@ -241,7 +241,8 @@ def main(argv: list[str] | None = None) -> int:
     else:
         path = path_fn(args)
 
-    base = AI_BASE if args.command in ("ai-health", "accuracy") else None
+    # accuracy 는 Spring 프록시를 거친다 (권한 검사 + 내부 토큰을 에이전트가 갖지 않게)
+    base = AI_BASE if args.command == "ai-health" else None
     result = client.get(path, base=base) if base else client.get(path)
 
     if isinstance(result, list) and trimmer and not args.full:
