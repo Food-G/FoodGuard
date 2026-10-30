@@ -135,19 +135,22 @@ class DemandPredictor:
         self,
         days: int = 7,
         forecast_df: Optional[pd.DataFrame] = None,
+        as_of: Optional[date] = None,
     ) -> list[dict]:
         """
         Returns list of dicts:
             {'date': date, 'predicted_qty': int, 'confidence': float}
         forecast_df: optional 7-day weather forecast DataFrame
+        as_of: 예측 기준일 (기본 오늘). 백테스트는 과거 날짜를 넘겨 '그날의 예측'을 재현한다.
         """
+        as_of = as_of or date.today()
         if self._history is None or len(self._history) == 0:
-            return self._zero_predictions(days)
+            return self._zero_predictions(days, as_of)
 
         last_date = pd.to_datetime(self._history["ds"]).dt.date.max()
 
         if not self.is_trained:
-            return self._simple_avg_predictions(last_date, days)
+            return self._simple_avg_predictions(last_date, days, as_of)
 
         history_working = self._history.copy()
         predictions = []
@@ -155,7 +158,7 @@ class DemandPredictor:
         # 예측 대상은 항상 '내일부터 days 일'이다. 판매 이력이 오늘보다 오래 끊겨 있으면
         # 그 사이를 모델 자신의 예측으로 이어 붙이며(lag 피처 유지) 굴려 나가되 저장은 하지 않는다.
         # 예전에는 마지막 판매일 다음날부터 예측해서, 데이터가 끊기면 예측이 전부 과거 날짜가 됐다.
-        first_target = max(last_date, date.today()) + timedelta(days=1)
+        first_target = max(last_date, as_of) + timedelta(days=1)
         total_steps = (first_target - last_date).days + days - 1
 
         for step in range(1, total_steps + 1):
@@ -192,7 +195,7 @@ class DemandPredictor:
 
         return predictions
 
-    def _simple_avg_predictions(self, last_date: date, days: int) -> list[dict]:
+    def _simple_avg_predictions(self, last_date: date, days: int, as_of: date) -> list[dict]:
         """요일별 평균으로 단순 예측 (데이터 부족 시 사용)."""
         df = self._history.copy()
         df["dow"] = pd.to_datetime(df["ds"]).dt.dayofweek
@@ -200,7 +203,7 @@ class DemandPredictor:
         overall_mean = float(df["y"].mean()) if len(df) > 0 else 0.0
 
         predictions = []
-        first_target = max(last_date, date.today()) + timedelta(days=1)
+        first_target = max(last_date, as_of) + timedelta(days=1)
         for k in range(days):
             target = first_target + timedelta(days=k)
             i = (target - last_date).days
@@ -210,8 +213,8 @@ class DemandPredictor:
             predictions.append({"date": target, "predicted_qty": qty, "confidence": confidence})
         return predictions
 
-    def _zero_predictions(self, days: int) -> list[dict]:
-        today = date.today()
+    def _zero_predictions(self, days: int, as_of: date) -> list[dict]:
+        today = as_of
         return [
             {"date": today + timedelta(days=i), "predicted_qty": 0, "confidence": 0.0}
             for i in range(1, days + 1)
