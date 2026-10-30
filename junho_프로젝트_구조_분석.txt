@@ -1,0 +1,527 @@
+================================================================================
+  FoodGuard 프로젝트 구조 분석 (junho 브랜치)
+  작성일: 2026-06-05
+================================================================================
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[ 1. 전체 파일 연결도 ]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+■ FRONTEND (React + TypeScript + Material-UI)
+─────────────────────────────────────────────
+frontend/src/
+├── main.tsx                              ← 앱 진입점 (React 18)
+│   └── App.tsx                           ← 라우팅 설정 (role 기반 6개 경로)
+│       ├── pages/
+│       │   ├── Predictions.tsx           ★ AI 수요 예측 페이지 (핵심)
+│       │   ├── Dashboard.tsx             ← 매장 대시보드
+│       │   ├── SalesEntry.tsx            ← 판매 기록 입력
+│       │   ├── SalesStats.tsx            ← 매출 통계
+│       │   ├── Inventory.tsx             ← 재고 관리
+│       │   ├── MenuManagement.tsx        ← 메뉴 관리
+│       │   ├── Orders.tsx                ← 주문 관리
+│       │   ├── POS.tsx                   ← POS 시스템
+│       │   ├── Profile.tsx               ← 프로필
+│       │   ├── DeliveryDriver.tsx        ← 배송 기사 전용
+│       │   └── admin/
+│       │       ├── AdminDashboard.tsx    ← HQ 관리자 대시보드
+│       │       ├── AdminOrders.tsx       ← HQ 주문 관리
+│       │       ├── StoreManagement.tsx   ← HQ 매장 관리
+│       │       └── Stats.tsx             ← HQ 통계
+│       ├── services/
+│       │   ├── api.ts                    ← HTTP 클라이언트 (Bearer Token 자동 추가)
+│       │   ├── authService.ts            ← 로그인/회원가입
+│       │   ├── predictionService.ts      ← AI 예측 API 호출
+│       │   ├── salesService.ts           ← 매출 CRUD
+│       │   ├── menuService.ts            ← 메뉴 조회
+│       │   ├── storeService.ts           ← 매장 조회
+│       │   ├── inventoryService.ts       ← 재고 관리
+│       │   ├── orderService.ts           ← 주문 관리
+│       │   ├── menuIngredientService.ts  ← 메뉴-식재료 관계
+│       │   └── notificationService.ts    ← 알림
+│       ├── components/
+│       │   ├── base/
+│       │   │   ├── IconifyIcon.tsx        ← 아이콘
+│       │   │   ├── Image.tsx              ← 이미지
+│       │   │   └── ReactEChart.tsx        ← ECharts 라이브러리
+│       │   └── MenuSettingsDialog.tsx     ← 메뉴 설정 다이얼로그
+│       ├── hooks/
+│       │   └── useAuth.ts                ← 인증 상태 관리 (localStorage 기반)
+│       ├── layouts/
+│       │   ├── main-layout/              ← 인증된 사용자 레이아웃
+│       │   │   ├── Sidebar.tsx
+│       │   │   ├── Topbar.tsx
+│       │   │   └── Footer.tsx
+│       │   └── auth-layout/              ← 로그인/회원가입 레이아웃
+│       ├── theme/                        ← Material-UI 테마 설정
+│       │   ├── theme.ts
+│       │   ├── colors.ts
+│       │   ├── palette.ts
+│       │   └── typography.ts
+│       ├── helpers/
+│       │   ├── format-functions.ts       ← 날짜/숫자 포맷
+│       │   └── string-avatar.ts          ← 프로필 아바타 생성
+│       └── utils/
+│           ├── jwt.ts                    ← JWT 파싱
+│           └── image.ts                  ← 이미지 처리
+
+
+■ BACKEND (Spring Boot 3.x + Java 17)
+──────────────────────────────────────
+backend/src/main/java/com/foodguard/
+├── FoodguardApplication.java             ← Spring Boot 진입점
+├── controller/                           (총 11개 컨트롤러)
+│   ├── AuthController.java               ← /api/auth (로그인, 회원가입)
+│   ├── PredictionController.java         ★ /api/predictions (AI 예측)
+│   ├── SalesDataController.java          ← /api/sales
+│   ├── MenuController.java               ← /api/menus
+│   ├── MenuIngredientController.java     ← /api/menu-ingredients
+│   ├── IngredientController.java         ← /api/ingredients
+│   ├── StoreController.java              ← /api/stores
+│   ├── InventoryController.java          ← /api/inventory
+│   ├── OrderRequestController.java       ← /api/orders
+│   ├── DeliveryController.java           ← /api/delivery
+│   └── NotificationController.java       ← /api/notifications
+├── service/                              (총 9개 서비스)
+│   ├── UserService.java                  ← 회원/인증 로직, JWT 발급
+│   ├── PredictionService.java            ★ AI 서비스 호출 (RestTemplate)
+│   ├── SalesDataService.java             ← 매출 비즈니스 로직
+│   ├── MenuService.java
+│   ├── MenuIngredientService.java
+│   ├── IngredientService.java
+│   ├── StoreService.java
+│   ├── InventoryService.java
+│   ├── OrderRequestService.java
+│   └── NotificationService.java
+├── repository/                           (총 9개, JPA Repository)
+│   ├── UserRepository.java
+│   ├── PredictionResultRepository.java
+│   ├── SalesDataRepository.java
+│   ├── MenuRepository.java
+│   ├── MenuIngredientRepository.java
+│   ├── IngredientRepository.java
+│   ├── StoreRepository.java
+│   ├── InventoryRepository.java
+│   ├── OrderRequestRepository.java
+│   └── NotificationRepository.java
+├── entity/                               (총 10개 JPA Entity)
+│   ├── User.java                         ← 사용자 (OWNER / HQ_ADMIN / DELIVERY_DRIVER)
+│   ├── PredictionResult.java
+│   ├── SalesData.java
+│   ├── Menu.java
+│   ├── MenuIngredient.java
+│   ├── Ingredient.java
+│   ├── Store.java
+│   ├── Inventory.java
+│   ├── OrderRequest.java
+│   └── Notification.java
+├── dto/
+│   ├── LoginRequest.java
+│   ├── SignupRequest.java
+│   ├── PredictionResultDto.java
+│   ├── SaleRequest.java
+│   └── SaleResponse.java
+├── config/
+│   ├── SecurityConfig.java               ← Spring Security 설정
+│   ├── CorsConfig.java                   ← CORS 설정
+│   ├── WebSocketConfig.java              ← WebSocket STOMP (실시간 알림)
+│   └── AppConfig.java                    ← 빈 설정
+├── filter/
+│   └── JwtFilter.java                    ← JWT 인증 필터 (모든 요청 검증)
+└── util/
+    └── JwtUtil.java                      ← JWT 생성/검증/파싱
+
+
+■ AI SERVICE (FastAPI + Python 3.11)
+─────────────────────────────────────
+ai-service/
+├── main.py                               ← FastAPI 진입점 (CORS, 라우터 등록)
+├── config.py                             ← 환경 설정 (DB_URL, KMA_API_KEY, 모델 경로)
+├── database.py                           ← SQLAlchemy 세션
+├── routers/
+│   ├── prediction.py                     ★ /api/predict/* 예측 엔드포인트
+│   │   ├── POST /store/{store_id}              ← 매장 전체 메뉴 예측
+│   │   ├── POST /store/{store_id}/menu/{id}   ← 특정 메뉴 예측
+│   │   └── GET  /store/{store_id}             ← 저장된 예측 조회
+│   └── training.py                       ← /api/train/* 재학습 엔드포인트
+│       └── POST /store/{store_id}              ← 모델 재학습
+├── services/
+│   ├── prediction_service.py             ★ 예측 핵심 로직
+│   │   ├── predict_and_save_store()      ← 매장 전체 메뉴 예측 오케스트레이션
+│   │   ├── predict_and_save_menu()       ← 메뉴별 예측 실행 (메인 로직)
+│   │   └── train_store_models()          ← 모델 재학습
+│   ├── data_service.py                   ← DB 데이터 접근 (순수 SQL)
+│   │   ├── get_active_menus()
+│   │   ├── get_sales_data()
+│   │   ├── get_store_region()
+│   │   ├── save_predictions_bulk()
+│   │   └── get_saved_predictions()
+│   └── weather_service.py                ← 날씨 API 통합
+│       ├── fetch_forecast_weather()      ← 기상청 API (단기 2일 + 중기 5일)
+│       └── fetch_historical_weather()    ← Open-Meteo Archive (과거 날씨)
+├── ml/
+│   ├── demand_predictor.py               ★ RandomForest 수요 예측 모델
+│   │   ├── DemandPredictor.fit()         ← 모델 학습
+│   │   ├── DemandPredictor.predict()     ← 7일 예측
+│   │   ├── DemandPredictor.save()        ← joblib으로 모델 저장
+│   │   ├── DemandPredictor.load()        ← 저장된 모델 로드
+│   │   └── _calc_confidence()            ← 신뢰도 계산
+│   └── feature_engineering.py            ← 피처 생성 로직
+│       ├── add_date_features()           ← 날짜/요일/주말/휴일 피처
+│       ├── add_lag_features()            ← 시계열 lag (1, 7, 14일)
+│       ├── add_rolling_features()        ← 이동 평균 (7, 14일)
+│       └── make_future_feature_row()     ← 미래 날짜 피처 생성
+├── schemas/
+│   └── schemas.py                        ← Pydantic 요청/응답 모델 (6개)
+│       ├── PredictionItem
+│       ├── MenuPrediction
+│       ├── StorePredictionResponse
+│       ├── SingleMenuPredictionResponse
+│       ├── TriggerResponse
+│       └── TrainResponse
+├── requirements.txt                      ← 의존성 목록
+├── .env.example                          ← 환경변수 템플릿
+└── 데이터 스크립트 (개발용)
+    ├── generate_dummy_data.py            ← 더미 데이터 생성
+    └── test_dummy.py                     ← 테스트
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[ 2. 함수 흐름도 ]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+┌─────────────────────────────────────────────────────────┐
+│  FLOW 1. AI 예측 실행 (예측 버튼 클릭 시)               │
+└─────────────────────────────────────────────────────────┘
+
+[사용자] "AI 예측 실행" 버튼 클릭
+    ↓
+Predictions.tsx
+    └── handleTrigger()
+        ├── storeId 확인
+        ├── setTriggering(true)
+        └── predictionService.trigger(storeId)
+                ↓
+            services/predictionService.ts
+                └── api.post('/predictions/{storeId}/trigger')
+                    (Authorization: Bearer {JWT} 자동 추가)
+                                ↓  HTTP POST
+
+
+[Backend] PredictionController.java
+    └── triggerPrediction()  [@PostMapping("/{storeId}/trigger")]
+        ↓
+    PredictionService.java
+        └── triggerPrediction(storeId)
+            └── restTemplate.postForObject(
+                    "http://localhost:8000/api/predict/store/{storeId}"
+                )
+                            ↓  HTTP POST
+
+
+[AI Service] routers/prediction.py
+    └── trigger_store_prediction()
+        ↓
+    services/prediction_service.py
+        └── predict_and_save_store(db, store_id)
+            │
+            ├── [1] data_service.get_active_menus(db, store_id)
+            │       └── SELECT * FROM MENU
+            │           WHERE store_id=? AND is_active=1
+            │
+            ├── [2] data_service.get_store_region(db, store_id)
+            │       └── SELECT region FROM STORE WHERE store_id=?
+            │
+            ├── [3] weather_service.fetch_forecast_weather(region, api_key, days=7)
+            │       ├── 기상청 단기 예보 API  (D+1, D+2)
+            │       └── 기상청 중기 예보 API  (D+3 ~ D+7)
+            │       반환: DataFrame[날짜, 최고기온, 최저기온, 강수량, ...]
+            │
+            └── [4] 메뉴별 반복:
+                    predict_and_save_menu(db, store_id, menu_id, ...)
+                        │
+                        ├── [4-1] data_service.get_sales_data(db, store_id, menu_id)
+                        │           └── SELECT sales_date, SUM(quantity)
+                        │               FROM SALES_DATA
+                        │               WHERE store_id=?, menu_id=?, is_deleted=0
+                        │           반환: DataFrame[날짜, 판매량]
+                        │
+                        ├── [4-2] weather_service.fetch_historical_weather(lat, lon)
+                        │           └── Open-Meteo Archive API (과거 날씨)
+                        │
+                        ├── [4-3] DemandPredictor.fit(sales_df, weather_df)
+                        │           └── ml/demand_predictor.py
+                        │               ├── 데이터 수에 따라 전략 선택
+                        │               │   ├── 30개 이상 → FULL_FEATURE (14개)
+                        │               │   └── 7~30개   → MINIMAL_FEATURE (8개)
+                        │               ├── feature_engineering.build_features()
+                        │               │   ├── add_date_features()
+                        │               │   │   (요일, 월, 주말, 휴일 여부)
+                        │               │   ├── add_lag_features()
+                        │               │   │   (lag_1, lag_7, lag_14)
+                        │               │   └── add_rolling_features()
+                        │               │       (rolling_mean_7, rolling_mean_14)
+                        │               ├── 날씨 피처 병합
+                        │               │   (최고기온, 최저기온, 강수량,
+                        │               │    is_rainy, is_hot, is_cold)
+                        │               └── RandomForestRegressor 학습
+                        │                   (n_estimators=200, max_depth=8)
+                        │
+                        ├── [4-4] DemandPredictor.predict(days=7, forecast_df)
+                        │           └── 7일 반복:
+                        │               ├── make_future_feature_row()  ← 미래 피처
+                        │               ├── model.predict(X)           ← 예측값
+                        │               └── _calc_confidence()
+                        │                   ├── base = R² × 85%
+                        │                   ├── 예측값이 ±2σ 이내면 +10%
+                        │                   └── 예측일 멀수록 -1.5%/일
+                        │                   (최소 15%, 최대 95%)
+                        │
+                        └── [4-5] data_service.save_predictions_bulk()
+                                    ├── DELETE FROM PREDICTION_RESULT
+                                    │   WHERE target_date >= CURDATE()
+                                    └── INSERT INTO PREDICTION_RESULT
+                                        (store_id, menu_id, target_date,
+                                         predicted_qty, confidence,
+                                         model_version="rf_weather_v1.0")
+
+
+    ↑ 응답 반환 (menus_predicted, status)
+
+
+[Frontend] handleTrigger() 완료 후
+    └── loadData(storeId)
+        ├── predictionService.getByStore(storeId)
+        │       └── GET /api/predictions/{storeId}
+        │           → DB에서 예측 결과 조회
+        │
+        └── predictionService.getSummary(storeId)
+                └── GET /api/predictions/{storeId}/summary
+                    → 메뉴별 요약 통계
+
+화면 업데이트:
+    ├── ECharts 선형 차트 (7일 예측값)
+    ├── 예측 상세 테이블 (날짜/메뉴/수량/신뢰도)
+    ├── 막대 차트 (지난 7일 실제 판매량)
+    └── AI 분석 리포트 & 행동 지침 카드
+
+
+┌─────────────────────────────────────────────────────────┐
+│  FLOW 2. 로그인 → JWT 발급 → 인증                        │
+└─────────────────────────────────────────────────────────┘
+
+[사용자] 이메일/비밀번호 입력 후 로그인 버튼
+    ↓
+Login.tsx → authService.login(email, password)
+    └── api.post('/auth/login', {email, password})
+                    ↓  HTTP POST
+
+[Backend] AuthController.login(LoginRequest)
+    └── UserService.login(request)
+        ├── userRepository.findByEmail(email)
+        ├── passwordEncoder.matches(pwd, hashedPwd)
+        └── jwtUtil.generateToken(email, role, userId)
+            └── Jwts.builder()
+                    .setSubject(email)
+                    .claim("role", role)
+                    .claim("id", userId)
+                    .signWith(key, HS256)
+                    .compact()
+            반환: "eyJhbGc..."
+                    ↓  JWT 토큰 반환
+
+[Frontend] 토큰 수신
+    ├── localStorage.setItem('token', token)
+    ├── useAuth() → setIsLoggedIn(true)
+    └── Navigate to Dashboard
+
+이후 모든 API 요청:
+    api.ts → headers: { Authorization: "Bearer {token}" }
+    JwtFilter.java → 매 요청마다 토큰 검증
+
+
+┌─────────────────────────────────────────────────────────┐
+│  FLOW 3. Predictions 페이지 초기 로드                    │
+└─────────────────────────────────────────────────────────┘
+
+Predictions.tsx useEffect()
+    └── loadData(storeId)
+        └── Promise.all([           ← 3개 동시 호출
+            predictionService.getByStore(storeId),
+            predictionService.getSummary(storeId),
+            salesService.getByDateRange(7일 전 ~ 오늘)
+        ])
+            ↓ 3개 API 병렬 요청
+
+[Backend]
+    ├── GET /api/predictions/{storeId}
+    │   → PredictionController.getPredictions()
+    │   → PredictionService.getPredictions()
+    │   → SELECT ... FROM PREDICTION_RESULT WHERE store_id=?
+    │   반환: List<PredictionResultDto>
+    │
+    ├── GET /api/predictions/{storeId}/summary
+    │   → PredictionController.getSummary()
+    │   → PredictionService.getSummary()
+    │   → 예측 결과를 메뉴별로 그룹핑
+    │   반환: {dates:[...], byMenu:{...}}
+    │
+    └── GET /api/sales/{storeId}/range?start=...&end=...
+        → SalesDataController.getByDateRange()
+        → SalesDataService.getByDateRange()
+        → SELECT ... FROM SALES_DATA WHERE ...
+        반환: List<SalesData>
+
+[Frontend] 데이터 수신 후 렌더링
+    ├── setPredictions(preds)
+    ├── setSummary(sum)
+    └── setPastSales(past)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[ 3. 데이터베이스 테이블 구조 ]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  USER
+  ├── id, email, password (BCrypt), userName
+  ├── role: OWNER / HQ_ADMIN / DELIVERY_DRIVER
+  └── createdAt
+
+  STORE  (USER 1:N)
+  ├── id, storeName, region, address, phone
+  ├── openedAt
+  └── user_id (FK → USER)
+
+  MENU  (STORE 1:N)
+  ├── id, menuName, category, price
+  ├── imageUrl, is_active
+  └── store_id (FK → STORE)
+
+  MENU_INGREDIENT  (MENU N:M INGREDIENT)
+  ├── id, quantity
+  ├── menu_id (FK → MENU)
+  └── ingredient_id (FK → INGREDIENT)
+
+  INGREDIENT
+  ├── id, ingredientName, unit, standardQuantity
+  └── (메뉴 구성 식재료)
+
+  SALES_DATA  (STORE, MENU N:N)
+  ├── id, saleDate, quantity
+  ├── is_deleted  ← Soft Delete 사용
+  ├── store_id (FK), menu_id (FK)
+  └── createdAt
+
+  PREDICTION_RESULT  (SALES_DATA 기반 생성)
+  ├── id, target_date, predicted_qty
+  ├── confidence, model_version
+  ├── store_id (FK), menu_id (FK)
+  └── createdAt
+
+  INVENTORY
+  ├── id, quantity, lastUpdated
+  └── store_id (FK), ingredient_id (FK)
+
+  ORDER_REQUEST
+  ├── id, status, requestDate
+  └── store_id (FK)
+
+  NOTIFICATION
+  ├── id, message, isRead, createdAt
+  └── user_id (FK)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[ 4. 예측 모델 전략 ]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  데이터 수     모델 전략                 피처 수   신뢰도
+  ────────────────────────────────────────────────────────────────
+  7개 미만      예측 불가                  -        0%
+  7 ~ 29개     RandomForest MINIMAL       8개      최대 40%
+  30개 이상     RandomForest FULL+날씨    14개     최대 95%
+
+  신뢰도 계산:
+    기본값   = R² 점수 × 85%
+    보정값   = 예측값이 과거 평균 ±2σ 이내면 +10%
+    감소값   = 예측일이 멀수록 하루당 -1.5%
+    최소/최대 = 15% ~ 95%
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[ 5. 피처 엔지니어링 ]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  날짜 피처 (7개)
+    day_of_week, day_of_month, month, week_of_year
+    is_weekend, is_holiday (한국 공휴일 포함)
+    is_monday / is_friday / is_saturday / is_sunday
+
+  시계열 피처 (6개)
+    lag_1, lag_7, lag_14           ← 과거 판매량 참조
+    rolling_mean_7, rolling_mean_14, rolling_std_7
+
+  날씨 피처 (6개)
+    temp_max, temp_min, precipitation
+    is_rainy, is_hot, is_cold
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[ 6. 주요 API 엔드포인트 ]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Frontend → Backend (Spring Boot :8080)
+  ──────────────────────────────────────────────────────────────
+  POST   /api/auth/login                    ← 로그인 (JWT 발급)
+  POST   /api/auth/signup                   ← 회원가입
+  POST   /api/predictions/{storeId}/trigger ← AI 예측 실행
+  GET    /api/predictions/{storeId}         ← 예측 결과 조회
+  GET    /api/predictions/{storeId}/summary ← 예측 요약 (메뉴별)
+  GET    /api/sales/{storeId}               ← 매출 조회
+  GET    /api/sales/{storeId}/range         ← 기간별 매출 조회
+  POST   /api/sales                         ← 매출 등록
+  GET    /api/menus/{storeId}               ← 메뉴 조회
+  GET    /api/stores                        ← 매장 목록
+  ...    (총 30+ 엔드포인트)
+
+  Backend → AI Service (FastAPI :8000)
+  ──────────────────────────────────────────────────────────────
+  POST   /api/predict/store/{store_id}                  ← 전체 메뉴 예측
+  POST   /api/predict/store/{store_id}/menu/{menu_id}   ← 특정 메뉴 예측
+  GET    /api/predict/store/{store_id}                  ← 저장된 예측 조회
+  POST   /api/train/store/{store_id}                    ← 모델 재학습
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[ 7. 서비스 포트 및 기술 스택 ]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  서비스        포트    기술
+  ────────────────────────────────────────────────────
+  Frontend     :5173   React 18 + TypeScript + MUI
+  Backend      :8080   Spring Boot 3.x + JPA + JWT
+  AI Service   :8000   FastAPI + scikit-learn + joblib
+  Database     외부    MySQL (TiDB Cloud 호환)
+
+  권한 체계 (RBAC):
+    OWNER          → 자신의 매장 데이터만 접근
+    HQ_ADMIN       → 전체 매장 조회/관리 가능
+    DELIVERY_DRIVER → 배송 정보만 조회 가능
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[ 8. jihwan 브랜치와의 주요 차이점 ]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  항목                  junho                         jihwan
+  ───────────────────────────────────────────────────────────────────
+  모델 버전             rf_weather_v1.0               이전 버전
+  신뢰도 보정           ±2σ 범위 이내 시 +10%         보정 없음
+  피처 전략             FULL / MINIMAL 구분           단일 전략
+  페이지 구성           POS, DeliveryDriver 추가      기본 페이지
+  분석 HTML             없음                          ai-model-comparison.html
+                                                      foodguard-structure.html
+  AI Service 구조       동일 (ai-service 업데이트됨)
+
+================================================================================

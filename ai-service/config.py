@@ -14,7 +14,8 @@ class Settings(BaseSettings):
     # (npm 전역 설치: %APPDATA%\npm\node_modules\@anthropic-ai\claude-code\bin\claude.exe)
     CLAUDE_CLI: str = "claude"
 
-    model_config = {"env_file": ".env"}
+    # .env 에 fgcli 로그인 정보(FOODGUARD_*)가 함께 있어도 기동되게 모르는 키는 무시
+    model_config = {"env_file": ".env", "extra": "ignore"}
 
 
 settings = Settings()

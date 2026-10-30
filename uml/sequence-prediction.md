@@ -8,37 +8,39 @@ sequenceDiagram
     participant FE as React Frontend
     participant PC as PredictionController
     participant PS as PredictionService
-    participant SDR as SalesDataRepository
     participant RT as RestTemplate
     participant AI as Python AI Service
+    participant DB as TiDB
     participant PRR as PredictionResultRepository
 
     Owner->>FE: "AI 예측 실행" 버튼 클릭
     FE->>PC: POST /api/predictions/{storeId}/trigger
     PC->>PS: triggerPrediction(storeId)
-    PS->>SDR: findByStore(storeId)
-    SDR-->>PS: List<SalesData>
-    PS->>RT: POST http://ai-service:8000/predict/{storeId}
-    RT->>AI: { store_id, sales_data[] }
+    PS->>RT: POST http://localhost:8000/api/predict/store/{storeId}
+    RT->>AI: (본문 없음, storeId만)
 
-    AI->>AI: feature_engineering()<br/>(lag, rolling_mean, day_of_week, weather)
-    alt data >= 30 rows
-        AI->>AI: RandomForest full model
-    else data >= 7 rows
-        AI->>AI: RandomForest minimal model
-    else data < 7 rows
-        AI->>AI: simple average
+    AI->>DB: 전체 매장×메뉴 SALES_DATA, SALES_DAY_FLAG,<br/>STORE_EVENT_NOTE, MENU_INGREDIENT 조회
+    AI->>AI: 기상청 7일 예보(예측용), Open-Meteo 과거 날씨(학습용)
+    AI->>AI: 영업일 달력 정렬, 피처 생성<br/>(weekday lag_7/14, store_dow_ratio, 특이사항 배율)
+    alt 전체 학습 행 >= MIN_DATA_POINTS
+        AI->>AI: 글로벌 XGBoost 학습 (요청당 1회, 모든 메뉴 공유)<br/>+ 식자재 7일 기준 safety_factor 계산
+    else 학습 행 부족
+        AI->>AI: 요일 평균
+    end
+    loop 매장의 활성 메뉴마다
+        AI->>AI: max(마지막 판매일, 오늘) 다음 날부터 7일 예측 (휴무일은 0)
+        AI->>DB: PREDICTION_RESULT 미래분 삭제 후 INSERT
     end
 
-    AI-->>RT: { predictions: [{menu_id, date, qty, confidence}] }
-    RT-->>PS: ResponseEntity
-
-    loop 각 예측 결과
-        PS->>PRR: save(PredictionResult)
-    end
-
-    PS-->>PC: Map { status, count, predictions }
-    PC-->>FE: 200 OK + 예측 결과
+    AI-->>RT: { status, store_id, menus_predicted }
+    RT-->>PS: Map
+    PS-->>PC: Map { status, message, storeId }
+    PC-->>FE: 200 OK
+    FE->>PC: GET /api/predictions/{storeId}
+    PC->>PS: getPredictions(storeId)
+    PS->>PRR: findByStore_IdAndPredictionDateGreaterThanEqual...
+    PRR-->>PS: List<PredictionResult>
+    PS-->>FE: 예측 목록
     FE-->>Owner: 예측 차트 업데이트
 ```
 
