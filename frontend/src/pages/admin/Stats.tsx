@@ -1,4 +1,4 @@
-import { Typography, Paper, Grid, Stack, useTheme } from '@mui/material';
+import { Typography, Paper, Grid, Stack, useTheme, Alert } from '@mui/material';
 import ReactEChart from '../../components/base/ReactEChart';
 import * as echarts from 'echarts';
 
@@ -55,6 +55,9 @@ const Stats = () => {
 
   return (
     <Stack gap={4} sx={{ bgcolor: 'background.default' }}>
+      <Alert severity="info">
+        이 화면은 예시 데이터로 구성된 화면입니다. 차트와 수치는 실제 가맹점 데이터가 아닙니다.
+      </Alert>
       <Grid container spacing={3.5}>
         <Grid item xs={12} lg={8}>
           <Paper sx={{ p: 4, height: 450, border: `1px solid ${theme.palette.divider}`, borderRadius: 5, bgcolor: 'background.paper' }}>

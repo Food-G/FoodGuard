@@ -37,6 +37,13 @@ public class SalesDataController {
         return ResponseEntity.ok(salesDataService.getByStore(storeId));
     }
 
+    // 본사 대시보드용 — 전체 가맹점 최근 7일 매출 {storeId: 금액}
+    @GetMapping("/all-stores/weekly-summary")
+    public ResponseEntity<Map<Long, Long>> getAllStoreWeeklySummary() {
+        storeAccessService.checkHqAdmin();
+        return ResponseEntity.ok(salesDataService.getAllStoreWeeklyRevenue());
+    }
+
     @GetMapping("/{storeId}/range")
     public ResponseEntity<List<SalesData>> getByDateRange(
             @PathVariable Long storeId,

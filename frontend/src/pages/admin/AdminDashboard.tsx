@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Typography, Box, Paper, Grid, Stack, useTheme, CircularProgress, Chip, Button,
+  Typography, Box, Paper, Grid, Stack, useTheme, CircularProgress, Chip,
 } from '@mui/material';
 import ReactEChart from '../../components/base/ReactEChart';
 import * as echarts from 'echarts';

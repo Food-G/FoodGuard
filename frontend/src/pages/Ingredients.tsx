@@ -14,7 +14,7 @@ const UNIT_OPTIONS = ['kg', 'L', '개'];
 const Ingredients = ({ user }: any) => {
   const theme = useTheme();
   const confirm = useConfirm();
-  const { storeId, storeLoading } = useMyStore(user);
+  const { storeId } = useMyStore(user);
 
   const [allIngredients, setAllIngredients] = useState<any[]>([]);
   const [error, setError] = useState('');
