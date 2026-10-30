@@ -19,6 +19,10 @@ ai-service/.env
 ai-service/trained_models/*.joblib
 ai-service/.pytest_cache/
 
+# ── 에이전트 CLI (fgcli, fgagent) ──────────
+fgcli/__pycache__/
+fgagent/__pycache__/
+
 # ── 공통 ───────────────────────────────────
 .idea/
 *.iml
