@@ -49,3 +49,6 @@
 | I-35 | 스키마 변경 정책이 브랜치마다 다름: jihwan `ddl-auto=update`(기동 시 공유 TiDB 자동 변경), junho `ddl-auto=none` + `migrations/*.sql` 수동 실행 | 두 브랜치 `application.properties` | 상 | 사람 결정 필요 |
 | I-36 | jihwan에 TiDB 유휴 연결 대응 없음: 백엔드 Hikari keepalive 미설정, AI `pool_recycle=3600`. junho `dda675c`는 실제 500·Lost connection 장애를 겪고 3분/180초로 수정 | jihwan `application.properties`, `ai-service/database.py:11` | 중 | 열림 · 변경안: deploy_checklist.md |
 | I-37 | jihwan에 단위 규칙 강제 없음(식자재·레시피 저장 시 kg·L·개 호환 검사). junho `469afad`의 UnitConverter 참고 | jihwan `IngredientService.java:28-52` | 중 | 열림 |
+| I-38 | 발주 참모(fgagent)가 만든 발주가 `POST /api/orders`로 들어가 jihwan 추천 적용률 집계에서 점주 수동 발주(MANUAL)로 분류됨. 에이전트 발주를 구분하려면 백엔드에 출처(예: AGENT) 지정 필요 | `fgagent/executor.py:50-52`, jihwan `ORDER_REQUEST.order_source` | 중 | 열림 |
+| I-39 | `agent-assets/` 01~06 문서는 junho 백엔드 기준. README 차이표와 04 §1 발주 산식만 jihwan 기준으로 고침. 나머지(도메인 모델, API 목록, 모델 카드, 데이터 현황, 판매 시 재고 차감 등) 전면 갱신 필요 | `agent-assets/README.md` 머리말 | 하 | 열림 |
+| I-40 | 발주 참모 실제 연동(로그인 → 관찰 → 발주안 → Claude 검토 → 승인 → 발주) 미검증. DB 접속 정보와 에이전트 계정(`FOODGUARD_OWNER_EMAIL/PASSWORD`, `ai-service/.env`) 필요 | I-12 | 중 | 열림 (DB 대기) |

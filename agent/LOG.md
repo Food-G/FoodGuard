@@ -200,3 +200,18 @@
 - 수행: `agent/outputs/summary.md` 작성 — 단계별 결과, 바뀐 파일, 해결·남은 문제(심각도순), 사람이 결정할 것 7가지, 재개 방법
 - 확인: `git status`의 변경(`ai-service/main.py`, `uml/` 2개, `agent/`)과 요약 일치. 커밋하지 않음
 - 최종 상태: STEP 6·7 BLOCKED(DB 대기), 나머지 완료. 재개 시 STEP 6부터
+
+## 2026-10-30 | 에이전트 이전 (jhy 브랜치) | DONE
+- 사용자 지시: 작업은 jhy 브랜치에 저장, junho 발주 참모 에이전트를 jihwan 기준으로 이전
+- 브랜치: jhy의 중복 커밋 2개를 revert(`a6df07f`, `595227a`) 후 origin/jihwan 병합(`3e8b0bd`, 충돌 0). 이전 jihwan 위 문서 수정은 stash로 옮겨 적용
+- 이전: junho에서 `fgcli`, `fgagent`, `.claude/agents` 4종, `agent-assets`, `agent.cmd`, `DEV_ROADMAP.md` 가져옴 (파일 단위, 병합 아님)
+- 수정:
+  - `fgcli/planner.py` 서버 대조 산식을 jihwan `recommend()`와 같게 (책임 기간·추천 발주량, tolerance 제거, 위험 판단은 점예측 기준). 테스트 먼저 수정 → 기존 코드에서 10개 실패 확인 → 수정 후 13개 통과(새 테스트 2개 포함)
+  - `fgcli` 명령 today·weekly·accuracy 제거 (jihwan에 API 없음)
+  - 서브에이전트·order_advisor 지시문 산식·명령·클래스명 수정, agent-assets 차이표·04 §1 갱신
+  - `ai-service/config.py` `extra=ignore`: fgcli 로그인 키가 .env에 있으면 AI 서비스 기동 실패하던 문제. 재현 테스트 `tests/test_config.py` 실패 확인 후 수정
+  - CI에 planner 테스트 추가, `.gitignore`에 fgcli·fgagent 캐시
+- 검증: pytest 34 passed, `unittest fgcli.test_planner` 13 OK, 백엔드 service·security 테스트 BUILD SUCCESSFUL, tsc 0, ci.yml YAML 파싱 OK
+- 비밀 값 검사: 커밋 대상에서 옛 DB 비밀번호·JWT 키·기상청 키 0건 (실제 값과 직접 대조)
+- 커밋: `9287129`(에이전트 이전·수정), `1168eeb`(문서). 푸시 안 함
+- 새 이슈: I-38(에이전트 발주가 수동으로 집계), I-39(agent-assets 전면 갱신), I-40(실제 연동 미검증)
