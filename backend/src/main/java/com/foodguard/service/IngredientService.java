@@ -20,6 +20,7 @@ public class IngredientService {
     private final MenuIngredientRepository menuIngredientRepository;
     private final InventoryRepository inventoryRepository;
     private final OrderRequestRepository orderRequestRepository;
+    private final InventoryLedger ledger;
 
     // 식자재 등록
     public Ingredient create(String name, String category, String unit) {
@@ -58,6 +59,7 @@ public class IngredientService {
     public String delete(Long id) {
         orderRequestRepository.deleteByIngredientId(id);
         menuIngredientRepository.deleteByIngredientId(id);
+        ledger.recordRemoval(inventoryRepository.findByIngredientId(id), "INGREDIENT", id);
         inventoryRepository.deleteByIngredientId(id);
         ingredientRepository.deleteById(id);
         return "식자재 삭제 완료";

@@ -103,6 +103,13 @@ def trim_prediction(p: dict) -> dict:
                  "confidence", "modelVersion")
 
 
+def _txn_query(a: argparse.Namespace) -> str:
+    params = {"from": getattr(a, "from_date", None), "to": getattr(a, "to_date", None),
+              "ingredientId": getattr(a, "ingredient", None)}
+    q = "&".join(f"{k}={v}" for k, v in params.items() if v)
+    return f"?{q}" if q else ""
+
+
 def trim_ingredient(i: dict) -> dict:
     return _pick(i, "id", "name", "unit", "category")
 
@@ -134,6 +141,8 @@ COMMANDS: dict[str, tuple[Callable[[argparse.Namespace], str], Trimmer, str]] = 
                     "최근 7일 vs 직전 7일 매출"),
     "weekly-all":  (lambda a: "/api/sales/all-stores/weekly-summary", None,
                     "전 매장 주간 매출 (HQ 전용)"),
+    "txns":        (lambda a: f"/api/inventory/{a.store_id}/txns" + _txn_query(a), None,
+                    "재고 원장: 재고가 왜 늘고 줄었나 (SALE·ORDER_DONE·ADJUST·INIT…, 기본 최근 30일, 최신순)"),
     "ai-health":   (lambda a: "/health", None, "AI 예측 서비스 가동 확인"),
     "accuracy":    (lambda a: "/api/predictions/accuracy?source=" + a.source
                     + (f"&storeId={a.store}" if a.store else ""), None,
@@ -143,7 +152,7 @@ COMMANDS: dict[str, tuple[Callable[[argparse.Namespace], str], Trimmer, str]] = 
 }
 
 NEEDS_STORE_ID = {"menus", "inventory", "predictions", "recommend", "orders",
-                  "sales", "today", "weekly", "plan"}
+                  "sales", "today", "weekly", "plan", "txns"}
 NEEDS_MENU_ID = {"recipe"}
 
 
@@ -183,6 +192,10 @@ def build_parser() -> argparse.ArgumentParser:
         if name == "accuracy":
             sp.add_argument("--source", choices=["backtest", "live"], default="backtest")
             sp.add_argument("--store", type=int, help="매장 ID (생략 시 전체)")
+        if name == "txns":
+            sp.add_argument("--from", dest="from_date", help="시작일 YYYY-MM-DD (기본: to 기준 30일 전)")
+            sp.add_argument("--to", dest="to_date", help="종료일 YYYY-MM-DD, 그날 포함 (기본: 오늘)")
+            sp.add_argument("--ingredient", type=int, help="식자재 ID")
         if name == "sales":
             sp.add_argument("--start", required=True, help="시작일 YYYY-MM-DD")
             sp.add_argument("--end", required=True, help="종료일 YYYY-MM-DD")

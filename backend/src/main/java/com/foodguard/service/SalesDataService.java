@@ -1,6 +1,5 @@
 package com.foodguard.service;
 
-import com.foodguard.entity.Inventory;
 import com.foodguard.entity.Menu;
 import com.foodguard.entity.MenuIngredient;
 import com.foodguard.entity.SalesData;
@@ -14,7 +13,6 @@ import com.foodguard.util.UnitConverter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -29,6 +27,7 @@ public class SalesDataService {
     private final MenuRepository menuRepository;
     private final MenuIngredientRepository menuIngredientRepository;
     private final InventoryRepository inventoryRepository;
+    private final InventoryLedger ledger;
 
     // 매출 등록
     public SalesData create(Long storeId, Long menuId,
@@ -47,34 +46,24 @@ public class SalesDataService {
         SalesData saved = salesDataRepository.save(sales);
 
         // 매출 발생 → 레시피 기반 식자재 소모량 자동 차감
-        deductIngredients(store, menu.getId(), quantity);
+        deductIngredients(store, menu.getId(), quantity, saved.getId());
         return saved;
     }
 
     // 레시피(MenuIngredient) × 판매수량 × (1 + 오차범위%) 만큼 재고에서 차감
-    private void deductIngredients(Store store, Long menuId, int saleQty) {
+    private void deductIngredients(Store store, Long menuId, int saleQty, Long salesId) {
         for (MenuIngredient mi : menuIngredientRepository.findByMenuId(menuId)) {
             double tol = mi.getTolerance() != null ? mi.getTolerance().doubleValue() : 0.0;
             double consumeRecipeUnit = mi.getQtyPerUnit().doubleValue() * saleQty * (1.0 + tol / 100.0);
             String baseUnit = mi.getIngredient().getUnit();   // kg / L / 개
             double consumeBase = UnitConverter.toBaseUnit(consumeRecipeUnit, mi.getUnit(), baseUnit);
 
-            Inventory inv = inventoryRepository
+            double cur = inventoryRepository
                     .findByStoreIdAndIngredientId(store.getId(), mi.getIngredient().getId())
-                    .orElseGet(() -> {
-                        Inventory n = new Inventory();
-                        n.setStore(store);
-                        n.setIngredient(mi.getIngredient());
-                        n.setQuantity(0.0);
-                        n.setMinThreshold(BigDecimal.ZERO);
-                        n.setUnit(baseUnit);
-                        return n;
-                    });
-            double next = round2(inv.getCurrentQty().doubleValue() - consumeBase); // 부족 시 음수 허용(부족분 표시)
-            inv.setQuantity(next);
-            inv.setUnit(baseUnit);
-            inv.setUpdatedAt(LocalDateTime.now());
-            inventoryRepository.save(inv);
+                    .map(i -> i.getCurrentQty().doubleValue())
+                    .orElse(0.0);
+            double next = round2(cur - consumeBase); // 부족 시 음수 허용(부족분 표시)
+            ledger.set(store, mi.getIngredient(), next, "SALE", "SALES_DATA", salesId);
         }
     }
 

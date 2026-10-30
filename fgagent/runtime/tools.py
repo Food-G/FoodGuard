@@ -46,6 +46,10 @@ def _input_schema(name: str, bind_store: bool) -> dict:
     if name == "sales":
         props["start"], props["end"] = {**_DATE, "description": "시작일 YYYY-MM-DD"}, {**_DATE, "description": "종료일 YYYY-MM-DD"}
         required += ["start", "end"]
+    if name == "txns":
+        props["from_date"] = {**_DATE, "description": "시작일 YYYY-MM-DD (생략 시 30일 전)"}
+        props["to_date"] = {**_DATE, "description": "종료일 YYYY-MM-DD, 그날 포함 (생략 시 오늘)"}
+        props["ingredient"] = {**_INT, "description": "식자재 ID (생략 시 전체)"}
     if name == "accuracy":
         props["source"] = {"type": "string", "enum": ["backtest", "live"]}
         required.append("source")

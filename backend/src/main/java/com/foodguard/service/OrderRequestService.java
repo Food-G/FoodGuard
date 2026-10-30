@@ -18,7 +18,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -27,7 +26,6 @@ import java.util.UUID;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 
 @Service
@@ -41,6 +39,7 @@ public class OrderRequestService {
     private final MenuIngredientRepository menuIngredientRepository;
     private final InventoryRepository inventoryRepository;
     private final PredictionService predictionService;
+    private final InventoryLedger ledger;
 
     // 발주 요청
     public OrderRequest create(Long storeId, Long ingredientId, Double quantity) {
@@ -93,16 +92,8 @@ public class OrderRequestService {
             Ingredient ingredient = ingredientMap.get(ingId);
             double qty = round1(entry.getValue());
 
-            Optional<Inventory> existing = inventoryRepository
-                    .findByStoreIdAndIngredientId(storeId, ingId);
-            Inventory inv = existing.orElse(new Inventory());
-            inv.setStore(store);
-            inv.setIngredient(ingredient);
             // 발주 합계를 그대로 '설정' 한다 (가산하면 반복 호출 시 재고가 배로 늘어남)
-            inv.setQuantity(qty);
-            inv.setMinThreshold(inv.getMinThreshold() != null ? inv.getMinThreshold() : BigDecimal.ZERO);
-            inv.setUnit(ingredient.getUnit());
-            result.add(inventoryRepository.save(inv));
+            result.add(ledger.set(store, ingredient, qty, "INIT", null, null));
         }
         return result;
     }
@@ -133,26 +124,8 @@ public class OrderRequestService {
         }
 
         if ("DONE".equals(status) && !"DONE".equals(prev)) {
-            Long storeId = order.getStore().getId();
-            Long ingredientId = order.getIngredient().getId();
-            double qty = order.getOrderedQty().doubleValue();
-
-            Optional<Inventory> invOpt = inventoryRepository.findByStoreIdAndIngredientId(storeId, ingredientId);
-            if (invOpt.isPresent()) {
-                Inventory inv = invOpt.get();
-                inv.setQuantity(inv.getCurrentQty().doubleValue() + qty);
-                inv.setUpdatedAt(LocalDateTime.now());
-                inventoryRepository.save(inv);
-            } else {
-                Inventory inv = new Inventory();
-                inv.setStore(order.getStore());
-                inv.setIngredient(order.getIngredient());
-                inv.setQuantity(qty);
-                inv.setMinThreshold(BigDecimal.ZERO);
-                inv.setUnit(order.getIngredient().getUnit());
-                inv.setUpdatedAt(LocalDateTime.now());
-                inventoryRepository.save(inv);
-            }
+            ledger.apply(order.getStore(), order.getIngredient(), order.getOrderedQty().doubleValue(),
+                    "ORDER_DONE", "ORDER_REQUEST", order.getId());
         }
 
         return order;

@@ -56,6 +56,15 @@ class ToolsTest(unittest.TestCase):
         self.assertEqual(len(out["items"]), MAX_ITEMS)
         self.assertIn("truncated", out)
 
+    def test_txns_optional_filters(self):
+        (txns,) = build_tools(["txns"], store_id=60006)
+        self.assertEqual(txns.spec["input_schema"]["required"], [])
+        c = FakeClient([])
+        txns.run(c, {})
+        txns.run(c, {"from_date": "2026-10-01", "ingredient": 5})
+        self.assertEqual(c.paths, ["/api/inventory/60006/txns",
+                                   "/api/inventory/60006/txns?from=2026-10-01&ingredientId=5"])
+
     def test_accuracy_bound_store(self):
         c = FakeClient({})
         run_command(c, "accuracy", {"source": "live"}, bound_store=60006)

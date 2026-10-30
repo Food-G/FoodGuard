@@ -10,7 +10,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -20,6 +19,7 @@ public class InventoryService {
     private final InventoryRepository inventoryRepository;
     private final StoreRepository storeRepository;
     private final IngredientRepository ingredientRepository;
+    private final InventoryLedger ledger;
 
     // 재고 등록
     public Inventory create(Long storeId, Long ingredientId, Double quantity) {
@@ -28,14 +28,8 @@ public class InventoryService {
         Ingredient ingredient = ingredientRepository.findById(ingredientId)
                 .orElseThrow(() -> new RuntimeException("식자재를 찾을 수 없습니다."));
 
-        Inventory inventory = inventoryRepository
-                .findByStoreIdAndIngredientId(storeId, ingredientId)
-                .orElse(new Inventory());
-        inventory.setStore(store);
-        inventory.setIngredient(ingredient);
-        inventory.setQuantity(quantity);
-        inventory.setMinThreshold(BigDecimal.ZERO);
-        inventory.setUnit(ingredient.getUnit());
+        Inventory inventory = ledger.set(store, ingredient, quantity, "ADJUST", "INVENTORY", null);
+        inventory.setMinThreshold(BigDecimal.ZERO);  // 기존 동작 유지: 등록(덮어쓰기) 시 임계치 0
         return inventoryRepository.save(inventory);
     }
 
@@ -48,13 +42,13 @@ public class InventoryService {
     public Inventory update(Long id, Double quantity) {
         Inventory inventory = inventoryRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("재고를 찾을 수 없습니다."));
-        inventory.setQuantity(quantity);
-        inventory.setUpdatedAt(LocalDateTime.now());
-        return inventoryRepository.save(inventory);
+        return ledger.set(inventory.getStore(), inventory.getIngredient(), quantity, "ADJUST", "INVENTORY", id);
     }
 
     // 재고 삭제
+    @org.springframework.transaction.annotation.Transactional
     public String delete(Long id) {
+        inventoryRepository.findById(id).ifPresent(inv -> ledger.recordRemoval(List.of(inv), "INVENTORY", id));
         inventoryRepository.deleteById(id);
         return "재고 삭제 완료";
     }
@@ -62,6 +56,7 @@ public class InventoryService {
     // 가맹점 전체 재고 초기화
     @org.springframework.transaction.annotation.Transactional
     public String deleteAll(Long storeId) {
+        ledger.recordRemoval(inventoryRepository.findByStoreId(storeId), "INVENTORY", null);
         inventoryRepository.deleteByStoreId(storeId);
         return "전체 재고 초기화 완료";
     }
