@@ -64,7 +64,9 @@ public class SecurityConfig {
         String method = request.getMethod();
         String path = request.getRequestURI().substring(request.getContextPath().length());
         if ("GET".equals(method)) return true;
-        return ("POST".equals(method) && (path.equals("/api/agent/proposals") || path.equals("/api/agent/runs")))
+        return ("POST".equals(method) && (path.equals("/api/agent/proposals") || path.equals("/api/agent/runs")
+                        // 사람 승인 없이 허용되는 직접 쓰기 (§4.3): 알림(24h 중복 금지), 재예측(매장당 하루 3회)
+                        || path.equals("/api/notifications") || path.matches("/api/predictions/\\d+/trigger")))
                 || ("PUT".equals(method) && path.startsWith("/api/agent/runs/"));
     }
 }

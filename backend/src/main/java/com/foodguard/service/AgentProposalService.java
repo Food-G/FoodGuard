@@ -74,6 +74,9 @@ public class AgentProposalService {
         try {
             result.putAll(executor.execute(p));
             p.setStatus("EXECUTED");
+        } catch (ProposalExecutor.CheckUnavailableException e) {
+            // 결정을 기록하지 않고 롤백 → 제안은 PENDING 으로 남는다 (400)
+            throw new IllegalStateException(e.getMessage());
         } catch (ProposalExecutor.StaleProposalException e) {
             p.setStatus("STALE");
             result.put("error", e.getMessage());

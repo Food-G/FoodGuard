@@ -6,4 +6,7 @@ import java.util.List;
 
 public interface NotificationRepository extends JpaRepository<Notification, Long> {
     List<Notification> findByStoreIdAndIsReadFalse(Long storeId);
+
+    boolean existsByStoreIdAndTypeAndMessageAndCreatedAtAfter(Long storeId, String type, String message,
+                                                               java.time.LocalDateTime after);
 }

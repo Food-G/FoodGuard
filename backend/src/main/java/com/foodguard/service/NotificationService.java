@@ -33,6 +33,11 @@ public class NotificationService {
         return notificationRepository.save(notification);
     }
 
+    public boolean existsRecent(Long storeId, String type, String message, int hours) {
+        return notificationRepository.existsByStoreIdAndTypeAndMessageAndCreatedAtAfter(
+                storeId, type, message, java.time.LocalDateTime.now().minusHours(hours));
+    }
+
     // 읽지 않은 알림 조회
     public List<Notification> getUnread(Long storeId) {
         return notificationRepository.findByStoreIdAndIsReadFalse(storeId);

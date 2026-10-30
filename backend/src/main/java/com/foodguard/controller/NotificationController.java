@@ -19,9 +19,14 @@ public class NotificationController {
     private final StoreAccessGuard guard;
 
     @PostMapping
-    public ResponseEntity<Notification> create(@RequestBody Map<String, Object> body) {
+    public ResponseEntity<?> create(@RequestBody Map<String, Object> body) {
         Long storeId = Long.parseLong(body.get("storeId").toString());
-        guard.assertCanAccessStore(storeId);
+        guard.assertCanAccessStoreOrAgent(storeId);
+        // 에이전트는 같은 매장·타입·내용 알림을 24시간 안에 다시 만들지 않는다 (스케줄 반복 실행 대비)
+        if (guard.currentUser().isAgent() && notificationService.existsRecent(
+                storeId, body.get("type").toString(), body.get("message").toString(), 24)) {
+            return ResponseEntity.ok(Map.of("deduplicated", true));
+        }
         return ResponseEntity.ok(notificationService.create(
                 storeId,
                 body.get("message").toString(),

@@ -75,6 +75,18 @@ public class StoreAccessGuard {
         }
     }
 
+    /**
+     * 에이전트가 사람 승인 없이 직접 할 수 있는 쓰기(알림 생성, 재예측 — DEV_ROADMAP §4.3)용.
+     * AGENT 면 매장 존재만 확인하고, 그 밖의 사용자는 기존 소유권 검사.
+     */
+    public void assertCanAccessStoreOrAgent(Long storeId) {
+        if (currentUser().isAgent()) {
+            if (!storeRepository.existsById(storeId)) throw new AccessDeniedException("가맹점을 찾을 수 없습니다.");
+            return;
+        }
+        assertCanAccessStore(storeId);
+    }
+
     private static boolean isAgentRead(AuthUser user) {
         if (!user.isAgent()) return false;
         return RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes attrs

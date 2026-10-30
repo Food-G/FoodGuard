@@ -21,7 +21,7 @@ jobs:
       - run: chmod +x gradlew
       # contextLoads 테스트는 공용 TiDB 에 접속하므로 DB 가 필요 없는 단위 테스트만 돌린다.
       # 테스트용 H2 프로필이 생기면 ./gradlew build 로 바꾼다.
-      - run: ./gradlew assemble test --tests 'com.foodguard.util.*' --no-daemon
+      - run: ./gradlew assemble test --tests 'com.foodguard.util.*' --tests 'com.foodguard.service.*' --no-daemon
 
   frontend:
     runs-on: ubuntu-latest
