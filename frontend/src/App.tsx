@@ -19,7 +19,6 @@ import POS from './pages/POS';
 import Login from './pages/auth/Login';
 import Signup from './pages/auth/Signup';
 import DeliveryDriver from './pages/DeliveryDriver';
-import DeliveryDriverGroup from './pages/DeliveryDriverGroup';
 import WastePrediction from './pages/WastePrediction';
 import DonationHistory from './pages/DonationHistory';
 import { useAuth } from './hooks/useAuth';
@@ -48,7 +47,7 @@ function App() {
           <Routes>
             <Route path="/login" element={<PublicRoute><Login onLogin={login} /></PublicRoute>} />
             <Route path="/signup" element={<PublicRoute><Signup /></PublicRoute>} />
-            <Route path="/driver/group/:groupToken" element={<DeliveryDriverGroup />} />
+            {/* /driver/group/:groupToken (DeliveryDriverGroup) 은 백엔드 그룹 배송 API 가 없어 임시로 숨김 */}
             <Route path="/driver/:token" element={<DeliveryDriver />} />
 
             <Route path="/" element={

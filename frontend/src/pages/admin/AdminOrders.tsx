@@ -3,12 +3,11 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
   Typography, Paper, Button, CircularProgress, Chip,
   Stack, useTheme, Box, Tab, Tabs,
-  Dialog, DialogTitle, DialogContent, DialogActions, TextField,
+  Dialog, DialogTitle, DialogContent, DialogActions,
 } from '@mui/material';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { orderService } from '../../services/orderService';
 import IconifyIcon from '../../components/base/IconifyIcon';
-import QrCodeDisplay from '../../components/QrCodeDisplay';
 import { useConfirm } from '../../hooks/useConfirm';
 import AlertMessages from '../../components/AlertMessages';
 
@@ -95,8 +94,6 @@ const AdminOrders = () => {
   const [tab, setTab] = useState(0);
   const confirm = useConfirm();
   const [hqSendTarget, setHqSendTarget] = useState<number | null>(null);
-  const [expiryDate, setExpiryDate] = useState('');
-  const [qrData, setQrData] = useState<{ data: string; name: string } | null>(null);
 
   const loadOrders = async () => {
     try {
@@ -110,7 +107,7 @@ const AdminOrders = () => {
         unit: item.ingredient?.unit ?? '',
         status: item.status,
         orderedAt: item.orderedAt ? new Date(item.orderedAt).toLocaleString() : '-',
-        deliveryGroupToken: item.deliveryGroupToken ?? null,
+        deliveryToken: item.deliveryToken ?? null,
       })));
     } catch {
       setError('발주 목록을 불러오지 못했습니다.');
@@ -153,15 +150,11 @@ const AdminOrders = () => {
   const handleHqSendConfirm = async () => {
     if (hqSendTarget === null) return;
     try {
-      const row = allRows.find(r => r.id === hqSendTarget);
-      const result = await orderService.hqSend(hqSendTarget, expiryDate || undefined);
+      // 전용 hq-send API(유통기한·QR)가 아직 없어 상태 변경 API 로 처리한다 (유통기한 입력은 DEV_ROADMAP D-3)
+      await orderService.updateStatus(hqSendTarget, 'HQ_SENT');
       withStatus(hqSendTarget, 'HQ_SENT');
       setSuccess('발송 검수가 완료되었습니다.');
       setHqSendTarget(null);
-      setExpiryDate('');
-      if (result?.qrData) {
-        setQrData({ data: result.qrData, name: row?.name ?? '식자재' });
-      }
     } catch {
       setError('발송 검수 처리에 실패했습니다.');
       setHqSendTarget(null);
@@ -222,8 +215,8 @@ const AdminOrders = () => {
           </Button>
         );
         if (status === 'HQ_SENT') {
-          const driverUrl = p.row.deliveryGroupToken
-            ? `${window.location.origin}/driver/group/${p.row.deliveryGroupToken}`
+          const driverUrl = p.row.deliveryToken
+            ? `${window.location.origin}/driver/${p.row.deliveryToken}`
             : null;
           return driverUrl ? (
             <Button variant="contained" color="secondary" size="small"
@@ -445,42 +438,20 @@ const AdminOrders = () => {
         </Box>
       </Paper>
 
-      {/* 유통기한 입력 다이얼로그 */}
-      <Dialog open={hqSendTarget !== null} onClose={() => { setHqSendTarget(null); setExpiryDate(''); }} maxWidth="xs" fullWidth>
+      <Dialog open={hqSendTarget !== null} onClose={() => setHqSendTarget(null)} maxWidth="xs" fullWidth>
         <DialogTitle>발송 검수 완료</DialogTitle>
         <DialogContent>
-          <Stack gap={2} pt={1}>
-            <Typography variant="body2" color="text.secondary">
-              해당 식자재의 유통기한을 입력하면 QR 코드가 생성됩니다. (선택 사항)
-            </Typography>
-            <TextField
-              label="유통기한"
-              type="date"
-              value={expiryDate}
-              onChange={(e) => setExpiryDate(e.target.value)}
-              InputLabelProps={{ shrink: true }}
-              fullWidth
-              size="small"
-            />
-          </Stack>
+          <Typography variant="body2" color="text.secondary" pt={1}>
+            발송 처리하면 배달기사 링크를 복사할 수 있습니다.
+          </Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => { setHqSendTarget(null); setExpiryDate(''); }}>취소</Button>
+          <Button onClick={() => setHqSendTarget(null)}>취소</Button>
           <Button variant="contained" color="success" onClick={handleHqSendConfirm}>
             발송 검수완료
           </Button>
         </DialogActions>
       </Dialog>
-
-      {/* QR 코드 표시 */}
-      {qrData && (
-        <QrCodeDisplay
-          data={qrData.data}
-          title={`${qrData.name} QR 코드`}
-          subtitle={`이 QR 코드를 패키지에 부착하세요`}
-          onClose={() => setQrData(null)}
-        />
-      )}
     </Stack>
   );
 };

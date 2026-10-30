@@ -76,8 +76,8 @@ const Sidebar = ({ open, role, setMobileOpen, onMouseEnter, onMouseLeave }: Side
     { title: '식자재 발주', icon: 'mingcute:refresh-2-line', path: '/orders', active: true },
     { title: '식자재 관리', icon: 'ph:carrot-fill', path: '/ingredients', active: true },
     { title: '자원 현황', icon: 'mingcute:inventory-line', path: '/inventory', active: true },
-    { title: '폐기예측 & 기부', icon: 'mingcute:heart-fill', path: '/waste-prediction', active: true },
-    { title: '기부 이력', icon: 'mingcute:history-line', path: '/donations', active: true },
+    // 폐기예측 & 기부(/waste-prediction), 기부 이력(/donations)은 백엔드 API 가 없어 임시로 숨김
+    // → DEV_ROADMAP AG-2/AG-3 완료 시 복구
   ];
 
   return (

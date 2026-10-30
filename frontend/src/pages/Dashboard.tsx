@@ -23,8 +23,7 @@ const OWNER_TILES: TileProps[] = [
   { title: '식자재 관리',     icon: 'mdi:carrot',                color: '#f57c00', path: '/ingredients' },
   { title: '메뉴 관리',       icon: 'mingcute:fork-spoon-line',  color: '#0288d1', path: '/menus' },
   { title: '판매 입력',       icon: 'mingcute:chart-line-line',  color: '#00897b', path: '/sales' },
-  { title: '폐기예측 & 기부', icon: 'mingcute:heart-fill',       color: '#c62828', path: '/waste-prediction' },
-  { title: '기부 이력',       icon: 'mingcute:history-line',     color: '#6a1b9a', path: '/donations' },
+  // 폐기예측 & 기부, 기부 이력 타일은 백엔드 API 가 없어 임시로 숨김 → DEV_ROADMAP AG-2/AG-3 완료 시 복구
 ];
 
 const ADMIN_TILES: TileProps[] = [

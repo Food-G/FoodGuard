@@ -4,7 +4,6 @@ import {
 } from '@mui/material';
 import { orderService } from '../services/orderService';
 import IconifyIcon from '../components/base/IconifyIcon';
-import QrScanner from '../components/QrScanner';
 import { useMyStore } from '../hooks/useMyStore';
 import { useConfirm } from '../hooks/useConfirm';
 import AlertMessages from '../components/AlertMessages';
@@ -37,7 +36,6 @@ const Orders = ({ user }: any) => {
   const [ordering, setOrdering] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [scanning, setScanning] = useState(false);
 
   const loadOrders = async (sid: number) => {
     try {
@@ -73,14 +71,15 @@ const Orders = ({ user }: any) => {
     }
   };
 
-  const handleQrScan = async (qrData: string) => {
-    setScanning(false);
+  // QR 검수 API(/orders/scan)가 아직 없어 상태 변경 API 로 입고 완료 처리한다 (DONE 전환 시 재고 반영)
+  const handleReceive = async (id: number) => {
+    if (!await confirm('입고를 확인하고 재고에 반영하시겠습니까?')) return;
     try {
-      const result = await orderService.scanQr(qrData);
-      setSuccess(`${result.ingredientName} 검수 완료. 재고에 반영되었습니다.`);
+      await orderService.updateStatus(id, 'DONE');
+      setSuccess('검수 완료. 재고에 반영되었습니다.');
       if (storeId) await loadOrders(storeId);
     } catch {
-      setError('QR 스캔 처리에 실패했습니다.');
+      setError('검수 처리에 실패했습니다.');
     }
   };
 
@@ -123,14 +122,6 @@ const Orders = ({ user }: any) => {
 
       <AlertMessages error={error} success={success}
         onClearError={() => setError('')} onClearSuccess={() => setSuccess('')} />
-
-      {scanning && (
-        <QrScanner
-          title="점주 검수 QR 스캔"
-          onScan={handleQrScan}
-          onClose={() => setScanning(false)}
-        />
-      )}
 
       <Paper sx={{ p: 3, border: `1px solid ${theme.palette.divider}`, borderRadius: 3 }}>
         <Stack direction="row" alignItems="center" justifyContent="space-between" mb={2}>
@@ -203,9 +194,9 @@ const Orders = ({ user }: any) => {
                     )}
                     {row.status === 'DRIVER_RECEIVED' && (
                       <Button color="success" size="small" variant="contained"
-                        onClick={() => setScanning(true)} sx={{ borderRadius: 2 }}
-                        startIcon={<IconifyIcon icon="mingcute:scan-line" width={16} />}>
-                        QR
+                        onClick={() => handleReceive(row.id as number)} sx={{ borderRadius: 2 }}
+                        startIcon={<IconifyIcon icon="mingcute:check-line" width={16} />}>
+                        검수
                       </Button>
                     )}
                   </Box>
