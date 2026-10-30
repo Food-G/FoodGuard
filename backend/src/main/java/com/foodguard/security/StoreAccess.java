@@ -28,6 +28,7 @@ public class StoreAccess {
             "OrderRequest", "select x.store.id from OrderRequest x where x.id = :id",
             "SalesData", "select x.store.id from SalesData x where x.id = :id",
             "SalesDayFlag", "select x.storeId from SalesDayFlag x where x.id = :id",
+            "StoreEventNote", "select x.storeId from StoreEventNote x where x.id = :id",
             "DonationRecord", "select x.storeId from DonationRecord x where x.id = :id"
     );
 

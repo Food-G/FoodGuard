@@ -101,7 +101,8 @@ ai-service/
 └── routers/
     ├── prediction.py            # /api/predict/*
     ├── training.py              # /api/train/*
-    └── explain.py               # /api/explain/order — 발주 추천 근거 설명 (숫자는 바꾸지 않음)
+    ├── explain.py               # /api/explain/order — 발주 추천 근거 설명 (숫자는 바꾸지 않음)
+    └── events.py                # /api/events/parse — 점주 특이사항 메모 → 유형·증감 배율 (claude)
 ```
 
 ### AI 예측 흐름
@@ -119,6 +120,7 @@ POST /api/predict/store/{id}
 - `SALES_DATA` — 읽기 (판매 이력, 학습 데이터)
 - `STORE` — 읽기 (region 컬럼으로 날씨 좌표 조회)
 - `SALES_DAY_FLAG` — 읽기 (휴무·품절 기록: 휴무일은 학습 제외·예측 0, 품절일은 학습 정답에서 제외)
+- `STORE_EVENT_NOTE` — 읽기 (점주 특이사항을 claude 가 바꾼 증감 배율 → `event_lift` 피처. 학습 이력에 특이사항 날이 있을 때만 사용, 예측에 직접 곱하지 않음)
 - `PREDICTION_RESULT` — 쓰기 (예측 결과 저장)
 
 ### 모델 전략 (글로벌 모델, `ml/demand_predictor.py`)

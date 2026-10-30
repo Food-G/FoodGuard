@@ -286,10 +286,65 @@ def run_cold_start(series: dict[SeriesKey, pd.DataFrame], origin_row: int = 35, 
         print(f"| {method} | " + " | ".join(f"{wmape(g[g['k'] == k]):.1f}%" for k in new_days) + " |")
 
 
+def synthetic_event_series(seed: int = 7) -> tuple[dict[SeriesKey, pd.DataFrame], dict[int, dict[date, float]]]:
+    """
+    매장 3곳 × 메뉴 4개 × 180일. 매장마다 약 8% 의 날에 특이사항(단체 예약·행사로 1.3~2.0배, 궂은 날로 0.5~0.8배)이 있어
+    그날 매장 전체 수요가 배율만큼 변한다. 점주 메모를 claude 가 숫자로 바꾼 값은 실제 배율에 ±15% 오차를 둔 값으로 흉내 낸다.
+    """
+    rng = np.random.default_rng(seed)
+    start = date(2026, 1, 5)  # 월요일
+    days = [start + timedelta(days=i) for i in range(180)]
+    dow_factor = [0.8, 0.9, 0.9, 1.0, 1.2, 1.5, 1.2]
+    series: dict[SeriesKey, pd.DataFrame] = {}
+    events: dict[int, dict[date, float]] = {}
+    for sid in (1, 2, 3):
+        true_lift = {}
+        for d in days:
+            if rng.random() < 0.08:
+                up, down = rng.uniform(1.3, 2.0), rng.uniform(0.5, 0.8)
+                true_lift[d] = float(up if rng.random() < 0.75 else down)
+        events[sid] = {d: round(lift * rng.normal(1.0, 0.15), 2) for d, lift in true_lift.items()}
+        for m in range(4):
+            level = rng.uniform(15, 60)
+            y = [rng.poisson(level * dow_factor[d.weekday()] * true_lift.get(d, 1.0)) for d in days]
+            series[(sid, sid * 10 + m)] = pd.DataFrame({"ds": days, "y": np.array(y, dtype=float), "sold_out": 0})
+    return series, events
+
+
+def run_events(series: dict[SeriesKey, pd.DataFrame], events: dict[int, dict[date, float]],
+               min_train: int = 90, step: int = 7) -> None:
+    """같은 글로벌 모델을 특이사항 피처(event_lift) 없이·있이 학습해 7일 예측 오차를 비교한다 (특이사항 날 / 평소 날)."""
+    dates = sorted(next(iter(series.values()))["ds"])
+    records = []  # (method, 특이사항 날 여부, 실제, 예측)
+    origins = [o for o in dates[min_train - 1::step] if o + timedelta(days=HORIZON) <= dates[-1]]
+    for origin in origins:
+        past = {k: df[df["ds"] <= origin] for k, df in series.items()}
+        models = {
+            "특이사항 피처 없음": DemandPredictor().fit(past),
+            "특이사항 피처 있음 (event_lift)": DemandPredictor().fit(past, events=events),
+        }
+        for (sid, mid), df in series.items():
+            actual = dict(zip(df["ds"], df["y"]))
+            for method, model in models.items():
+                for p in model.predict(sid, mid, days=HORIZON, start_date=origin):
+                    records.append((method, p["date"] in events[sid], actual[p["date"]], p["predicted_qty"]))
+
+    r = pd.DataFrame(records, columns=["method", "event", "y", "pred"])
+    r["ae"] = (r["y"] - r["pred"]).abs()
+    n_event = int(r[r["method"] == r["method"].iloc[0]]["event"].sum())
+    print(f"합성 특이사항 실험: 매장 3곳×메뉴 4개, 예측 시점 {len(origins)}개, 평가 {len(r) // 2}개 중 특이사항 날 {n_event}개\n")
+    print("| 방법 | 전체 wMAPE | 특이사항 날 wMAPE | 평소 날 wMAPE |")
+    print("|---|---|---|---|")
+    for method, g in r.groupby("method", sort=False):
+        print(f"| {method} | {wmape(g):.1f}% | {wmape(g[g['event']]):.1f}% | {wmape(g[~g['event']]):.1f}% |")
+    print("\n특이사항 배율은 실제 배율에 ±15% 오차를 둔 값 (claude 추정 흉내). 예측값은 두 경우 모두 XGBoost 가 낸다")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     src = parser.add_mutually_exclusive_group(required=True)
     src.add_argument("--synthetic", action="store_true", help="합성 데이터 200일")
+    src.add_argument("--events", action="store_true", help="합성 특이사항 실험: event_lift 피처 유무 비교")
     src.add_argument("--db", action="store_true", help="DB SALES_DATA 의 모든 매장x메뉴")
     parser.add_argument("--store", type=int, help="--db 와 함께: 이 매장 메뉴만 평가 (학습은 전체)")
     parser.add_argument("--cold-start", action="store_true", help="--db 와 함께: 신메뉴(이력 1·3·5일) 예측 비교")
@@ -300,6 +355,8 @@ def main() -> None:
 
     if args.synthetic:
         run({(0, 0): synthetic_series()}, args.min_train or 90, args.step, compare=args.compare)
+    elif args.events:
+        run_events(*synthetic_event_series(), min_train=args.min_train or 90)
     elif args.cold_start:
         run_cold_start(db_series()[0])
     else:

@@ -10,6 +10,7 @@ from config import settings
 from ml.calibration import safety_factor
 from ml.demand_predictor import DemandPredictor
 from services.data_service import (
+    get_event_lifts,
     get_active_menus,
     get_all_sales_data,
     get_closed_dates,
@@ -42,7 +43,8 @@ def train_global_model(db: Session) -> DemandPredictor:
         if not hist.empty:
             weather[store_id] = hist
 
-    predictor = DemandPredictor().fit(series, weather=weather)
+    # 점주 특이사항 증감 배율 (claude 가 저장 시점에 숫자로 바꿔 둔 값, 미래 날짜 포함)
+    predictor = DemandPredictor().fit(series, weather=weather, events=get_event_lifts(db))
     if predictor.is_trained:
         # 최근 4주 시점을 다시 학습해 식자재 7일 사용량 기준 critical fractile 보정 비율을 구한다
         predictor.safety_factor = safety_factor(series, get_recipes(db))

@@ -140,6 +140,26 @@ def get_all_sales_data(db: Session) -> dict[tuple[int, int], pd.DataFrame]:
     return out
 
 
+def get_event_lifts(db: Session) -> dict[int, dict[date, float]]:
+    """
+    점주 특이사항(STORE_EVENT_NOTE)을 claude 가 숫자로 바꿔 둔 증감 배율 {store_id: {날짜: 배율}}.
+    같은 날 특이사항이 여럿이면 배율을 곱한다. 테이블이 아직 없으면(백엔드 미실행) 빈 값
+    """
+    try:
+        rows = db.execute(
+            text("SELECT store_id, event_date, event_lift FROM STORE_EVENT_NOTE WHERE event_lift IS NOT NULL")
+        ).fetchall()
+    except ProgrammingError:
+        db.rollback()
+        return {}
+    lifts: dict[int, dict[date, float]] = {}
+    for sid, d, lift in rows:
+        day = pd.to_datetime(d).date()
+        store = lifts.setdefault(int(sid), {})
+        store[day] = store.get(day, 1.0) * float(lift)
+    return lifts
+
+
 def get_recipes(db: Session) -> dict[int, list[tuple[int, float]]]:
     """
     메뉴별 레시피 {menu_id: [(ingredient_id, 메뉴 1개당 사용량)]}.

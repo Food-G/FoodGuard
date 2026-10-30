@@ -74,6 +74,9 @@ XGB_PARAMS = dict(
 
 SeriesKey = tuple[int, int]  # (store_id, menu_id)
 
+# 학습 이력에 점주 특이사항 날이 있을 때만 쓰는 min_child_weight (위 XGB_PARAMS 의 100 대신)
+EVENT_MIN_CHILD_WEIGHT = 10
+
 
 class DemandPredictor:
     def __init__(self):
@@ -86,6 +89,8 @@ class DemandPredictor:
         self.scores: dict[SeriesKey, float] = {}
         self.is_trained: bool = False
         self.use_weather: bool = False
+        self.use_events: bool = False
+        self._events: dict[int, dict[date, float]] = {}  # {store_id: {날짜: 특이사항 증감 배율}}
         self._histories: dict[SeriesKey, pd.DataFrame] = {}
         self._store_totals: dict[int, pd.Series] = {}
         self._store_ratios: dict[int, dict[date, float]] = {}  # 매장별 {영업일: 그 전날까지 기준 요일 비율}
@@ -100,13 +105,18 @@ class DemandPredictor:
         self,
         series: dict[SeriesKey, pd.DataFrame],
         weather: Optional[dict[int, pd.DataFrame]] = None,
+        events: Optional[dict[int, dict[date, float]]] = None,
     ) -> "DemandPredictor":
         """
         series: {(store_id, menu_id): DataFrame ['ds', 'y'(, 'sold_out')]} — 전체 매장×메뉴 영업일 이력
         weather: {store_id: DataFrame ['ds', 'temp_max', 'temp_min', 'precipitation',
                   'is_rainy', 'is_hot', 'is_cold']} — 없는 매장은 날씨 결측으로 학습
+        events: {store_id: {날짜: 예상 증감 배율}} — 점주 특이사항을 claude 가 숫자로 바꾼 값 (미래 날짜 포함).
+                학습 이력에 특이사항 날이 있을 때만 피처(event_lift)로 쓴다. 배율을 예측에 곱하지 않고
+                XGBoost 가 과거 특이사항 날의 실제 판매로 얼마나 믿을지 배운다
         """
         weather = {sid: w for sid, w in (weather or {}).items() if w is not None and not w.empty}
+        self._events = events or {}
         self._histories = {key: _clean(df) for key, df in series.items() if len(df) > 0}
         self._store_totals = _store_totals(self._histories)
         self._store_ratios = {sid: _past_store_ratios(totals) for sid, totals in self._store_totals.items()}
@@ -121,7 +131,10 @@ class DemandPredictor:
             return self
 
         self.use_weather = len(weather) > 0
-        self.feature_cols = GLOBAL_FEATURE_COLS + (WEATHER_FEATURE_COLS if self.use_weather else [])
+        # 특이사항 날이 없으면 피처를 빼서 기존 모델과 똑같이 학습한다 (상수 열도 열 샘플링을 바꾸므로)
+        self.use_events = bool((train["event_lift"] != 1.0).any())
+        self.feature_cols = (GLOBAL_FEATURE_COLS + (WEATHER_FEATURE_COLS if self.use_weather else [])
+                             + (["event_lift"] if self.use_events else []))
         self._categories = {c: sorted(int(v) for v in train[c].unique()) for c in ("store_id", "menu_id")}
 
         # 시간순으로 정렬해 두면 아래 KFold 가 날짜 구간 단위 fold 가 된다
@@ -129,11 +142,14 @@ class DemandPredictor:
         X = self._design(train)
         y = (train["y"] / train["scale"]).to_numpy()
 
-        self.model = XGBRegressor(objective="reg:absoluteerror", **XGB_PARAMS)
+        # 특이사항 날은 학습 행의 약 8% 라 min_child_weight 100 으로는 분할되지 않아 피처를 거의 못 배운다
+        # (합성 실험 backtest.py --events: 특이사항 날 wMAPE 37.1% → 17.8%). 특이사항이 있을 때만 낮춘다
+        params = {**XGB_PARAMS, "min_child_weight": EVENT_MIN_CHILD_WEIGHT} if self.use_events else XGB_PARAMS
+        self.model = XGBRegressor(objective="reg:absoluteerror", **params)
         self.model.fit(X, y)
 
         # 메뉴별 confidence: out-of-fold 예측으로 메뉴마다 실제 오차율(wMAPE)을 잰다
-        oof = cross_val_predict(XGBRegressor(objective="reg:absoluteerror", **XGB_PARAMS), X, y, cv=KFold(5))
+        oof = cross_val_predict(XGBRegressor(objective="reg:absoluteerror", **params), X, y, cv=KFold(5))
         train["oof_ae"] = (train["y"] - np.clip(oof, 0, None) * train["scale"]).abs()
         self.scores = {key: DEFAULT_CONFIDENCE for key in self._histories}
         for (sid, mid), g in train.groupby(["store_id", "menu_id"]):
@@ -161,6 +177,7 @@ class DemandPredictor:
         f["level"] = _deseasoned(f, store_ratios).shift(1).rolling(LEVEL_WINDOW, min_periods=1).mean()
         f["n_obs"] = np.arange(len(f))
         f["store_id"], f["menu_id"] = key
+        f["event_lift"] = f["ds"].map(self._events.get(key[0], {})).fillna(1.0)
         f = f.iloc[1:]  # 첫날은 이전 이력이 없다
         if "sold_out" in f.columns:
             # 품절일 판매량은 수요의 하한일 뿐이라 학습 정답에서 뺀다 (다른 날의 lag 값으로는 그대로 쓴다)
@@ -229,6 +246,7 @@ class DemandPredictor:
                 store_dow_ratio=store_weekday_ratio(totals, target.weekday()),
                 store_id=store_id,
                 menu_id=menu_id,
+                event_lift=self._events.get(store_id, {}).get(target, 1.0),
             )
             rows.append(row)
 
