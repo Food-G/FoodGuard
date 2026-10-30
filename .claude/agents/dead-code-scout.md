@@ -1,6 +1,6 @@
 ---
 name: dead-code-scout
-description: 저장소에서 불필요한 코드·파일 후보를 찾는 수색 에이전트. 판정은 하지 않고 후보와 근거만 낸다. 검증은 dead-code-verifier 가 따로 한다.
+description: 저장소에서 불필요한 코드·파일 후보를 찾는 수색 에이전트. 판정은 하지 않고 후보와 근거만 낸다. 검증은 dead-code-verifier 가 따로 한다. 사용자가 이 검사를 명시적으로 요청할 때만 실행한다(자동·선제 호출 금지).
 tools: Read, Grep, Glob, Bash
 ---
 
