@@ -10,6 +10,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -22,6 +24,7 @@ class InventoryLedgerTest {
 
     private InventoryRepository invRepo;
     private InventoryTxnRepository txnRepo;
+    private InventoryLotRepository lotRepo;
     private JdbcTemplate jdbc;
     private InventoryLedger ledger;
     private Store store;
@@ -31,8 +34,9 @@ class InventoryLedgerTest {
     void setUp() {
         invRepo = mock(InventoryRepository.class);
         txnRepo = mock(InventoryTxnRepository.class);
+        lotRepo = mock(InventoryLotRepository.class);
         jdbc = mock(JdbcTemplate.class);
-        ledger = new InventoryLedger(invRepo, txnRepo, jdbc);
+        ledger = new InventoryLedger(invRepo, txnRepo, lotRepo, jdbc);
         ledger.detectTable();  // 기본 mock 은 예외 없음 → 테이블 있음
         store = new Store();
         store.setId(60006L);
@@ -108,9 +112,83 @@ class InventoryLedgerTest {
         doThrow(new DataAccessResourceFailureException("no table")).when(jdbc).queryForList(anyString());
         ledger.detectTable();
         assertFalse(ledger.isEnabled());
+        assertFalse(ledger.isLotsEnabled());
         stock(1.0);
         assertEquals(3.0, ledger.apply(store, onion, 2.0, "ORDER_DONE", null, null).getCurrentQty().doubleValue());
         verify(txnRepo, never()).save(any());
+        verify(lotRepo, never()).saveAll(any());
+    }
+
+    // ── 입고 로트 (D-3) ─────────────────────────────────────────────
+
+    private static InventoryLot lot(String qty, LocalDate expiry, int receivedDaysAgo) {
+        InventoryLot l = new InventoryLot();
+        l.setReceivedQty(new BigDecimal(qty));
+        l.setRemainingQty(new BigDecimal(qty));
+        l.setExpiryDate(expiry);
+        l.setReceivedAt(LocalDateTime.now().minusDays(receivedDaysAgo));
+        return l;
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<InventoryLot> savedLots() {
+        ArgumentCaptor<List<InventoryLot>> c = ArgumentCaptor.forClass(List.class);
+        verify(lotRepo).saveAll(c.capture());
+        return c.getValue();
+    }
+
+    @Test
+    void orderDoneCreatesLotWithShelfLifeExpiry() {
+        onion.setShelfLifeDays(7);
+        stock(0.0);
+        ledger.apply(store, onion, 4.0, "ORDER_DONE", "ORDER_REQUEST", 9L);
+        InventoryLot l = savedLots().get(0);
+        assertEquals(new BigDecimal("4.000"), l.getRemainingQty());
+        assertEquals(LocalDate.now().plusDays(7), l.getExpiryDate());
+        assertEquals(9L, l.getOrderId());
+    }
+
+    @Test
+    void noShelfLifeMeansNoExpiry() {
+        stock(0.0);
+        ledger.apply(store, onion, 2.0, "ORDER_DONE", "ORDER_REQUEST", 9L);
+        assertNull(savedLots().get(0).getExpiryDate());
+    }
+
+    @Test
+    void consumptionTakesEarliestExpiryFirstAndNoExpiryLast() {
+        LocalDate d = LocalDate.now();
+        InventoryLot later = lot("5", d.plusDays(3), 5);
+        InventoryLot sooner = lot("3", d.plusDays(1), 1);
+        InventoryLot noExpiry = lot("2", null, 9);
+        when(lotRepo.findOpenFifo(60006L, 1L)).thenReturn(new ArrayList<>(List.of(later, noExpiry, sooner)));
+        stock(10.0);
+        ledger.set(store, onion, 6.0, "SALE", "SALES_DATA", 3L);   // 4 소모
+        assertEquals(0, sooner.getRemainingQty().signum());
+        assertEquals(new BigDecimal("4"), later.getRemainingQty().stripTrailingZeros());
+        assertEquals(new BigDecimal("2"), noExpiry.getRemainingQty());
+    }
+
+    @Test
+    void upwardAdjustAddsNoExpiryCorrectionLot() {
+        when(lotRepo.findOpenFifo(60006L, 1L)).thenReturn(new ArrayList<>(List.of(lot("1", LocalDate.now(), 1))));
+        stock(1.0);
+        ledger.set(store, onion, 3.5, "ADJUST", "INVENTORY", 1L);
+        List<InventoryLot> lots = savedLots();
+        InventoryLot correction = lots.get(lots.size() - 1);
+        assertNull(correction.getExpiryDate());
+        assertEquals(new BigDecimal("2.500"), correction.getRemainingQty());
+        assertEquals(60006L, correction.getStoreId());
+    }
+
+    @Test
+    void negativeStockEmptiesLots() {
+        InventoryLot only = lot("1", LocalDate.now(), 1);
+        when(lotRepo.findOpenFifo(60006L, 1L)).thenReturn(new ArrayList<>(List.of(only)));
+        stock(1.0);
+        ledger.set(store, onion, -2.0, "SALE", "SALES_DATA", 3L);   // 부족분은 재고에만 음수로
+        assertEquals(0, only.getRemainingQty().signum());
+        assertEquals(1, savedLots().size());                         // 보정 로트 없음
     }
 
     @Test

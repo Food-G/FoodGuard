@@ -25,6 +25,10 @@ public class Ingredient {
     @Column(length = 50)
     private String category;
 
+    /** 보관일수 (D-3). NULL = 유통기한 관리 안 함. 값은 ai-service/seed_shelf_life.py 로 넣는다 (앱에서는 읽기만). */
+    @Column(name = "shelf_life_days", insertable = false, updatable = false)
+    private Integer shelfLifeDays;
+
     @Column(name = "created_at", insertable = false, updatable = false)
     private LocalDateTime createdAt;
 }

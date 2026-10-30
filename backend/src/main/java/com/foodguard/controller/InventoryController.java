@@ -1,6 +1,7 @@
 package com.foodguard.controller;
 
 import com.foodguard.entity.Inventory;
+import com.foodguard.repository.InventoryLotRepository;
 import com.foodguard.repository.InventoryTxnRepository;
 import com.foodguard.service.InventoryLedger;
 import com.foodguard.service.InventoryService;
@@ -10,6 +11,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -22,6 +25,7 @@ public class InventoryController {
     private final StoreAccessGuard guard;
     private final InventoryLedger ledger;
     private final InventoryTxnRepository txnRepository;
+    private final InventoryLotRepository lotRepository;
 
     @PostMapping
     public ResponseEntity<Inventory> create(@RequestBody Map<String, Object> body) {
@@ -55,6 +59,29 @@ public class InventoryController {
         LocalDate start = from != null ? LocalDate.parse(from) : end.minusDays(29);
         return ResponseEntity.ok(txnRepository.search(storeId, start.atStartOfDay(),
                 end.plusDays(1).atStartOfDay(), ingredientId));
+    }
+
+    /** 남은 입고 로트 (식자재별 FIFO 순). daysUntilExpiry 는 오늘 기준, 유통기한 없으면 null. */
+    @GetMapping("/{storeId}/lots")
+    public ResponseEntity<?> getLots(@PathVariable Long storeId) {
+        guard.assertCanAccessStore(storeId);
+        if (!ledger.isLotsEnabled()) {
+            return ResponseEntity.status(503).body(Map.of("message",
+                    "입고 로트가 아직 적용되지 않았습니다 (004_inventory_lot.sql 적용 후 서버 재시작)."));
+        }
+        LocalDate today = LocalDate.now();
+        return ResponseEntity.ok(lotRepository.findOpenByStore(storeId).stream().map(l -> {
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("lotId", l.getId());
+            m.put("ingredientId", l.getIngredientId());
+            m.put("orderId", l.getOrderId());
+            m.put("receivedQty", l.getReceivedQty());
+            m.put("remainingQty", l.getRemainingQty());
+            m.put("receivedAt", l.getReceivedAt());
+            m.put("expiryDate", l.getExpiryDate());
+            m.put("daysUntilExpiry", l.getExpiryDate() != null ? ChronoUnit.DAYS.between(today, l.getExpiryDate()) : null);
+            return m;
+        }).toList());
     }
 
     @PutMapping("/{id}")

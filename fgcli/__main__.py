@@ -143,6 +143,8 @@ COMMANDS: dict[str, tuple[Callable[[argparse.Namespace], str], Trimmer, str]] = 
                     "전 매장 주간 매출 (HQ 전용)"),
     "txns":        (lambda a: f"/api/inventory/{a.store_id}/txns" + _txn_query(a), None,
                     "재고 원장: 재고가 왜 늘고 줄었나 (SALE·ORDER_DONE·ADJUST·INIT…, 기본 최근 30일, 최신순)"),
+    "lots":        (lambda a: f"/api/inventory/{a.store_id}/lots", None,
+                    "남은 입고 로트와 유통기한 (식자재별 FIFO 순, daysUntilExpiry 음수 = 이미 지남)"),
     "ai-health":   (lambda a: "/health", None, "AI 예측 서비스 가동 확인"),
     "accuracy":    (lambda a: "/api/predictions/accuracy?source=" + a.source
                     + (f"&storeId={a.store}" if a.store else ""), None,
@@ -152,7 +154,7 @@ COMMANDS: dict[str, tuple[Callable[[argparse.Namespace], str], Trimmer, str]] = 
 }
 
 NEEDS_STORE_ID = {"menus", "inventory", "predictions", "recommend", "orders",
-                  "sales", "today", "weekly", "plan", "txns"}
+                  "sales", "today", "weekly", "plan", "txns", "lots"}
 NEEDS_MENU_ID = {"recipe"}
 
 
