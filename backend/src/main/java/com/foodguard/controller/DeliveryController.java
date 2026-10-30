@@ -103,11 +103,4 @@ public class DeliveryController {
         info.put("items", items);
         return ResponseEntity.ok(info);
     }
-
-    // 2단계: 배달기사 그룹 수령 확인 (HQ_SENT → DRIVER_RECEIVED)
-    @PostMapping("/api/delivery/group/{groupToken}/driver-receive")
-    public ResponseEntity<String> driverReceiveGroup(@PathVariable String groupToken) {
-        orderRequestService.driverReceiveGroup(groupToken);
-        return ResponseEntity.ok("배달기사 검수 완료");
-    }
 }

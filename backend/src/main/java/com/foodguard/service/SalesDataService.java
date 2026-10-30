@@ -59,14 +59,4 @@ public class SalesDataService {
         }
         return result;
     }
-
-    // Soft Delete (실제 삭제 X, 삭제 표시만)
-    @Transactional
-    public String delete(Long id) {
-        SalesData sales = salesDataRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("매출 데이터를 찾을 수 없습니다."));
-        sales.setIsDeleted(true);
-        salesDataRepository.save(sales);
-        return "매출 데이터 삭제 완료";
-    }
 }

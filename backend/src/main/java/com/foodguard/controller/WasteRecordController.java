@@ -6,7 +6,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -19,10 +18,5 @@ public class WasteRecordController {
     @PostMapping
     public ResponseEntity<WasteRecord> create(@RequestBody Map<String, Object> body) {
         return ResponseEntity.ok(wasteRecordService.create(body));
-    }
-
-    @GetMapping("/{storeId}")
-    public ResponseEntity<List<WasteRecord>> getByStore(@PathVariable Long storeId) {
-        return ResponseEntity.ok(wasteRecordService.getByStore(storeId));
     }
 }

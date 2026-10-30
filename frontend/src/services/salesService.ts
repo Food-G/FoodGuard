@@ -10,9 +10,6 @@ export const salesService = {
   getByDateRange: async (storeId: number, start: string, end: string) => {
     return api.get(`/sales/${storeId}/range?start=${start}&end=${end}`);
   },
-  delete: async (id: number) => {
-    return api.delete(`/sales/${id}`);
-  },
   getTodaySummary: async (storeId: number) => {
     return api.get(`/sales/${storeId}/today-summary`);
   },

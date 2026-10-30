@@ -323,7 +323,7 @@ DB (49개 메뉴, 258개 시점, 1,765 평가일 — 11절과 같은 평가셋):
 - **가게 등록**: `/store` 라우트가 커밋 `61f0aa7` 에서 빠져 `StoreRegister` 화면에 갈 수 없었다. 라우트 복구 + 점주 타일 홈에 "가게 등록" 타일 추가
 - 사이드바(`layouts/main-layout/Sidebar`)는 `61f0aa7` 부터 레이아웃에서 그려지지 않는다 (이동은 타일 홈과 상단 로고). 사이드바 메뉴 목록도 맞춰 고쳤지만 화면에는 보이지 않는다
 - 브라우저 확인 (2026-10-29, 검증용 계정): 본사 타일 → 발주 관리(진행 중 48건 실데이터), 통계 페이지 월별 매출 차트, 프로필 API·비밀번호 변경
-- 남은 정리 대상 (쓰는 곳 없음, 지우지 않음): `layouts/main-layout/Sidebar`, `pages/admin/AdminDashboard.tsx`, `pages/Profile.tsx`, `pages/SalesStats.tsx` (라우트 없음), `salesService.getTodaySummary·getWeeklySummary` (백엔드 API 없음)
+- 남은 정리 대상 (쓰는 곳 없음, 지우지 않음 → 16절에서 `getTodaySummary·getWeeklySummary` 를 뺀 나머지 삭제): `layouts/main-layout/Sidebar`, `pages/admin/AdminDashboard.tsx`, `pages/Profile.tsx`, `pages/SalesStats.tsx` (라우트 없음), `salesService.getTodaySummary·getWeeklySummary` (백엔드 API 없음)
 
 ## 13. 계획서 대비 보완 · 권한 검사 (2026-10-30)
 
@@ -402,3 +402,37 @@ XGBoost 는 데이터에 없는 일(단체 예약, 주변 행사, 태풍 예보)
 - **한계**: 실제 DB 에는 아직 특이사항이 없어 실데이터 효과는 측정하지 못했다. 과거 특이사항 날이 매장당 10일 안팎 쌓인 뒤 `backtest.py --db` 에 events 를 넣어 다시 확인해야 한다 (지금 `--db` 백테스트는 특이사항을 넣지 않으므로 기존 수치 그대로). 미래 날짜 메모만 있으면 학습 행에 특이사항 날이 없어 피처를 쓰지 않는다
 - 실제 CLI 변환 예: "토요일 점심 단체 예약 30명"(평소 150) → RESERVATION ×1.2, "근처 대학교 축제 3일째" → LOCAL_EVENT ×1.3, "태풍 예보로 손님 적을 듯" → WEATHER ×0.6, "그냥 평범한 날" → OTHER ×1.0. 호출당 3~10초
 - 테스트: `tests/test_events.py` (특이사항 없을 때 피처셋 그대로, 학습된 피처가 예정된 특이사항 날 예측을 올림, 배율 범위 제한·오류 처리)
+
+## 16. 불필요 코드·파일 검사 (2026-10-30)
+
+`.claude/agents/` 의 dead-code-scout(수색) → dead-code-verifier(반박, 주장만 받음) → dead-code-final-reviewer(확정·보류 재확인) 3단계로 검사했다. 다음 검사는 이 절을 기준으로 아래 "다음 검사 대상"과 새로 바뀐 부분만 본다. "최종 확정" 항목은 2026-10-30 에 모두 지웠다 (그로 인해 쓰이지 않게 된 import·필드·서비스 메서드, `StoreAccessInterceptor` 의 `/api/inventory/{id}`·`/api/orders/{id}/owner-receive`·`/api/sales/{id}` 항목, `predict_and_save_menu` 포함). `.idea/`·`.claude/settings.local.json` 은 추적만 해제하고 로컬 파일은 남겼다.
+
+### 최종 확정 (삭제 완료)
+- 프론트 파일: `layouts/main-layout/Sidebar/`(Sidebar·NavItem), `pages/admin/AdminDashboard.tsx`, `pages/Profile.tsx`, `pages/SalesStats.tsx`, `routes/paths.ts`, `components/base/Image.tsx`, `helpers/format-functions.ts`·`string-avatar.ts`, `src/index.css`·`App.css`, `theme/styles/swiper.ts`(+ `CssBaseline.tsx:6,36`), 이미지 `assets/{hero.png,react.svg,vite.svg}`·`public/{homepage.png,homepage_2.png,icons.svg}`, `main-layout/index.tsx` 의 `drawerOpenWidth/drawerCloseWidth` export
+- 프론트 서비스 메서드: `authService.isLoggedIn`, `inventoryService.create/update/delete`, `orderService.scanQrByToken/driverReceiveGroup/ownerReceive/recommend`, `salesService.delete`, `storeService.delete`
+- 프론트 의존성: `@mui/icons-material`, `swiper`, `vite-tsconfig-paths`, `simplebar-react`(Sidebar 삭제 후). 지울 때 `package-lock.json` 도 갱신 (CI 가 `npm ci --legacy-peer-deps`)
+- `frontend/README.md`: 지우지 않고 프로젝트 설명 + 템플릿 출처(Nickelfox)로 교체
+- 백엔드 엔드포인트(+ 그 컨트롤러에서만 쓰는 서비스 메서드): `GET /api/orders/scan`, `POST /api/orders/{id}/owner-receive`, `POST /api/delivery/group/{token}/driver-receive`, `POST /api/inventory`, `PUT/DELETE /api/inventory/{id}`, `DELETE /api/sales/{id}`, `DELETE /api/stores/{id}`, `GET /api/waste-records/{storeId}`. `owner-receive` 는 `StoreAccessInterceptor:33`·`StoreAccessTest:88` 같이 수정. **`SecurityConfig:37` 의 `/api/orders/scan` permitAll 은 남긴다** (POST 를 공개 페이지 `DeliveryDriverGroup.tsx:50` 이 씀)
+- 백엔드: `dto/SaleRequest.java`·`SaleResponse.java`, 미사용 import(`OrderRequestController` Inventory, `OrderRequest` JsonIgnore, `PredictionService` PredictionResult), `PredictionService.salesDataRepository` 필드(+ import), `backend/postman/` 빈 파일 3개
+- AI 서비스: `database.py` 의 `text`·`class Base`(+ `DeclarativeBase` import), `data_service.py` 의 `datetime` import·`get_store_sales_last_n_days`, `POST /api/predict/store/{id}/menu/{menu_id}`(+ `SingleMenuPredictionResponse`)
+- 저장소: 커밋된 루트 `node_modules/`(@google/generative-ai, 깨진 `.package-lock.json`), `sample/` 전체, 커밋된 `.idea/` 4개, `.claude/settings.local.json`, 루트 `기상청_단기예보_조회서비스`(0바이트), `.gitignore` 에 `node_modules/`·`.gradle/`·`.claude/settings.local.json` 추가. 디스크만: 루트 미추적 `node_modules/*`, 루트 `*.log` 6개. 참고: `hyeon-backup` 의 d639525 가 같은 정리를 담고 있음(루트 package.json 추가분 제외)
+
+### 사용자 확인 필요
+- 팀원 브랜치 머지 여부에 달림 (junho·feat/security-agent·jhy 가 사용): `salesService.getTodaySummary·getWeeklySummary`, `getByDateRange`, `getAllStoreWeeklySummary`, `menuService.update`, `orderService.driverReceive`, `PUT /api/menus/{id}`, `POST /api/orders/{id}/driver-receive`, `GET /api/sales/{storeId}/range`
+- junho `DEV_ROADMAP.md` 계획과 겹침: `wastePredictionService.summary`·`GET /api/waste-prediction/{id}/summary`(AG-2), `POST /api/notifications`(에이전트 알림)
+- `frontend/eslint.config.js`: eslint 8.57.1 과 맞지 않아 `npm run lint` 실패. 되살릴지(TS 용 설정) 버릴지(설정·lint 스크립트·eslint 관련 의존성 삭제). `@typescript-eslint/*` 도 이 결정을 따름
+- `backend/src/main/resources/db/schema.sql`: 실행 안 되고 엔티티와 다르지만 팀 포트폴리오가 설계 산출물로 인용. 갱신/이동/삭제
+- `backend/.postman/resources.yaml`: jihwan 의 Postman 워크스페이스 연결 설정
+- `GET /api/predict/store/{id}`: 코드 호출 없음, 수동 점검용으로 남길지
+- 비밀값: 예전 DB 비밀번호·JWT secret 리터럴이 git 이력과 origin/dev·dev2·junho·feat/security-agent 에 남아 있고 지금 값과 같다. 교체 담당·시점, 이력 정리 여부
+
+### 기각 (쓰임)
+`GET /api/orders/recommend/{storeId}`(HANDOFF 확인 절차, fgcli), `@mui/system`(x-data-grid peer, 대신 ^9 → 범위 내 버전 조정 필요), `GET /api/sales/all-stores/weekly-summary`(fgcli), `POST /api/train/store/{id}`(운영 절차), `uml/`(지우지 않고 junho 의 2026-09-11 수정본으로 갱신)
+
+### 다음 검사 대상 (이번에 확정하지 않음)
+- 로컬 브랜치(hyeon-backup·hyeon-remote-backup·jhy·jihwan)와 stash 4개
+- `theme/styles/simplebar.ts`·`CssBaseline.tsx:4,35` (Sidebar 삭제 후 대상 없는 스타일)
+- 이 문서 82행 재학습 경로 오기(실제 `/api/train/store/{store_id}`), 291행 복구 근거(본사 대시보드는 라우트 없음)
+- `react-leaflet` 로컬 설치(5.0.0)와 lock(4.2.1) 불일치
+- junho·feat/security-agent 가 루트 로그 4개와 `.claude/settings.local.json` 을 아직 추적 — 머지 시 다시 들어옴
+- TSX 내부 죽은 분기, Java 와일드카드·리플렉션 참조, 실험 스크립트(backtest·compare_models·simulate_orders) 필요성은 보지 않음
