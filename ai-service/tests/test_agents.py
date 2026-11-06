@@ -145,6 +145,19 @@ def test_weekly_report_keeps_flagged_stores_only(monkeypatch):
     assert r["unverifiedNumbers"] == []
 
 
+def test_clearance_drops_unknown_and_flags_invented_numbers(monkeypatch):
+    fake(monkeypatch, agents, {"summary": "양상추 3kg 를 30% 할인하세요", "items": [
+        {"ingredientId": 5, "advice": "버거로 소진"}, {"ingredientId": 99, "advice": "없는 식자재"},
+    ]})
+    r = client.post("/api/agents/clearance", json={"candidates": [{"ingredientId": 5, "surplus": 3.0}]}).json()
+    assert [i["ingredientId"] for i in r["items"]] == [5]
+    assert r["unverifiedNumbers"] == ["30"]
+
+
+def test_clearance_empty_skips_claude():
+    assert client.post("/api/agents/clearance", json={"candidates": []}).json()["items"] == []
+
+
 def test_assistant_flags_numbers_not_in_data(monkeypatch):
     fake(monkeypatch, agents, {"answer": "양상추 재고는 12.5kg, 내일 예측은 37개입니다.", "answerable": True, "sources": ["inventory"]})
     r = client.post("/api/agents/assistant", json={"question": "재고?", "data": {"inventory": [{"qty": 12.5}]}}).json()

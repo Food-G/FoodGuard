@@ -61,11 +61,23 @@
 - 예측 요청 한 번에 약 25초(백엔드 동기 호출, 타임아웃 60초). 매장이 늘면 비동기·캐시 필요
 - 공용 식자재(`store_id` 없음)는 아무 점주나 수정 가능 — 본사 전용으로 할지 결정
 
+### 전 기능 점검·배포 준비 (2026-11-06, PROJECT_STATUS 20절)
+
+- `python qa_smoke.py run` (ai-service): 133개 항목 전 기능 점검, 끝나면 `python qa_smoke.py cleanup`
+- 배포 절차는 `docs/DEPLOY.md`. Docker 구성은 이 PC 에 docker 가 없어 실행해 보지 않았다
+- 다른 PC: `pip install -r requirements.txt`, `npm install --legacy-peer-deps` 다시 실행 (React Router 7, ECharts 6 등)
+
+### 임박 식자재 할인 소진 (2026-11-06, PROJECT_STATUS 19절)
+
+- 폐기 예측 화면에서 메뉴별 할인 입력 → POS 할인가 → 결제 시 판매 기록·재고 차감. 예측은 할인일을 평소 수요로 학습하지 않음
+- 2026-11-06 공유 DB 에 `MENU_DISCOUNT`, `SALES_DATA.unit_price·discount_pct` 반영, 할인·결제 실제 확인 후 시험 데이터 삭제 (19절). DB 비밀번호가 바뀌었으니 다른 PC 의 두 `.env` 도 갱신할 것
+- POS 결제가 이제 재고를 줄이므로 발주 추천이 늘어날 수 있다
+
 ### 운영 에이전트 6종 (2026-11-06, PROJECT_STATUS 18절)
 
 - POS 파일·거래명세서 입력, 식자재 설정 제안, 발주 참모 화면, 재고·데이터 감시, 본사 주간 리포트, 점주 질문 답변
 - 스키마 변경 없음. AI 서비스에 `openpyxl` 추가 (`pip install -r requirements.txt`)
-- **남은 확인: 저장 경로(`/ingest/*/commit`, `/orders/agent`)를 시험 매장에서 실제로 한 번 실행.** 공유 DB 쓰기라 단위 테스트만 했다
+- 저장 경로는 실제 실행으로 확인함 (19절). 발주 참모 화면의 항목 카드는 추천이 있는 상태에서 아직 못 봤다
 - 이월 안전재고를 켜려면 식자재 관리의 AI 설정 제안에서 확인·저장한다
 
 ### 2026-11-06 고도화 (PROJECT_STATUS 17절)
@@ -111,13 +123,15 @@
 
 | 확인 | 명령 (위치) | 기대값 |
 |---|---|---|
-| AI 단위 테스트 | `python -m pytest tests` (ai-service) | 53 passed |
-| 백엔드 단위 테스트 | `gradlew.bat test --tests "com.foodguard.service.*" --tests "com.foodguard.security.*"` (backend) | BUILD SUCCESSFUL (24개) |
+| AI 단위 테스트 | `python -m pytest tests` (ai-service) | 57 passed |
+| 백엔드 단위 테스트 | `gradlew.bat test --tests "com.foodguard.service.*" --tests "com.foodguard.security.*"` (backend) | BUILD SUCCESSFUL (32개) |
+| 전 기능 점검 | `python qa_smoke.py run` (ai-service, 서버 3개 필요, 약 2분) | 133개 통과 |
 | 프론트 타입체크 | `npx tsc --noEmit` (frontend) | 오류 0 |
 | DB 백테스트 | `python backtest.py --db --step 7` (ai-service) | 1,765 평가일, 글로벌 모델 wMAPE **9.2%** / MASE **0.900**, 요일 평균(4주) 9.9% / 0.952, 식자재 7일 커버리지 **56.2%** (평균 잉여율 4.4%, 부족률 3.0%) |
 | 합성 백테스트 | `python backtest.py --synthetic` (ai-service) | 글로벌 모델 14.8% / 0.817 |
 | DB 모델 비교 | `python backtest.py --db --step 7 --compare` (ai-service, 약 15분, requirements-experiment.txt) | XGBoost 9.2% / 0.902, Prophet 9.7% / 0.965, LSTM 12.6% / 1.490 |
 | DB 발주 시뮬레이션 | `python simulate_orders.py --db` (ai-service, 약 5분) | 주 1회 FoodGuard 폐기율 4.7% / 품절률 11.0% / 비용 21.2, 3일·보관 4일 비용 8.9 |
+| 할인 처리 | `python backtest.py --discount` (ai-service) | 시드 11: 기준 12.9%, 그대로 13.8%, 운영 처리 12.8% |
 | 날씨 기여도 | `python backtest.py --db --weather --step 7` (ai-service) | 날씨 없음 9.16%, 실측 날씨 9.15% |
 
 출력에 한글이 깨지면 `PYTHONIOENCODING=utf-8` 을 설정한다.

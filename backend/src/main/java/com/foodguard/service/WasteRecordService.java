@@ -32,6 +32,7 @@ public class WasteRecordService {
         Inventory inv = inventoryRepository.findByStoreIdAndIngredientId(storeId, ingredientId)
                 .orElseThrow(() -> new RuntimeException("재고에 없는 식자재입니다."));
         double remaining = inv.getCurrentQty().doubleValue() - quantity;
+        if (remaining < -1e-9) throw new RuntimeException("폐기 수량이 재고보다 많습니다.");
         inv.setCurrentQty(BigDecimal.valueOf(Math.max(0, remaining)));
         inventoryRepository.save(inv);
 

@@ -1,11 +1,15 @@
 package com.foodguard.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import java.time.LocalDateTime;
 
+// 지연 로딩 프록시로 응답에 실려도 JSON 변환이 실패하지 않게 한다
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 @Entity
 @Table(name = "INGREDIENT")
 @Getter @Setter
@@ -25,6 +29,8 @@ public class Ingredient {
     @Column(length = 50)
     private String category;
 
+    // 지연 로딩 프록시는 JSON 으로 만들 수 없다 (새 매장 식자재 조회·레시피·발주 내역이 400 으로 실패했음)
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "store_id")
     private Store store;

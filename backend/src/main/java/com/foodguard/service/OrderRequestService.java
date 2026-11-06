@@ -29,6 +29,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -44,9 +45,13 @@ public class OrderRequestService {
     private final ObjectMapper objectMapper;
     private final NotificationService notificationService;
 
+    static final Set<String> ORDER_STATUSES = Set.of("REQUESTED", "APPROVED", "REJECTED", "HQ_SENT", "DRIVER_RECEIVED", "IN_DELIVERY", "DELIVERED", "DONE", "CANCELLED");
+    private static final Set<String> FINAL_STATUSES = Set.of("DONE", "CANCELLED", "REJECTED");
+
     // 발주 요청 생성 (점주 직접 입력) — 그 시점의 AI 추천량을 함께 남긴다
     @Transactional
     public OrderRequest create(Long storeId, Long ingredientId, Double quantity) {
+        if (quantity == null || quantity <= 0) throw new RuntimeException("발주 수량은 0보다 커야 합니다.");
         return create(storeId, ingredientId, quantity, null, "MANUAL");
     }
 
@@ -69,6 +74,10 @@ public class OrderRequestService {
         }
 
         OrderRequest order = new OrderRequest();
+        // 공용 식자재(store 없음)이거나 이 매장 식자재만
+        if (ingredient.getStore() != null && !ingredient.getStore().getId().equals(storeId)) {
+            throw new RuntimeException("이 가맹점의 식자재가 아닙니다.");
+        }
         order.setStore(store);
         order.setIngredient(ingredient);
         order.setOrderedQty(BigDecimal.valueOf(quantity));
@@ -101,8 +110,12 @@ public class OrderRequestService {
     // 발주 상태 변경 — DONE 전환 시 재고 자동 반영
     @Transactional
     public OrderRequest updateStatus(Long id, String status) {
+        if (!ORDER_STATUSES.contains(status)) throw new RuntimeException("알 수 없는 발주 상태입니다: " + status);
         OrderRequest order = getById(id);
         String prev = order.getStatus();
+        if (FINAL_STATUSES.contains(prev) && !prev.equals(status)) {
+            throw new RuntimeException("완료·취소된 발주의 상태는 바꿀 수 없습니다.");
+        }
         order.setStatus(status);
 
         if ("APPROVED".equals(status) && !"APPROVED".equals(prev)) {

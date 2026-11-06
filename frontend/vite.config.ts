@@ -24,6 +24,17 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          react: ['react', 'react-dom', 'react-router-dom'],
+          mui: ['@mui/material', '@mui/x-data-grid'],
+          echarts: ['echarts'],
+        },
+      },
+    },
+  },
   resolve: {
     alias: {
       'src': path.resolve(__dirname, './src'),

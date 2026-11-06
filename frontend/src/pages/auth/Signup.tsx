@@ -97,6 +97,10 @@ const Signup = () => {
     e.preventDefault();
     setError('');
 
+    if (formData.password.length < 8) {
+      setError('비밀번호는 8자 이상이어야 합니다.');
+      return;
+    }
     if (formData.password !== formData.confirmPassword) {
       setError('비밀번호가 일치하지 않습니다.');
       return;

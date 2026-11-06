@@ -34,3 +34,6 @@ node_modules/
 
 # ── 로컬 환경변수 정리 파일 (비밀값 포함) ───────
 FoodGuard_env.txt
+
+# 배포 비밀값
+.env.prod

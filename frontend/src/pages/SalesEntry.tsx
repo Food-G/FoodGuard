@@ -39,7 +39,7 @@ const SalesEntry = ({ user }: any) => {
         id: item.id,
         menuName: item.menuName ?? '-',
         quantity: item.quantity,
-        totalPrice: (item.menuPrice ?? 0) * item.quantity,
+        totalPrice: (item.unitPrice ?? item.menuPrice ?? 0) * item.quantity,
         saleDate: item.saleDate,
       })));
     } catch (err) {

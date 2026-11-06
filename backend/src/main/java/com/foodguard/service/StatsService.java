@@ -78,6 +78,11 @@ public class StatsService {
         result.put("stores", stores);
         result.put("recommendation", recommendationStats(orders));
         result.put("donationCount", donations.size());
+        Object[] discount = salesDataRepository.sumDiscountSales().get(0);
+        result.put("discountSales", Map.of(
+                "quantity", ((Number) discount[0]).longValue(),
+                "revenue", ((Number) discount[1]).longValue(),
+                "discountAmount", ((Number) discount[2]).longValue()));
         result.put("forecastAccuracy", forecastAccuracy(
                 predictionResultRepository.findPastPredictions(LocalDate.now()),
                 salesDataRepository.sumQuantityByDay(),

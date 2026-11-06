@@ -10,6 +10,9 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 import java.util.Optional;
 
+import com.foodguard.dto.LoginRequest;
+import com.foodguard.security.RateLimiter;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -25,8 +28,9 @@ class UserServiceTest {
 
     private final UserRepository userRepository = mock(UserRepository.class);
     private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+    private final JwtUtil jwtUtil = mock(JwtUtil.class);
     private final UserService service = new UserService(
-            userRepository, encoder, mock(JwtUtil.class), mock(StoreRepository.class));
+            userRepository, encoder, new RateLimiter(), jwtUtil, mock(StoreRepository.class));
 
     private User user() {
         User u = new User();
@@ -37,11 +41,51 @@ class UserServiceTest {
         return u;
     }
 
+    private static LoginRequest login(String email, String password) {
+        LoginRequest r = new LoginRequest();
+        r.setEmail(email);
+        r.setPassword(password);
+        return r;
+    }
+
+    @Test
+    void 로그인_실패_문구로_이메일_존재_여부를_알_수_없다() {
+        user();
+        when(userRepository.findByEmail("none@test.com")).thenReturn(Optional.empty());
+        assertThatThrownBy(() -> service.login(login(EMAIL, "wrong"))).hasMessage("이메일 또는 비밀번호가 올바르지 않습니다.");
+        assertThatThrownBy(() -> service.login(login("none@test.com", "wrong"))).hasMessage("이메일 또는 비밀번호가 올바르지 않습니다.");
+    }
+
+    @Test
+    void 로그인_실패가_반복되면_맞는_비밀번호도_막는다() {
+        user();
+        for (int i = 0; i < 10; i++) {
+            assertThatThrownBy(() -> service.login(login(EMAIL, "wrong"))).hasMessageContaining("올바르지");
+        }
+        assertThatThrownBy(() -> service.login(login(EMAIL, "old-pass"))).hasMessageContaining("막혔습니다");
+    }
+
+    @Test
+    void 가입은_이메일_비밀번호_이름을_검사한다() {
+        SignupRequest r = new SignupRequest();
+        r.setRole("OWNER");
+        r.setUserName("점주");
+        r.setPassword("pass1234");
+        r.setEmail("no-at");
+        assertThatThrownBy(() -> service.signup(r)).hasMessageContaining("이메일");
+        r.setEmail("a@test.com");
+        r.setPassword("short");
+        assertThatThrownBy(() -> service.signup(r)).hasMessageContaining("8자");
+        r.setPassword("pass1234");
+        r.setUserName(" ");
+        assertThatThrownBy(() -> service.signup(r)).hasMessageContaining("이름");
+    }
+
     @Test
     void 현재_비밀번호가_맞아야_변경된다() {
         User u = user();
         assertThatThrownBy(() -> service.changePassword(EMAIL, "wrong", "new-pass")).hasMessageContaining("맞지 않습니다");
-        assertThatThrownBy(() -> service.changePassword(EMAIL, "old-pass", "123")).hasMessageContaining("6자 이상");
+        assertThatThrownBy(() -> service.changePassword(EMAIL, "old-pass", "123")).hasMessageContaining("8자 이상");
 
         service.changePassword(EMAIL, "old-pass", "new-pass");
         assertThat(encoder.matches("new-pass", u.getPassword())).isTrue();
@@ -52,6 +96,7 @@ class UserServiceTest {
         SignupRequest request = new SignupRequest();
         request.setEmail("new@test.com");
         request.setPassword("pass1234");
+        request.setUserName("본사");
         request.setRole("HQ_ADMIN");
         assertThatThrownBy(() -> service.signup(request)).hasMessageContaining("본사 관리자");
         verify(userRepository, never()).save(any());

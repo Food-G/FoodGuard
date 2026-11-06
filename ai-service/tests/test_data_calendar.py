@@ -20,6 +20,23 @@ def test_open_day_without_sales_becomes_zero_and_store_off_day_is_dropped():
     assert list(cal["y"]) == [4.0, 6.0, 0.0, 3.0, 0.0]
 
 
+def test_discount_day_uses_usual_same_weekday_value_and_leaves_target():
+    days = [date(2026, 5, 4) + timedelta(days=7 * i) for i in range(4)]  # 같은 요일
+    sales = pd.DataFrame({"ds": days, "y": [10.0, 20.0, 90.0, 30.0]})
+
+    cal = build_daily_calendar(sales, set(days), closed_dates=set(), sold_out_dates=set(), discounted_dates={days[2]})
+
+    assert list(cal["y"]) == [10.0, 20.0, 15.0, 30.0]  # 90 은 lag 에 쓰이지 않는다
+    assert list(cal["sold_out"]) == [0, 0, 1, 0]       # 학습 정답·보정에서 빠진다
+
+
+def test_first_discount_day_without_history_keeps_sales():
+    sales = pd.DataFrame({"ds": [D[0], D[1]], "y": [40.0, 5.0]})
+    cal = build_daily_calendar(sales, {D[0], D[1]}, closed_dates=set(), sold_out_dates=set(), discounted_dates={D[0]})
+    assert list(cal["y"]) == [40.0, 5.0]
+    assert list(cal["sold_out"]) == [1, 0]
+
+
 def test_registered_closure_and_sold_out_flags():
     sales = pd.DataFrame({"ds": [D[0], D[1], D[2]], "y": [5.0, 2.0, 7.0]})
     store_open = {D[0], D[1], D[2], D[3]}

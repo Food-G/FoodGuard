@@ -56,3 +56,13 @@ jobs:
       # @mui/system@^9 가 @mui/x-data-grid@7 의 peer 범위(^5||^6||^7)와 충돌해 plain `npm ci`는 ERESOLVE로 실패함.
       - run: npm ci --legacy-peer-deps
       - run: npx tsc --noEmit
+      - run: npm run build
+
+  # 배포 이미지가 빌드되는지 확인 (실행은 하지 않음)
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t foodguard-backend backend
+      - run: docker build -t foodguard-ai ai-service
+      - run: docker build -t foodguard-frontend frontend

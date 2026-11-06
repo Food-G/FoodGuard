@@ -2,7 +2,7 @@
 
 from datetime import date
 from sqlalchemy import text
-from sqlalchemy.exc import ProgrammingError
+from sqlalchemy.exc import OperationalError, ProgrammingError
 from sqlalchemy.orm import Session
 import pandas as pd
 
@@ -25,6 +25,7 @@ def build_daily_calendar(
     store_open_dates: set[date],
     closed_dates: set[date],
     sold_out_dates: set[date],
+    discounted_dates: set[date] = frozenset(),
 ) -> pd.DataFrame:
     """
     메뉴 판매 이력(판매 있는 날만)을 매장 영업일 달력으로 정렬한다.
@@ -32,7 +33,9 @@ def build_daily_calendar(
     - 영업일 = 매장에 판매가 1건이라도 있는 날 - 휴무 등록일. 영업일에 이 메뉴 판매가 없으면 0
     - 매장 전체 판매가 없는 날(휴무·미입력)은 0이 아니라 행을 빼서 학습에서 제외한다
       (lag 는 feature_engineering.weekday_lag 가 달력 기준으로 계산하므로 행이 빠져도 어긋나지 않음)
-    - sold_out: 품절 등록일 (판매량 < 실제 수요였을 수 있음)
+    - sold_out: 품절 등록일 (판매량 < 실제 수요였을 수 있음) 또는 할인 판매일. 둘 다 평소 수요가 아니라 학습 정답·보정에서 빠진다
+    - 할인 판매일의 y 는 직전 같은 요일(할인 없는 날, 최대 4개) 평균으로 바꾼다. 안 그러면 lag·rolling 을 통해
+      다음 주까지 예측이 부푼다 (합성 실험 수치는 PROJECT_STATUS 19절, backtest.py --discount)
     """
     if sales.empty:
         return pd.DataFrame(columns=["ds", "y", "sold_out"])
@@ -40,10 +43,16 @@ def build_daily_calendar(
     first = sales["ds"].min()
     days = sorted(d for d in store_open_dates if d >= first and d not in closed_dates)
     qty = dict(zip(sales["ds"], sales["y"]))
+    y = [float(qty.get(d, 0.0)) for d in days]
+    for i, d in enumerate(days):
+        if d in discounted_dates:
+            usual = [y[j] for j in range(i - 1, -1, -1) if days[j].weekday() == d.weekday() and days[j] not in discounted_dates][:4]
+            if usual:
+                y[i] = sum(usual) / len(usual)
     return pd.DataFrame({
         "ds": days,
-        "y": [float(qty.get(d, 0.0)) for d in days],
-        "sold_out": [int(d in sold_out_dates) for d in days],
+        "y": y,
+        "sold_out": [int(d in sold_out_dates or d in discounted_dates) for d in days],
     })
 
 
@@ -123,6 +132,17 @@ def get_all_sales_data(db: Session) -> dict[tuple[int, int], pd.DataFrame]:
             closed.setdefault(int(sid), set()).add(d)
         elif ftype == "SOLD_OUT" and mid is not None:
             sold_out.setdefault((int(sid), int(mid)), set()).add(d)
+    try:
+        discount_rows = db.execute(
+            text("SELECT DISTINCT store_id, menu_id, sales_date FROM SALES_DATA WHERE is_deleted = 0 AND discount_pct > 0")
+        ).fetchall()
+    except (ProgrammingError, OperationalError):
+        # 백엔드가 아직 컬럼을 안 만들었으면 기록 없음
+        db.rollback()
+        discount_rows = []
+    discounted: dict[tuple[int, int], set[date]] = {}
+    for sid, mid, sdate in discount_rows:
+        discounted.setdefault((int(sid), int(mid)), set()).add(pd.to_datetime(sdate).date())
     # 부분 입력일도 휴무처럼 뺀다
     for sid, g in sales.groupby("store_id"):
         totals = g.groupby("ds")["y"].sum().sort_index()
@@ -136,6 +156,7 @@ def get_all_sales_data(db: Session) -> dict[tuple[int, int], pd.DataFrame]:
             store_open[key[0]],
             closed_dates=closed.get(key[0], set()),
             sold_out_dates=sold_out.get(key, set()),
+            discounted_dates=discounted.get(key, set()),
         )
     return out
 

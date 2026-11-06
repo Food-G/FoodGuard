@@ -65,7 +65,8 @@ const Stats = () => {
       trigger: 'item',
       formatter: (p: any) => {
         const s = wasteStores[p.dataIndex];
-        return `${s.storeName}<br/>폐기 기록 ${s.wasteCount}건` + (s.wasteRate != null ? `<br/>입고 대비 폐기율 ${s.wasteRate}%` : '')
+        // 매장 이름은 점주 입력값이다. 툴팁은 HTML 로 그려지므로 이스케이프한다
+        return `${echarts.format.encodeHTML(s.storeName ?? '')}<br/>폐기 기록 ${s.wasteCount}건` + (s.wasteRate != null ? `<br/>입고 대비 폐기율 ${s.wasteRate}%` : '')
           + (s.donationCount > 0 ? `<br/>기부 완료 ${s.donationCount}건` : '');
       },
     },
@@ -135,6 +136,11 @@ const Stats = () => {
                  : <>📈 운영 예측 정확도: 메뉴×일 {stats.forecastAccuracy.evaluatedDays}건 오차율 <b>{stats.forecastAccuracy.wmape}%</b>
                      {stats.forecastAccuracy.weeklyWithin10Pct != null && <>, 메뉴 주간 판매량 ±10% 이내 <b>{stats.forecastAccuracy.weeklyWithin10Pct}%</b> ({stats.forecastAccuracy.menuWeeks}개)</>}</>}
              </Typography>
+             {stats.discountSales?.quantity > 0 && (
+               <Typography variant="body2" color="primary.dark" mt={1}>
+                 🏷️ 임박 식자재 할인 판매: {stats.discountSales.quantity.toLocaleString()}개, 매출 ₩{stats.discountSales.revenue.toLocaleString()} (할인액 ₩{stats.discountSales.discountAmount.toLocaleString()})
+               </Typography>
+             )}
              <Typography variant="body2" color="primary.dark" mt={1}>
                {stats.donationCount > 0
                  ? <>💚 기부 완료 {stats.donationCount}건 — 폐기될 뻔한 식자재를 이웃에게 전달했습니다.</>

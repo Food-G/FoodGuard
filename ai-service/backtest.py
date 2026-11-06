@@ -340,6 +340,74 @@ def run_events(series: dict[SeriesKey, pd.DataFrame], events: dict[int, dict[dat
     print("\n특이사항 배율은 실제 배율에 ±15% 오차를 둔 값 (claude 추정 흉내). 예측값은 두 경우 모두 XGBoost 가 낸다")
 
 
+def synthetic_discount_series(seed: int) -> dict[str, dict[SeriesKey, pd.DataFrame]]:
+    """
+    매장 3곳 × 메뉴 4개 × 180일. 메뉴마다 약 10% 의 날에 2~4일 연속 할인(10~50%, 탄력성 1~3)으로 판매가 는다.
+    반환: 할인이 없었던 경우 / 그대로 학습 / 운영 처리(build_daily_calendar 의 discounted_dates)
+    """
+    from services.data_service import build_daily_calendar
+
+    rng = np.random.default_rng(seed)
+    days = [date(2026, 1, 5) + timedelta(days=i) for i in range(180)]
+    dow_factor = [0.8, 0.9, 0.9, 1.0, 1.2, 1.5, 1.2]
+    out: dict[str, dict[SeriesKey, pd.DataFrame]] = {"truth": {}, "as_is": {}, "handled": {}}
+    for sid in (1, 2, 3):
+        for m in range(4):
+            level = rng.uniform(15, 60)
+            usual = rng.poisson([level * dow_factor[d.weekday()] for d in days]).astype(float)
+            lift = np.ones(len(days))
+            i = 0
+            while i < len(days):
+                if rng.random() < 0.1 / 3:
+                    n = int(rng.integers(2, 5))
+                    lift[i:i + n] = 1 + rng.uniform(1.0, 3.0) * rng.uniform(0.1, 0.5)
+                    i += n
+                else:
+                    i += 1
+            sold = np.round(usual * lift)
+            key = (sid, sid * 10 + m)
+            out["truth"][key] = pd.DataFrame({"ds": days, "y": usual, "sold_out": 0})
+            out["as_is"][key] = pd.DataFrame({"ds": days, "y": sold, "sold_out": 0})
+            out["handled"][key] = build_daily_calendar(
+                pd.DataFrame({"ds": days, "y": sold}), set(days), closed_dates=set(), sold_out_dates=set(),
+                discounted_dates={d for d, x in zip(days, lift) if x > 1},
+            )
+    return out
+
+
+def run_discount(seeds=(11, 12, 13), min_train: int = 60, step: int = 7) -> None:
+    """할인으로 는 판매를 학습에서 어떻게 다룰지 비교. 평가는 할인 없는 미래 날의 평소 수요."""
+    names = {"truth": "할인이 없었던 경우 (기준)", "as_is": "그대로 학습", "handled": "운영 처리 (정답 제외, lag 는 평소값)"}
+    print("| 시드 | 방법 | wMAPE | 편향 | 최근 14일 할인한 메뉴 편향 |")
+    print("|---|---|---|---|---|")
+    for seed in seeds:
+        data = synthetic_discount_series(seed)
+        days = sorted(next(iter(data["truth"].values()))["ds"])
+        records = []
+        for origin in days[min_train - 1::step]:
+            if origin + timedelta(days=HORIZON) > days[-1]:
+                break
+            models = {
+                name: DemandPredictor().fit({k: df[df["ds"] <= origin] for k, df in series.items()}, with_scores=False)
+                for name, series in data.items()
+            }
+            for key, df in data["truth"].items():
+                truth = dict(zip(df["ds"], df["y"]))
+                handled = data["handled"][key]
+                discounted = dict(zip(handled["ds"], handled["sold_out"]))
+                recent = handled[(handled["ds"] <= origin) & (handled["ds"] > origin - timedelta(days=14))]["sold_out"].sum() > 0
+                for name, model in models.items():
+                    for p in model.predict(key[0], key[1], days=HORIZON, start_date=origin):
+                        if not discounted[p["date"]]:
+                            records.append((name, recent, truth[p["date"]], p["predicted_qty"]))
+        r = pd.DataFrame(records, columns=["method", "recent", "y", "pred"])
+        r["ae"] = (r["y"] - r["pred"]).abs()
+        for name, label in names.items():
+            g = r[r["method"] == name]
+            bias = lambda x: (x["pred"] - x["y"]).sum() / x["y"].sum() * 100
+            print(f"| {seed} | {label} | {wmape(g):.1f}% | {bias(g):+.1f}% | {bias(g[g['recent']]):+.1f}% |")
+
+
 def db_weather(series: dict[SeriesKey, pd.DataFrame]) -> dict[int, pd.DataFrame]:
     """매장별 실측 날씨 (Open-Meteo). 조회 실패한 매장은 뺀다."""
     from database import SessionLocal
@@ -407,6 +475,7 @@ def main() -> None:
     src = parser.add_mutually_exclusive_group(required=True)
     src.add_argument("--synthetic", action="store_true", help="합성 데이터 200일")
     src.add_argument("--events", action="store_true", help="합성 특이사항 실험: event_lift 피처 유무 비교")
+    src.add_argument("--discount", action="store_true", help="합성 할인 실험: 할인 판매를 학습에서 다루는 방법 비교")
     src.add_argument("--db", action="store_true", help="DB SALES_DATA 의 모든 매장x메뉴")
     parser.add_argument("--store", type=int, help="--db 와 함께: 이 매장 메뉴만 평가 (학습은 전체)")
     parser.add_argument("--cold-start", action="store_true", help="--db 와 함께: 신메뉴(이력 1·3·5일) 예측 비교")
@@ -418,6 +487,8 @@ def main() -> None:
 
     if args.synthetic:
         run({(0, 0): synthetic_series()}, args.min_train or 90, args.step, compare=args.compare)
+    elif args.discount:
+        run_discount()
     elif args.events:
         run_events(*synthetic_event_series(), min_train=args.min_train or 90)
     elif args.cold_start:

@@ -170,6 +170,22 @@ class AgentFeaturesTest {
         verify(notificationService).create(eq(STORE), contains("수요 예측이 없습니다"), eq("ACCURACY"));
     }
 
+    @Test
+    void 같은_매장_예측은_동시에_실행되지_않고_실패를_성공으로_돌려주지_않는다() {
+        org.springframework.web.client.RestTemplate rest = mock(org.springframework.web.client.RestTemplate.class);
+        PredictionService prediction = new PredictionService(predictionResultRepository, rest);
+        when(rest.postForObject(anyString(), any(), eq(Map.class))).thenAnswer(a -> {
+            assertThatThrownBy(() -> prediction.triggerPrediction(STORE)).hasMessageContaining("이미 실행 중");
+            return Map.of();
+        });
+        assertThat(prediction.triggerPrediction(STORE)).containsEntry("status", "success");
+
+        when(rest.postForObject(anyString(), any(), eq(Map.class))).thenThrow(new org.springframework.web.client.ResourceAccessException("connection refused"));
+        assertThatThrownBy(() -> prediction.triggerPrediction(STORE)).hasMessage("AI 예측을 실행하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+        // 실패 뒤에도 다시 실행할 수 있다
+        assertThatThrownBy(() -> prediction.triggerPrediction(STORE)).hasMessageNotContaining("이미 실행 중");
+    }
+
     private static OrderRequest order(LocalDate orderedOn, LocalDate receivedOn) {
         OrderRequest o = new OrderRequest();
         o.setOrderedAt(orderedOn.atTime(9, 0));
@@ -200,13 +216,14 @@ class AgentFeaturesTest {
         LocalDate end = LocalDate.of(2026, 10, 16);
 
         Map<String, Object> facts = AgentService.weeklyFacts(end,
-                Map.of(1L, 60L, 3L, 100L), Map.of(1L, 100L, 2L, 50L, 3L, 90L),
+                Map.of(1L, 60L, 3L, 100L), Map.of(1L, 100L, 2L, 50L, 3L, 90L), Map.of(1L, 7L),
                 List.of(drop, noInput, steady, none), List.of(), List.of());
 
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> stores = (List<Map<String, Object>>) facts.get("stores");
         assertThat(stores).extracting(s -> s.get("storeId")).containsExactly(1L, 2L, 3L);
         assertThat(stores.get(0).get("changePct")).isEqualTo(-40.0);
+        assertThat(stores.get(0).get("discountedQuantity")).isEqualTo(7L);
         assertThat(stores.get(0).get("flags")).isEqualTo(List.of("SALES_DROP"));
         assertThat(stores.get(1).get("flags")).isEqualTo(List.of("NO_SALES_INPUT"));
         assertThat(stores.get(2).get("flags")).isEqualTo(List.of());

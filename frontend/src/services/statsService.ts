@@ -4,6 +4,7 @@ export interface HqStats {
   monthly: { month: string; revenue: number; wasteCount: number }[];
   stores: { storeId: number; storeName: string; wasteCount: number; wasteRate: number | null; donationCount: number }[];
   donationCount: number;
+  discountSales: { quantity: number; revenue: number; discountAmount: number };
   forecastAccuracy: { evaluatedDays: number; wmape: number | null; menuWeeks: number; weeklyWithin10Pct: number | null };
   recommendation: {
     totalOrders: number;

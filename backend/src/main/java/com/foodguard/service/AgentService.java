@@ -46,6 +46,7 @@ public class AgentService {
     private final SalesDataRepository salesDataRepository;
     private final StoreRepository storeRepository;
     private final WasteRecordRepository wasteRecordRepository;
+    private final DiscountService discountService;
 
     // ── 식자재 설정 제안 ──
 
@@ -136,6 +137,8 @@ public class AgentService {
         if (end == null) throw new RuntimeException("판매 기록이 없어 리포트를 만들 수 없습니다.");
         Map<String, Object> facts = weeklyFacts(end,
                 revenueByStore(end.minusDays(6), end), revenueByStore(end.minusDays(13), end.minusDays(7)),
+                salesDataRepository.sumDiscountQuantityBetween(end.minusDays(6), end).stream()
+                        .collect(Collectors.toMap(r -> (Long) r[0], r -> ((Number) r[1]).longValue())),
                 storeRepository.findAll(), wasteRecordRepository.findAll(), orderRequestRepository.findAll());
         return Map.of("facts", facts, "report", aiClient.post("/api/agents/hq-weekly", facts));
     }
@@ -146,7 +149,7 @@ public class AgentService {
     }
 
     // 기준일은 전 매장 마지막 판매일까지의 7일. 직전 7일에도 이번 7일에도 판매가 없는 매장은 뺀다
-    static Map<String, Object> weeklyFacts(LocalDate end, Map<Long, Long> current, Map<Long, Long> previous,
+    static Map<String, Object> weeklyFacts(LocalDate end, Map<Long, Long> current, Map<Long, Long> previous, Map<Long, Long> discountQuantity,
                                            List<Store> stores, List<WasteRecord> wastes, List<OrderRequest> orders) {
         LocalDate start = end.minusDays(6);
         Map<Long, Long> wasteCount = wastes.stream()
@@ -176,6 +179,7 @@ public class AgentService {
             item.put("revenue", now == null ? 0 : now);
             item.put("previousRevenue", before == null ? 0 : before);
             item.put("changePct", change);
+            item.put("discountedQuantity", discountQuantity.getOrDefault(s.getId(), 0L));
             item.put("wasteRecords", waste);
             item.put("ordersWaitingApproval", waiting.getOrDefault(s.getId(), 0L));
             item.put("flags", flags);
@@ -238,6 +242,7 @@ public class AgentService {
         }).toList());
         data.put("openOrders", orderRequestRepository.findByStoreIdAndStatusIn(storeId, List.of("REQUESTED", "APPROVED")).stream().map(o -> Map.of(
                 "ingredient", o.getIngredient().getName(), "quantity", o.getOrderedQty(), "status", o.getStatus())).toList());
+        data.put("activeDiscounts", discountService.active(storeId));
         data.put("alerts", watchdogService.findings(storeId).stream().map(f -> f.get("message")).toList());
         // 건수도 넣어 둔다. Claude 가 세면 답변의 숫자가 데이터에 없는 값으로 표시된다
         data.put("counts", Map.of(

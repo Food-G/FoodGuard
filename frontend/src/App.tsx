@@ -1,33 +1,35 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { ThemeProvider, CssBaseline } from '@mui/material';
+import { ThemeProvider, CssBaseline, CircularProgress, Box } from '@mui/material';
 import theme from './theme/theme';
 import BreakpointsProvider from './providers/BreakpointsProvider';
 import MainLayout from './layouts/main-layout';
 import AuthLayout from './layouts/auth-layout';
-import Dashboard from './pages/Dashboard';
-import Assistant from './pages/Assistant';
-import Inventory from './pages/Inventory';
-import Ingredients from './pages/Ingredients';
-import SalesEntry from './pages/SalesEntry';
-import Predictions from './pages/Predictions';
-import Orders from './pages/Orders';
-import StoreManagement from './pages/admin/StoreManagement';
-import MenuManagement from './pages/MenuManagement';
-import StoreRegister from './pages/StoreRegister';
-import Stats from './pages/admin/Stats';
-import AdminOrders from './pages/admin/AdminOrders';
-import POS from './pages/POS';
-import Login from './pages/auth/Login';
-import Signup from './pages/auth/Signup';
-import DeliveryDriver from './pages/DeliveryDriver';
-import DeliveryDriverGroup from './pages/DeliveryDriverGroup';
-import WastePrediction from './pages/WastePrediction';
-import DonationHistory from './pages/DonationHistory';
-import ScanComplete from './pages/ScanComplete';
-import OwnerScanComplete from './pages/OwnerScanComplete';
 import { useAuth } from './hooks/useAuth';
 import { ConfirmProvider } from './hooks/useConfirm';
+
+// 화면별로 나눠 받는다 (첫 로딩 번들 축소)
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Assistant = lazy(() => import('./pages/Assistant'));
+const Inventory = lazy(() => import('./pages/Inventory'));
+const Ingredients = lazy(() => import('./pages/Ingredients'));
+const SalesEntry = lazy(() => import('./pages/SalesEntry'));
+const Predictions = lazy(() => import('./pages/Predictions'));
+const Orders = lazy(() => import('./pages/Orders'));
+const StoreManagement = lazy(() => import('./pages/admin/StoreManagement'));
+const MenuManagement = lazy(() => import('./pages/MenuManagement'));
+const StoreRegister = lazy(() => import('./pages/StoreRegister'));
+const Stats = lazy(() => import('./pages/admin/Stats'));
+const AdminOrders = lazy(() => import('./pages/admin/AdminOrders'));
+const POS = lazy(() => import('./pages/POS'));
+const Login = lazy(() => import('./pages/auth/Login'));
+const Signup = lazy(() => import('./pages/auth/Signup'));
+const DeliveryDriver = lazy(() => import('./pages/DeliveryDriver'));
+const DeliveryDriverGroup = lazy(() => import('./pages/DeliveryDriverGroup'));
+const WastePrediction = lazy(() => import('./pages/WastePrediction'));
+const DonationHistory = lazy(() => import('./pages/DonationHistory'));
+const ScanComplete = lazy(() => import('./pages/ScanComplete'));
+const OwnerScanComplete = lazy(() => import('./pages/OwnerScanComplete'));
 
 function App() {
   const { user, login, logout, isLoggedIn } = useAuth();
@@ -49,6 +51,7 @@ function App() {
       <BreakpointsProvider>
         <CssBaseline />
         <Router>
+          <Suspense fallback={<Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}><CircularProgress /></Box>}>
           <Routes>
             <Route path="/login" element={<PublicRoute><Login onLogin={login} /></PublicRoute>} />
             <Route path="/signup" element={<PublicRoute><Signup /></PublicRoute>} />
@@ -152,6 +155,7 @@ function App() {
 
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
+          </Suspense>
         </Router>
       </BreakpointsProvider>
       </ConfirmProvider>

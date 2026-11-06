@@ -10,6 +10,8 @@ import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDate;
 import java.util.LinkedHashMap;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -25,7 +27,13 @@ public class PredictionService {
     @Value("${ai.service.url:http://localhost:8000}")
     private String aiServiceUrl;
 
+    // 예측 1회에 모델 학습 약 20~30초. 같은 매장 중복 실행을 막는다 (버튼 연타)
+    private final Set<Long> running = ConcurrentHashMap.newKeySet();
+
     public Map<String, Object> triggerPrediction(Long storeId) {
+        if (!running.add(storeId)) {
+            throw new RuntimeException("이 매장의 예측이 이미 실행 중입니다. 잠시 후 확인해 주세요.");
+        }
         String url = aiServiceUrl + "/api/predict/store/" + storeId;
         try {
             Map<?, ?> response = restTemplate.postForObject(url, null, Map.class);
@@ -33,7 +41,9 @@ public class PredictionService {
             return Map.of("status", "success", "message", "Prediction complete", "storeId", storeId);
         } catch (Exception e) {
             log.error("Failed to trigger AI prediction for store {}: {}", storeId, e.getMessage());
-            return Map.of("status", "error", "message", e.getMessage(), "storeId", storeId);
+            throw new RuntimeException("AI 예측을 실행하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+        } finally {
+            running.remove(storeId);
         }
     }
 

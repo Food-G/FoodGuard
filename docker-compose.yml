@@ -1,0 +1,52 @@
+# 배포 구성. 절차는 docs/DEPLOY.md. 값은 .env.prod (커밋 금지, 예시는 .env.prod.example)
+# 외부 포트는 caddy 의 80·443 만 연다. 백엔드·AI 서비스는 내부 네트워크에서만 접근한다
+services:
+  ai-service:
+    build: ./ai-service
+    restart: unless-stopped
+    environment:
+      DB_URL: ${AI_DB_URL:?AI_DB_URL 필요}
+      KMA_API_KEY: ${KMA_API_KEY:-}
+      INTERNAL_API_KEY: ${AI_INTERNAL_KEY:?AI_INTERNAL_KEY 필요}
+    volumes:
+      # claude CLI 로그인 정보 (docs/DEPLOY.md 참고)
+      - claude-auth:/home/foodguard/.claude
+      - trained-models:/app/trained_models
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    environment:
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD 필요}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET 필요}
+      AI_INTERNAL_KEY: ${AI_INTERNAL_KEY:?AI_INTERNAL_KEY 필요}
+      AI_SERVICE_URL: http://ai-service:8000
+      APP_CORS_ALLOWED_ORIGINS: https://${DOMAIN:?DOMAIN 필요}
+    depends_on:
+      - ai-service
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+
+  # HTTPS: 도메인으로 인증서를 자동 발급·갱신한다
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN:?DOMAIN 필요}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+    depends_on:
+      - frontend
+
+volumes:
+  claude-auth:
+  trained-models:
+  caddy-data:

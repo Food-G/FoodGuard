@@ -7,6 +7,10 @@ from config import settings
 from routers import agents, events, explain, ingest, prediction, training
 from schemas.schemas import HealthResponse
 
+# 다른 컨테이너·서버에서 접근 가능하게 열면서 키가 없으면 누구나 예측·Claude 를 부를 수 있다
+if settings.AI_SERVICE_HOST not in ("127.0.0.1", "localhost") and not settings.INTERNAL_API_KEY:
+    raise RuntimeError("AI_SERVICE_HOST 를 외부에 열 때는 INTERNAL_API_KEY 가 필요합니다")
+
 app = FastAPI(
     title="FoodGuard AI Service",
     description="식품 수요 예측 AI 서비스 (글로벌 XGBoost 기반)",

@@ -1,0 +1,7 @@
+.env
+venv
+__pycache__
+.pytest_cache
+tests
+trained_models
+agent-runs

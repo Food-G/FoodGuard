@@ -19,7 +19,7 @@ public class AppConfig {
         return builder
                 .requestFactory(SimpleClientHttpRequestFactory.class)
                 .connectTimeout(Duration.ofSeconds(5))
-                .readTimeout(Duration.ofSeconds(60))
+                .readTimeout(Duration.ofSeconds(120))
                 // 이 RestTemplate 은 AI 서비스 호출에만 쓴다. 키는 AI 서비스 INTERNAL_API_KEY 와 같은 값
                 .defaultHeader("X-Internal-Key", aiServiceKey)
                 .build();

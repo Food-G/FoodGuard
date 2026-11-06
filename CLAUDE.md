@@ -78,6 +78,12 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 ### 운영 에이전트 (ai-service/PROJECT_STATUS.md 18절)
 숫자는 코드가 정하고 Claude 는 판단·문장만 쓴다. 쓰기는 점주 확인 후. 응답은 코드로 다시 검사한다 (`routers/agents.py`). 재고·데이터 감시(`WatchdogService`)는 규칙만 쓴다.
 
+### 임박 식자재 할인 (PROJECT_STATUS 19절)
+할인율은 점주가 메뉴별로 입력한다 (`MENU_DISCOUNT`). POS 결제(`DiscountService.checkout`)가 서버 계산 가격으로 판매를 기록하고(`SALES_DATA.unit_price·discount_pct`) 레시피대로 재고를 줄인다. 매출은 `COALESCE(unit_price, 메뉴 가격)`.
+
+### 배포·점검
+절차는 `docs/DEPLOY.md`. 전 기능 점검은 `ai-service` 에서 `python qa_smoke.py run` 후 `cleanup` (시험 계정·매장을 실제 DB 에 만들고 지운다). API 를 바꾸면 항목을 추가한다.
+
 ### 실행 순서
 1. AI Service (`ai-service/start.bat`)
 2. Backend (`backend/gradlew.bat bootRun`)
@@ -126,6 +132,7 @@ POST /api/predict/store/{id}
 - `STORE` — 읽기 (region 컬럼으로 날씨 좌표 조회)
 - `SALES_DAY_FLAG` — 읽기 (휴무·품절 기록: 휴무일은 학습 제외·예측 0, 품절일은 학습 정답에서 제외)
 - `STORE_EVENT_NOTE` — 읽기 (점주 특이사항을 claude 가 바꾼 증감 배율 → `event_lift` 피처. 학습 이력에 특이사항 날이 있을 때만 사용, 예측에 직접 곱하지 않음)
+- `SALES_DATA.discount_pct` — 읽기 (할인 판매일은 학습 정답에서 빼고 lag 는 평소값으로. PROJECT_STATUS 19절)
 - `PREDICTION_RESULT` — 쓰기 (예측 결과 저장)
 
 ### 모델 전략 (글로벌 모델, `ml/demand_predictor.py`)

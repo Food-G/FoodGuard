@@ -9,6 +9,7 @@ import { donationService } from '../services/donationService';
 import IconifyIcon from '../components/base/IconifyIcon';
 import { useMyStore } from '../hooks/useMyStore';
 import AlertMessages from '../components/AlertMessages';
+import ClearanceCard from '../components/agent/ClearanceCard';
 
 const ORG_TYPES = [
   { value: 'ORPHANAGE', label: '고아원' },
@@ -142,6 +143,7 @@ const WastePrediction = ({ user }: any) => {
 
   return (
     <Stack gap={3}>
+      {storeId && <ClearanceCard storeId={storeId} />}
       <Stack direction="row" justifyContent="flex-end">
         <Button variant="outlined" startIcon={<IconifyIcon icon="mingcute:history-line" width={16} />}
           href="/donations">

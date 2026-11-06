@@ -72,6 +72,58 @@ export interface WeeklyReport {
   };
 }
 
+export interface ClearanceCandidate {
+  ingredientId: number;
+  ingredientName: string;
+  unit: string;
+  stock: number;
+  expiryDate: string;
+  daysLeft: number;
+  expectedUsage: number;
+  surplus: number;
+  forecastAvailable: boolean;
+  menus: {
+    menuId: number;
+    menuName: string;
+    price: number;
+    extraUnitsToClear: number;
+    activeDiscountPct: number | null;
+    activeDiscountId: number | null;
+    activeEndDate: string | null;
+  }[];
+}
+
+export interface ClearanceBriefing {
+  summary: string;
+  items: { ingredientId: number; advice: string }[];
+  unverifiedNumbers: string[];
+}
+
+export interface ActiveDiscount {
+  id: number;
+  menuId: number;
+  menuName: string;
+  price: number;
+  discountPct: number;
+  discountedPrice: number;
+  endDate: string;
+}
+
+export interface CheckoutResult {
+  total: number;
+  lines: { menuId: number; menuName: string; quantity: number; unitPrice: number; listPrice: number; discountPct: number | null }[];
+}
+
+export const discountService = {
+  candidates: (storeId: number): Promise<ClearanceCandidate[]> => api.get(`/discounts/store/${storeId}/candidates`),
+  briefing: (storeId: number): Promise<ClearanceBriefing> => api.post(`/discounts/store/${storeId}/briefing`, {}),
+  active: (storeId: number): Promise<ActiveDiscount[]> => api.get(`/discounts/store/${storeId}`),
+  apply: (body: { storeId: number; menuId: number; ingredientId: number; discountPct: number; endDate: string }) => api.post('/discounts', body),
+  end: (id: number) => api.delete(`/discounts/${id}`),
+  checkout: (storeId: number, items: { menuId: number; quantity: number }[]): Promise<CheckoutResult> =>
+    api.post(`/pos/${storeId}/checkout`, items),
+};
+
 export const agentService = {
   previewSales: (storeId: number, body: { filename: string; contentBase64: string; defaultDate?: string }) =>
     api.post(`/ingest/${storeId}/sales/preview`, body),

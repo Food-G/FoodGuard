@@ -34,6 +34,13 @@ public class SalesData {
     @Column(nullable = false)
     private Integer quantity;
 
+    // POS 결제 때 실제 판 가격과 할인율. 비어 있으면(POS 도입 전, 직접 입력) 메뉴 현재 가격으로 계산한다
+    @Column(name = "unit_price")
+    private Integer unitPrice;
+
+    @Column(name = "discount_pct")
+    private Integer discountPct;
+
     @Column(name = "is_deleted", nullable = false)
     private boolean isDeleted = false;
 

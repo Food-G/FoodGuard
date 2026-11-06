@@ -103,6 +103,10 @@ public class DonationService {
     public DonationRecord cancel(Long donationId) {
         DonationRecord record = donationRecordRepository.findById(donationId)
                 .orElseThrow(() -> new RuntimeException("기부 기록을 찾을 수 없습니다."));
+        // 완료된 기부는 재고가 이미 줄었다. 취소하면 재고와 기록이 어긋난다
+        if (!"PLANNED".equals(record.getStatus())) {
+            throw new RuntimeException("진행 예정 상태인 기부만 취소할 수 있습니다.");
+        }
         record.setStatus("CANCELLED");
         return donationRecordRepository.save(record);
     }
