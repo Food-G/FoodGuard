@@ -6,6 +6,7 @@ import BreakpointsProvider from './providers/BreakpointsProvider';
 import MainLayout from './layouts/main-layout';
 import AuthLayout from './layouts/auth-layout';
 import Dashboard from './pages/Dashboard';
+import Assistant from './pages/Assistant';
 import Inventory from './pages/Inventory';
 import Ingredients from './pages/Ingredients';
 import SalesEntry from './pages/SalesEntry';
@@ -89,6 +90,12 @@ function App() {
             <Route path="/pos" element={
               <ProtectedRoute role="OWNER">
                 <POS user={user} />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/assistant" element={
+              <ProtectedRoute role="OWNER">
+                <Assistant user={user} />
               </ProtectedRoute>
             } />
 

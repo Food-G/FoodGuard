@@ -8,6 +8,7 @@ import IconifyIcon from '../components/base/IconifyIcon';
 import { api } from '../services/api';
 import { useConfirm } from '../hooks/useConfirm';
 import { useMyStore } from '../hooks/useMyStore';
+import IngredientSuggestDialog from '../components/agent/IngredientSuggestDialog';
 
 const UNIT_OPTIONS = ['kg', 'L', '개'];
 
@@ -28,6 +29,7 @@ const Ingredients = ({ user }: any) => {
   const [success, setSuccess] = useState('');
 
   const [showIngForm, setShowIngForm] = useState(false);
+  const [suggestOpen, setSuggestOpen] = useState(false);
   const [ingForm, setIngForm] = useState({ name: '', unit: '' });
   const [editingIng, setEditingIng] = useState<any | null>(null);
   const [ingSubmitting, setIngSubmitting] = useState(false);
@@ -107,14 +109,24 @@ const Ingredients = ({ user }: any) => {
       <Paper sx={{ p: 3, border: `1px solid ${theme.palette.divider}`, borderRadius: 3 }}>
         <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
           <Typography variant="h6" fontWeight={700}>식자재 목록</Typography>
-          <Button
-            size="small" variant="outlined"
-            startIcon={<IconifyIcon icon="mingcute:add-line" />}
-            onClick={() => { setShowIngForm((v) => !v); setEditingIng(null); }}
-          >
-            식자재 등록
-          </Button>
+          <Stack direction="row" gap={1}>
+            <Button size="small" variant="outlined" disabled={!storeId} onClick={() => setSuggestOpen(true)}
+              startIcon={<IconifyIcon icon="mingcute:sparkles-line" />}>
+              AI 설정 제안
+            </Button>
+            <Button
+              size="small" variant="outlined"
+              startIcon={<IconifyIcon icon="mingcute:add-line" />}
+              onClick={() => { setShowIngForm((v) => !v); setEditingIng(null); }}
+            >
+              식자재 등록
+            </Button>
+          </Stack>
         </Stack>
+        {storeId && (
+          <IngredientSuggestDialog open={suggestOpen} storeId={storeId} ingredients={allIngredients} onClose={() => setSuggestOpen(false)}
+            onSaved={() => { loadAllIngredients(storeId); setSuccess('확인한 설정을 저장했습니다.'); }} />
+        )}
 
         {showIngForm && (
           <Box component="form" onSubmit={handleCreateIngredient}

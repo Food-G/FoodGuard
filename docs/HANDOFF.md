@@ -61,6 +61,13 @@
 - 예측 요청 한 번에 약 25초(백엔드 동기 호출, 타임아웃 60초). 매장이 늘면 비동기·캐시 필요
 - 공용 식자재(`store_id` 없음)는 아무 점주나 수정 가능 — 본사 전용으로 할지 결정
 
+### 운영 에이전트 6종 (2026-11-06, PROJECT_STATUS 18절)
+
+- POS 파일·거래명세서 입력, 식자재 설정 제안, 발주 참모 화면, 재고·데이터 감시, 본사 주간 리포트, 점주 질문 답변
+- 스키마 변경 없음. AI 서비스에 `openpyxl` 추가 (`pip install -r requirements.txt`)
+- **남은 확인: 저장 경로(`/ingest/*/commit`, `/orders/agent`)를 시험 매장에서 실제로 한 번 실행.** 공유 DB 쓰기라 단위 테스트만 했다
+- 이월 안전재고를 켜려면 식자재 관리의 AI 설정 제안에서 확인·저장한다
+
 ### 2026-11-06 고도화 (PROJECT_STATUS 17절)
 
 - 이월 안전재고: 보관기한 > 발주 주기인 식자재만 필요량 ≥ 점추정 × 1.2. 시뮬레이션 5개 시나리오 중 4개에서 비용 최저 (2일 주기만 관행 ×1.2 가 낫다). **`INGREDIENT` 설정값이 비어 있어 지금은 발주량이 바뀌지 않는다. 팀이 식자재별 보관기한·주기를 넣어야 효과가 난다**
@@ -104,8 +111,8 @@
 
 | 확인 | 명령 (위치) | 기대값 |
 |---|---|---|
-| AI 단위 테스트 | `python -m pytest tests` (ai-service) | 40 passed |
-| 백엔드 단위 테스트 | `gradlew.bat test --tests "com.foodguard.service.*" --tests "com.foodguard.security.*"` (backend) | BUILD SUCCESSFUL (15개) |
+| AI 단위 테스트 | `python -m pytest tests` (ai-service) | 53 passed |
+| 백엔드 단위 테스트 | `gradlew.bat test --tests "com.foodguard.service.*" --tests "com.foodguard.security.*"` (backend) | BUILD SUCCESSFUL (24개) |
 | 프론트 타입체크 | `npx tsc --noEmit` (frontend) | 오류 0 |
 | DB 백테스트 | `python backtest.py --db --step 7` (ai-service) | 1,765 평가일, 글로벌 모델 wMAPE **9.2%** / MASE **0.900**, 요일 평균(4주) 9.9% / 0.952, 식자재 7일 커버리지 **56.2%** (평균 잉여율 4.4%, 부족률 3.0%) |
 | 합성 백테스트 | `python backtest.py --synthetic` (ai-service) | 글로벌 모델 14.8% / 0.817 |

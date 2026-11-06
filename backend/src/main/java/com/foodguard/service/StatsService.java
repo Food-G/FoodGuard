@@ -105,12 +105,12 @@ public class StatsService {
         return rates.length == 0 ? null : round1(Arrays.stream(rates).average().orElse(0));
     }
 
-    // 추천 적용률 = 추천 그대로 자동 발주(AUTO) 비율. 점주 직접 발주(MANUAL)는 추천 대비 수정 폭을 함께 본다 (Fildes et al. 2009)
+    // 추천 적용률 = 추천 그대로 발주한 비율 (AUTO + 발주 참모에서 수량을 안 고친 AGENT). 나머지는 추천 대비 수정 폭을 함께 본다 (Fildes et al. 2009)
     // order_source 가 생기기 전 발주(null)는 뺀다
     static Map<String, Object> recommendationStats(List<OrderRequest> orders) {
         List<OrderRequest> logged = orders.stream().filter(o -> o.getOrderSource() != null).toList();
-        long auto = logged.stream().filter(o -> "AUTO".equals(o.getOrderSource())).count();
-        List<OrderRequest> manual = logged.stream().filter(o -> "MANUAL".equals(o.getOrderSource())).toList();
+        long auto = logged.stream().filter(StatsService::followedRecommendation).count();
+        List<OrderRequest> manual = logged.stream().filter(o -> !followedRecommendation(o)).toList();
         // 추천이 있던 식자재의 수동 발주: (발주량 − 추천량) / 추천량
         double[] changes = manual.stream()
                 .filter(o -> o.getRecommendedQty() != null && o.getRecommendedQty().doubleValue() > 0)
@@ -126,6 +126,12 @@ public class StatsService {
         r.put("manualAvgChangePct", changes.length == 0 ? null : round1(Arrays.stream(changes).average().orElse(0)));
         r.put("manualWithoutRecommendation", manual.size() - changes.length);
         return r;
+    }
+
+    private static boolean followedRecommendation(OrderRequest o) {
+        if ("AUTO".equals(o.getOrderSource())) return true;
+        return "AGENT".equals(o.getOrderSource()) && o.getRecommendedQty() != null
+                && o.getOrderedQty().compareTo(o.getRecommendedQty()) == 0;
     }
 
     // 운영 예측 정확도 = 저장된 예측 vs 실제 판매 (계획서 목표: 메뉴별 주간 ±10%). 백테스트가 아니라 실제로 내보낸 예측을 잰다

@@ -49,6 +49,7 @@ const PAGE_SUBTITLES: Record<string, string> = {
   '/pos': 'POS 시스템',
   '/orders': '식자재 발주',
   '/predictions': 'AI 수요 예측',
+  '/assistant': 'AI 운영 비서',
   '/inventory': '실시간 자원 및 재고 현황',
   '/ingredients': '식자재 관리',
   '/store': '가게 등록',

@@ -22,18 +22,18 @@ class ClaudeCliError(RuntimeError):
     pass
 
 
-def run_structured(system_prompt: str, user_input: str, schema: dict) -> dict:
+def _run(extra_args: list[str], system_prompt: str, stdin: str, schema: dict) -> subprocess.CompletedProcess:
     cmd = [
         settings.CLAUDE_CLI, "-p",
-        "--output-format", "json",
+        *extra_args,
         "--tools", "",
         "--system-prompt", system_prompt,
         "--json-schema", json.dumps(schema, ensure_ascii=False),
         "--no-session-persistence",
     ]
     try:
-        proc = subprocess.run(
-            cmd, input=user_input.encode("utf-8"), capture_output=True,
+        return subprocess.run(
+            cmd, input=stdin.encode("utf-8"), capture_output=True,
             timeout=TIMEOUT_SECONDS, cwd=tempfile.gettempdir(),
         )
     except FileNotFoundError as e:
@@ -41,11 +41,38 @@ def run_structured(system_prompt: str, user_input: str, schema: dict) -> dict:
     except subprocess.TimeoutExpired as e:
         raise ClaudeCliError(f"claude CLI 응답이 {TIMEOUT_SECONDS}초 안에 오지 않았습니다") from e
 
-    try:
-        out = json.loads(proc.stdout.decode("utf-8"))
-    except (json.JSONDecodeError, UnicodeDecodeError) as e:
-        raise ClaudeCliError(f"claude CLI 출력 해석 실패: {proc.stderr.decode('utf-8', 'replace')[:200]}") from e
+
+def _structured_output(out: dict) -> dict:
     if out.get("is_error") or "structured_output" not in out:
         # 로그인 안 됨 등은 result 에 이유가 온다
         raise ClaudeCliError(f"claude CLI 오류: {str(out.get('result'))[:200]}")
     return out["structured_output"]
+
+
+def run_structured(system_prompt: str, user_input: str, schema: dict) -> dict:
+    proc = _run(["--output-format", "json"], system_prompt, user_input, schema)
+    try:
+        out = json.loads(proc.stdout.decode("utf-8"))
+    except (json.JSONDecodeError, UnicodeDecodeError) as e:
+        raise ClaudeCliError(f"claude CLI 출력 해석 실패: {proc.stderr.decode('utf-8', 'replace')[:200]}") from e
+    return _structured_output(out)
+
+
+def run_structured_image(system_prompt: str, user_input: str, image_base64: str, media_type: str, schema: dict) -> dict:
+    """이미지 입력은 stream-json 으로만 넘길 수 있다. 출력의 마지막 result 줄을 쓴다."""
+    message = {"type": "user", "message": {"role": "user", "content": [
+        {"type": "image", "source": {"type": "base64", "media_type": media_type, "data": image_base64}},
+        {"type": "text", "text": user_input},
+    ]}}
+    proc = _run(
+        ["--input-format", "stream-json", "--output-format", "stream-json", "--verbose"],
+        system_prompt, json.dumps(message, ensure_ascii=False) + "\n", schema,
+    )
+    try:
+        lines = [json.loads(line) for line in proc.stdout.decode("utf-8").splitlines() if line.strip()]
+    except (json.JSONDecodeError, UnicodeDecodeError) as e:
+        raise ClaudeCliError(f"claude CLI 출력 해석 실패: {proc.stderr.decode('utf-8', 'replace')[:200]}") from e
+    results = [o for o in lines if o.get("type") == "result"]
+    if not results:
+        raise ClaudeCliError(f"claude CLI 출력 해석 실패: {proc.stderr.decode('utf-8', 'replace')[:200]}")
+    return _structured_output(results[-1])

@@ -49,6 +49,17 @@ class StatsServiceTest {
         assertThat(r.get("weeklyWithin10Pct")).isNull();
     }
 
+    @Test
+    void 발주_참모_발주는_수량을_안_고쳤을_때만_추천_적용으로_센다() {
+        Map<String, Object> r = StatsService.recommendationStats(List.of(
+                order(1L, "REQUESTED", "10", "10", "AGENT"),
+                order(2L, "REQUESTED", "5", "10", "AGENT"),
+                order(3L, "REQUESTED", "10", "10", "AUTO")));
+        assertThat(r.get("autoOrders")).isEqualTo(2L);
+        assertThat(r.get("manualOrders")).isEqualTo(1);
+        assertThat(r.get("manualAvgChangePct")).isEqualTo(-50.0);
+    }
+
     private static SalesDayFlag flag(Long storeId, Long menuId, LocalDate date, String type) {
         SalesDayFlag f = new SalesDayFlag();
         f.setStoreId(storeId);

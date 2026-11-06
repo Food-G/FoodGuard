@@ -75,6 +75,9 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 ### 권한 (백엔드)
 점주는 자기 매장만, 본사(HQ_ADMIN)는 전체. 본사 전용 경로는 `SecurityConfig`, 매장 소유 검사는 `security/StoreAccess*`(경로·본문의 storeId·userId·menuId·엔티티 id). 엔티티 `{id}` 경로를 새로 만들면 `StoreAccessInterceptor.ID_ENTITY`에 추가한다. 회원가입은 점주만.
 
+### 운영 에이전트 (ai-service/PROJECT_STATUS.md 18절)
+숫자는 코드가 정하고 Claude 는 판단·문장만 쓴다. 쓰기는 점주 확인 후. 응답은 코드로 다시 검사한다 (`routers/agents.py`). 재고·데이터 감시(`WatchdogService`)는 규칙만 쓴다.
+
 ### 실행 순서
 1. AI Service (`ai-service/start.bat`)
 2. Backend (`backend/gradlew.bat bootRun`)
@@ -102,7 +105,9 @@ ai-service/
     ├── prediction.py            # /api/predict/*
     ├── training.py              # /api/train/*
     ├── explain.py               # /api/explain/order — 발주 추천 근거 설명 (숫자는 바꾸지 않음)
-    └── events.py                # /api/events/parse — 점주 특이사항 메모 → 유형·증감 배율 (claude)
+    ├── events.py                # /api/events/parse — 점주 특이사항 메모 → 유형·증감 배율 (claude)
+    ├── ingest.py                # /api/ingest/* — POS 파일·거래명세서 사진 → 미리보기 (저장은 백엔드, 점주 확인 후)
+    └── agents.py                # /api/agents/* — 식자재 설정 제안, 발주 참모, 본사 주간 리포트, 점주 질문 답변
 ```
 
 ### AI 예측 흐름

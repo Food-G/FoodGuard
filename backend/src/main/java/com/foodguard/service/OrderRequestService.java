@@ -24,6 +24,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -478,6 +479,25 @@ public class OrderRequestService {
             Long ingId = ((Number) rec.get("ingredientId")).longValue();
             Double qty = ((Number) rec.get("orderQty")).doubleValue();
             ids.add(create(storeId, ingId, qty, qty, "AUTO").getId());
+        }
+        return ids;
+    }
+
+    // 발주 참모 화면에서 점주가 승인한 수량으로 발주. 검토 뒤 추천에서 빠진 식자재가 있으면 다시 검토하게 한다
+    @Transactional
+    public List<Long> agentOrder(Long storeId, List<Map<String, Object>> items) {
+        Map<Long, Double> current = new HashMap<>();
+        for (Map<String, Object> rec : recommend(storeId)) {
+            current.put(((Number) rec.get("ingredientId")).longValue(), ((Number) rec.get("orderQty")).doubleValue());
+        }
+        List<Long> ids = new ArrayList<>();
+        for (Map<String, Object> item : items) {
+            Long ingId = Long.valueOf(item.get("ingredientId").toString());
+            double qty = Double.parseDouble(item.get("quantity").toString());
+            if (qty <= 0) continue;
+            Double recommended = current.get(ingId);
+            if (recommended == null) throw new RuntimeException("검토 뒤 재고·발주가 바뀌었습니다. 다시 검토해 주세요.");
+            ids.add(create(storeId, ingId, qty, recommended, "AGENT").getId());
         }
         return ids;
     }

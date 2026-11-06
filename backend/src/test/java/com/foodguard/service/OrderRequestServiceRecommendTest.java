@@ -121,6 +121,17 @@ class OrderRequestServiceRecommendTest {
         assertThat(orderQty).containsEntry("쌀", 33.0);
     }
 
+    @Test
+    void 발주_참모_승인은_추천에서_빠진_식자재를_거부하고_보류는_건너뛴다() {
+        when(predictionResultRepository.findByStore_IdAndPredictionDateGreaterThanEqualOrderByPredictionDateAsc(eq(STORE_ID), any()))
+                .thenReturn(List.of());
+
+        assertThat(service.agentOrder(STORE_ID, List.of(Map.of("ingredientId", 100L, "quantity", 0)))).isEmpty();
+        org.assertj.core.api.Assertions.assertThatThrownBy(() ->
+                service.agentOrder(STORE_ID, List.of(Map.of("ingredientId", 100L, "quantity", 3))))
+                .hasMessageContaining("다시 검토");
+    }
+
     private static Ingredient ingredient(Long id, String name, Integer shelfLife, Integer leadTime, Integer orderCycle) {
         Ingredient ing = new Ingredient();
         ing.setId(id);

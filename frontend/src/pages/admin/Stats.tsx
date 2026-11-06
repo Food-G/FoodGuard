@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Typography, Paper, Grid, Stack, useTheme, CircularProgress } from '@mui/material';
+import { Button, Typography, Paper, Grid, Stack, useTheme, CircularProgress } from '@mui/material';
 import ReactEChart from '../../components/base/ReactEChart';
 import * as echarts from 'echarts';
 import { statsService, HqStats } from '../../services/statsService';
+import WeeklyReportDialog from '../../components/agent/WeeklyReportDialog';
 
 const PIE_COLORS = ['#1D9E75', '#3B6D11', '#43A047', '#81C784', '#C8E6C9'];
 // 계획서 정량 목표: 점주 80% 이상이 AI 추천을 그대로 활용
@@ -12,6 +13,7 @@ const Stats = () => {
   const theme = useTheme();
   const [stats, setStats] = useState<HqStats | null>(null);
   const [error, setError] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
 
   useEffect(() => {
     statsService.hq().then(setStats).catch(() => setError(true));
@@ -87,6 +89,10 @@ const Stats = () => {
 
   return (
     <Stack gap={4} sx={{ bgcolor: 'background.default' }}>
+      <Stack direction="row" justifyContent="flex-end">
+        <Button variant="contained" onClick={() => setReportOpen(true)}>AI 주간 리포트</Button>
+      </Stack>
+      <WeeklyReportDialog open={reportOpen} onClose={() => setReportOpen(false)} />
       <Grid container spacing={3.5}>
         <Grid item xs={12} lg={8}>
           <Paper sx={{ p: 4, height: 450, border: `1px solid ${theme.palette.divider}`, borderRadius: 5, bgcolor: 'background.paper' }}>

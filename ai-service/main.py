@@ -4,7 +4,7 @@ from fastapi import Depends, FastAPI
 
 from auth import verify_internal_key
 from config import settings
-from routers import events, explain, prediction, training
+from routers import agents, events, explain, ingest, prediction, training
 from schemas.schemas import HealthResponse
 
 app = FastAPI(
@@ -19,6 +19,8 @@ app.include_router(prediction.router, prefix="/api/predict", tags=["Prediction"]
 app.include_router(training.router, prefix="/api/train", tags=["Training"], dependencies=_internal)
 app.include_router(explain.router, prefix="/api/explain", tags=["Explain"], dependencies=_internal)
 app.include_router(events.router, prefix="/api/events", tags=["Events"], dependencies=_internal)
+app.include_router(ingest.router, prefix="/api/ingest", tags=["Ingest"], dependencies=_internal)
+app.include_router(agents.router, prefix="/api/agents", tags=["Agents"], dependencies=_internal)
 
 
 @app.get("/health", response_model=HealthResponse, tags=["Health"])

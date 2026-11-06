@@ -13,6 +13,8 @@ import { menuIngredientService, MenuIngredient } from '../services/menuIngredien
 import IconifyIcon from '../components/base/IconifyIcon';
 import { api } from '../services/api';
 import { useConfirm } from '../hooks/useConfirm';
+import InvoiceImportDialog from '../components/agent/InvoiceImportDialog';
+import WatchdogCard from '../components/agent/WatchdogCard';
 
 const Inventory = ({ user }: any) => {
   const theme = useTheme();
@@ -22,6 +24,8 @@ const Inventory = ({ user }: any) => {
   const [rows, setRows] = useState<any[]>([]);
   const [loadingInventory, setLoadingInventory] = useState(true);
   const [storeId, setStoreId] = useState<number | null>(null);
+  const [invoiceOpen, setInvoiceOpen] = useState(false);
+  const [watchKey, setWatchKey] = useState(0);
 
   // 메뉴 식자재 구성
   const [menus, setMenus] = useState<any[]>([]);
@@ -197,6 +201,18 @@ const Inventory = ({ user }: any) => {
     <Stack gap={4} sx={{ bgcolor: 'background.default' }}>
       {error && <Alert severity="error" onClose={() => setError('')}>{error}</Alert>}
       {success && <Alert severity="success" onClose={() => setSuccess('')}>{success}</Alert>}
+
+      {storeId && <WatchdogCard storeId={storeId} refreshKey={watchKey} />}
+
+      <Stack direction="row" justifyContent="flex-end">
+        <Button variant="outlined" disabled={!storeId} startIcon={<IconifyIcon icon="mingcute:camera-line" />} onClick={() => setInvoiceOpen(true)}>
+          거래명세서로 입고 (AI)
+        </Button>
+      </Stack>
+      {storeId && (
+        <InvoiceImportDialog open={invoiceOpen} storeId={storeId} ingredients={allIngredients} onClose={() => setInvoiceOpen(false)}
+          onSaved={() => { loadInventory(storeId); setWatchKey((k) => k + 1); setSuccess('거래명세서 품목을 재고에 반영했습니다.'); }} />
+      )}
 
       {/* 메뉴별 식자재 구성 */}
       <Paper sx={{ p: 3, border: `1px solid ${theme.palette.divider}`, borderRadius: 3 }}>
