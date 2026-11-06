@@ -55,8 +55,8 @@ public class ProposalExecutor {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public Map<String, Object> execute(AgentProposal p) {
         return switch (p.getType()) {
-            // 정보성 제안 (AG-0 더미 에이전트, AG-4 위험 표시): 승인은 "확인했음" 기록일 뿐 실행할 동작이 없다
-            case "ORDER_FLAG" -> Map.of("ok", true, "note", "정보성 제안 — 실행할 동작 없음");
+            // 정보성 제안 (AG-0 더미 에이전트, AG-4 위험 표시, AG-6 감사 리포트): 승인은 "확인했음" 기록일 뿐 실행할 동작이 없다
+            case "ORDER_FLAG", "AUDIT_REPORT" -> Map.of("ok", true, "note", "정보성 제안 — 실행할 동작 없음");
             case "ORDER_CREATE" -> createOrders(p);
             case "DISCOUNT_SUGGEST" -> notifyDiscount(p);
             case "WASTE_RECORD" -> recordWaste(p);

@@ -37,6 +37,19 @@ class AgentProposalServiceTest {
     }
 
     @Test
+    void auditReportIsAcceptedAndChangesNothing() {
+        assertTrue(AgentProposalService.TYPES.contains("AUDIT_REPORT"));
+        OrderRequestService orders = mock(OrderRequestService.class);
+        p.setType("AUDIT_REPORT");
+        Map<String, Object> r = new ProposalExecutor(orders, mock(NotificationService.class), mock(WasteService.class),
+                mock(DonationService.class), mock(PredictionService.class),
+                mock(com.foodguard.repository.InventoryLotRepository.class),
+                mock(org.springframework.web.client.RestTemplate.class)).execute(p);
+        assertEquals(true, r.get("ok"));
+        verifyNoInteractions(orders);
+    }
+
+    @Test
     void executedOnSuccess() {
         when(executor.execute(p)).thenReturn(Map.of("ok", true));
         AgentProposal r = service.approve(1L, 7L);

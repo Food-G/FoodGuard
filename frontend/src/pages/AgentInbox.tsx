@@ -168,8 +168,8 @@ const ProposalCard = ({ p, isHq, onApprove, onReject, onReplan, onRollback }: {
         <Box flex={1} />
         {p.status === 'PENDING' && canDecide && (
           <>
-            <Button size="small" variant="outlined" color="error" onClick={onReject}>거절</Button>
-            <Button size="small" variant="contained" onClick={onApprove}>승인</Button>
+            {p.type !== 'AUDIT_REPORT' && <Button size="small" variant="outlined" color="error" onClick={onReject}>거절</Button>}
+            <Button size="small" variant="contained" onClick={onApprove}>{p.type === 'AUDIT_REPORT' ? '확인' : '승인'}</Button>
           </>
         )}
         {p.status === 'PENDING' && !canDecide && (
@@ -240,7 +240,7 @@ const AgentInbox = ({ user }: any) => {
   }, [replayId]);
 
   const handleApprove = async (p: AgentProposal) => {
-    if (!await confirm('이 제안을 승인하고 실행하시겠습니까?')) return;
+    if (!await confirm(p.type === 'AUDIT_REPORT' ? '이 리포트를 확인 처리하시겠습니까? 데이터는 바뀌지 않습니다.' : '이 제안을 승인하고 실행하시겠습니까?')) return;
     try {
       const r = await agentService.approve(p.id);
       if (r.status === 'EXECUTED') setSuccess('승인했습니다. 제안이 실행되었습니다.');

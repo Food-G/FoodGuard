@@ -70,3 +70,4 @@ jobs:
       - run: python -m unittest fgagent.test_donation_matcher -v   # 기부 매칭 안전 규칙 (네트워크·Claude 없음)
       - run: python -m unittest fgagent.test_mlops -v   # 모델 교체 판정 (네트워크·Claude 없음)
       - run: python -m unittest fgagent.test_hq_review -v   # 발주 이상점수·폴링 (네트워크·Claude 없음)
+      - run: python -m unittest fgagent.test_auditor -v   # 데이터 품질 점검 (네트워크·Claude 없음)
