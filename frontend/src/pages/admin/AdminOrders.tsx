@@ -2,11 +2,12 @@ import { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
   Typography, Paper, Button, CircularProgress, Chip,
-  Stack, useTheme, Box, Tab, Tabs,
+  Stack, useTheme, Box, Tab, Tabs, Tooltip,
   Dialog, DialogTitle, DialogContent, DialogActions,
 } from '@mui/material';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { orderService } from '../../services/orderService';
+import { agentService } from '../../services/agentService';
 import IconifyIcon from '../../components/base/IconifyIcon';
 import { useConfirm } from '../../hooks/useConfirm';
 import AlertMessages from '../../components/AlertMessages';
@@ -72,6 +73,12 @@ const StepProgress = ({ status }: { status: string }) => {
   );
 };
 
+const REVIEW_LABEL: Record<string, { label: string; color: any }> = {
+  reject: { label: '거절 검토', color: 'error' },
+  review: { label: '확인 필요', color: 'warning' },
+  approve: { label: '이상 없음', color: 'success' },
+};
+
 const ACTIVE_STATUSES = new Set(['REQUESTED', 'APPROVED', 'HQ_SENT', 'DRIVER_RECEIVED']);
 const DONE_STATUSES   = new Set(['CANCELLED', 'REJECTED']); // DONE은 표시 안 함 (자동 소멸)
 
@@ -94,6 +101,18 @@ const AdminOrders = () => {
   const [tab, setTab] = useState(0);
   const confirm = useConfirm();
   const [hqSendTarget, setHqSendTarget] = useState<number | null>(null);
+  const [flags, setFlags] = useState<Record<number, any>>({});
+
+  // 심사 결과를 못 불러와도(007 적용 전 등) 발주 처리는 그대로 할 수 있어야 한다
+  const loadFlags = async () => {
+    try {
+      const rows = await agentService.getOrderFlags();
+      // 최신순으로 오므로 같은 발주는 가장 최근 심사를 쓴다
+      const next: Record<number, any> = {};
+      rows.forEach((p) => { if (next[p.payload.orderId] === undefined) next[p.payload.orderId] = { ...p.payload, rationale: p.rationale }; });
+      setFlags(next);
+    } catch { /* 위험 점수만 표시되지 않는다 */ }
+  };
 
   const loadOrders = async () => {
     try {
@@ -118,12 +137,15 @@ const AdminOrders = () => {
 
   useEffect(() => {
     loadOrders();
+    loadFlags();
     const timer = setInterval(loadOrders, 5000); // 5초마다 자동 갱신
-    return () => clearInterval(timer);
+    const flagTimer = setInterval(loadFlags, 60000); // 심사는 5분 주기라 자주 볼 필요가 없다
+    return () => { clearInterval(timer); clearInterval(flagTimer); };
   }, []);
 
   const visibleRows = (filterStoreId ? allRows.filter(r => r.storeId === filterStoreId) : allRows)
-    .filter(r => !dismissedIds.has(r.id));
+    .filter(r => !dismissedIds.has(r.id))
+    .map(r => ({ ...r, riskScore: flags[r.id]?.score ?? null, flag: flags[r.id] ?? null }));
   const activeRows = visibleRows.filter(r => ACTIVE_STATUSES.has(r.status));
   const doneRows   = visibleRows.filter(r => DONE_STATUSES.has(r.status));
 
@@ -178,6 +200,25 @@ const AdminOrders = () => {
           {p.value} <span style={{ color: '#999', fontWeight: 400 }}>{p.row.unit}</span>
         </Typography>
       ),
+    },
+    {
+      field: 'riskScore', headerName: 'AI 위험 점수', width: 130, align: 'center', headerAlign: 'center',
+      renderCell: (p) => {
+        const f = p.row.flag;
+        if (!f) return <Typography variant="caption" color="text.disabled">-</Typography>;
+        const review = REVIEW_LABEL[f.recommendation];
+        return (
+          <Tooltip arrow title={
+            <Box sx={{ whiteSpace: 'pre-wrap' }}>
+              {f.rationale}
+              {(f.flags ?? []).map((x: any) => `\n• ${x.detail} (+${x.points})`).join('')}
+              {'\n규칙 기반 점수이며 확률이 아닙니다. 판단은 관리자가 합니다.'}
+            </Box>
+          }>
+            <Chip label={`${f.score} ${review?.label ?? ''}`} color={review?.color ?? 'default'} size="small" sx={{ fontWeight: 700, fontSize: 11 }} />
+          </Tooltip>
+        );
+      },
     },
     {
       field: 'steps', headerName: '진행 단계', width: 160,
@@ -413,7 +454,10 @@ const AdminOrders = () => {
                   rows={activeRows}
                   columns={activeColumns}
                   disableRowSelectionOnClick
-                  initialState={{ pagination: { paginationModel: { pageSize: 10 } } }}
+                  initialState={{
+                    pagination: { paginationModel: { pageSize: 10 } },
+                    sorting: { sortModel: [{ field: 'riskScore', sort: 'desc' }] },
+                  }}
                   pageSizeOptions={[10, 20]}
                   sx={{ border: 'none', '& .MuiDataGrid-cell': { alignItems: 'center' } }}
                 />

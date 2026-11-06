@@ -7,6 +7,7 @@
     to_proposals(decision, llm_output | None) -> list[{"type", "payload", "rationale", ...}]
     notifications(decision, llm_output | None) -> list[{"type", "message"}]   (선택, 에이전트 직접 쓰기 허용)
     follow_ups(decision) -> list[에이전트 이름]   (선택, 이번 실행이 성공하면 같은 매장에 이벤트로 이어서 실행)
+    needs_llm(decision) -> bool   (선택, False 면 LLM 을 부르지 않는다)
 """
 
 from __future__ import annotations
@@ -41,7 +42,7 @@ def run(name: str, store_id: int, trigger: str = "MANUAL", use_llm: bool = True,
     try:
         obs = agent.observe(client, store_id)
         decision = agent.decide(obs)
-        if use_llm:
+        if use_llm and (not hasattr(agent, "needs_llm") or agent.needs_llm(decision)):
             user_input = ("다음은 결정적 코드가 조회·계산한 결과입니다. 수량을 새로 계산하지 말고 검토·설명하세요.\n\n```json\n"
                           + json.dumps({"storeId": store_id, "decision": decision}, ensure_ascii=False,
                                        indent=2, default=str) + "\n```")

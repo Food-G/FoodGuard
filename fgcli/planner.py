@@ -256,6 +256,7 @@ def build_plan(obs: dict, today: date | None = None, waste_hints: dict[int, floa
                        "from": dates[0] if dates else None, "to": dates[-1] if dates else None},
         "items": items,
         "risks": risks,
+        "requiredByIngredient": {iid: round1(q) for iid, q in required.items()},
         "warnings": warnings,
         "crosscheck": crosscheck,
         "pendingOrderCount": len(obs["pendingOrders"]),

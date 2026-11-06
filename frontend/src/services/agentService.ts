@@ -42,6 +42,9 @@ export const agentService = {
   // storeId 생략 = 전 매장 (본사만)
   getProposals: async (storeId?: number | null, status?: string): Promise<AgentProposal[]> =>
     api.get(`/agent/proposals${qs({ storeId, status })}`),
+  // 본사 발주 심사 결과 (승인함이 아니라 발주 목록에 병합). 상태와 무관하게 최근 200건
+  getOrderFlags: async (): Promise<AgentProposal[]> =>
+    (await api.get(`/agent/proposals${qs({ type: 'ORDER_FLAG' })}`) ?? []).filter((p: AgentProposal) => p.agent === 'hq_review'),
   approve: async (id: number): Promise<AgentProposal> => api.post(`/agent/proposals/${id}/approve`, {}),
   reject: async (id: number, reason: string): Promise<AgentProposal> =>
     api.post(`/agent/proposals/${id}/reject`, { reason }),

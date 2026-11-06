@@ -215,7 +215,8 @@ const AgentInbox = ({ user }: any) => {
         agentService.getProposals(scope, showDone ? undefined : 'PENDING'),
         agentService.getRuns(scope),
       ]);
-      setProposals((ps ?? []).filter((p) => !agentFilter || p.agent === agentFilter));
+      // 본사 발주 심사 결과는 승인 대상이 아니라 발주 관리 화면에 표시한다
+      setProposals((ps ?? []).filter((p) => p.agent !== 'hq_review' && (!agentFilter || p.agent === agentFilter)));
       setRuns(rs ?? []);
     } catch (e) {
       setError(errorMessage(e, '에이전트 정보를 불러오지 못했습니다.'));
