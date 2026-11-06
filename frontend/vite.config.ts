@@ -9,13 +9,10 @@ export default defineConfig({
     global: 'globalThis',
   },
   server: {
-    host: '0.0.0.0',
-    allowedHosts: true,
     proxy: {
       '/api': {
         target: 'http://localhost:8080',
         changeOrigin: true,
-        headers: { origin: 'http://localhost:5173' },
       },
       '/ws': {
         target: 'http://localhost:8080',

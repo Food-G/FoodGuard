@@ -338,7 +338,6 @@ const Predictions = ({ user }: any) => {
                     <TableRow>
                       {tableMenu ? <TableCell>날짜</TableCell> : <TableCell>메뉴</TableCell>}
                       <TableCell align="center">예측 판매량</TableCell>
-                      <TableCell align="center">추천 발주량</TableCell>
                       <TableCell align="center">모델 신뢰도</TableCell>
                     </TableRow>
                   </TableHead>
@@ -351,9 +350,6 @@ const Predictions = ({ user }: any) => {
                         }
                         <TableCell align="center">
                           <Typography fontWeight={700} color="primary.main">{p.predictedQty}개</Typography>
-                        </TableCell>
-                        <TableCell align="center">
-                          <Typography fontWeight={700} color="secondary.main">{p.recommendedOrderQty}개</Typography>
                         </TableCell>
                         <TableCell align="center">
                           <Stack direction="row" alignItems="center" spacing={1} justifyContent="center">
@@ -392,11 +388,9 @@ const Predictions = ({ user }: any) => {
                 const top = [...chartFiltered].sort((a, b) => b.predictedQty - a.predictedQty)[0];
                 const avgConf = chartFiltered.reduce((s, p) => s + p.confidence, 0) / chartFiltered.length;
                 const total = chartFiltered.reduce((s, p) => s + p.predictedQty, 0);
-                const totalRecommended = chartFiltered.reduce((s, p) => s + p.recommendedOrderQty, 0);
                 return (
                   <Typography variant="body1" sx={{ color: 'text.primary', mt: 2, lineHeight: 1.9 }}>
                     • 예측 기간 총 판매량: <b>{total}개</b><br />
-                    • 안전재고 반영 추천 발주량 합계: <b>{totalRecommended}개</b><br />
                     {!chartMenu && <>• 가장 많이 팔릴 메뉴: <b>{top.menuName}</b><br /></>}
                     • 예측 모델 평균 신뢰도: <b>{avgConf.toFixed(1)}%</b><br />
                     • 판매 데이터가 많을수록 예측 정확도가 향상됩니다.
