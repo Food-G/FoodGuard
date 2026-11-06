@@ -6,6 +6,7 @@ import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { orderService } from '../services/orderService';
 import IconifyIcon from '../components/base/IconifyIcon';
 import QrScanner from '../components/QrScanner';
+import OrderExplainDialog from '../components/OrderExplainDialog';
 import { useMyStore } from '../hooks/useMyStore';
 import { useConfirm } from '../hooks/useConfirm';
 import AlertMessages from '../components/AlertMessages';
@@ -39,6 +40,7 @@ const Orders = ({ user }: any) => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [scanning, setScanning] = useState(false);
+  const [explainOpen, setExplainOpen] = useState(false);
 
   const loadOrders = async (sid: number) => {
     try {
@@ -154,7 +156,16 @@ const Orders = ({ user }: any) => {
 
   return (
     <Stack gap={3} sx={{ bgcolor: 'background.default' }}>
-      <Stack direction="row" justifyContent="flex-end">
+      <Stack direction="row" justifyContent="flex-end" gap={1.5}>
+        <Button
+          variant="outlined"
+          startIcon={<IconifyIcon icon="mingcute:question-line" />}
+          onClick={() => setExplainOpen(true)}
+          disabled={!storeId}
+          sx={{ px: 3, py: 1.5, borderRadius: 3 }}
+        >
+          AI 추천 근거 보기
+        </Button>
         <Button
           variant="contained"
           startIcon={ordering
@@ -167,6 +178,8 @@ const Orders = ({ user }: any) => {
           {ordering ? '발주 등록 중...' : 'AI 예측 기반 자동 발주'}
         </Button>
       </Stack>
+
+      {storeId && <OrderExplainDialog open={explainOpen} storeId={storeId} onClose={() => setExplainOpen(false)} />}
 
       <AlertMessages error={error} success={success}
         onClearError={() => setError('')} onClearSuccess={() => setSuccess('')} />

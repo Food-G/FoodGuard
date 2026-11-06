@@ -7,6 +7,7 @@ import { salesService } from '../services/salesService';
 import { menuService } from '../services/menuService';
 import { storeService } from '../services/storeService';
 import IconifyIcon from '../components/base/IconifyIcon';
+import EventNoteCard from '../components/EventNoteCard';
 
 const SalesEntry = ({ user }: any) => {
   const theme = useTheme();
@@ -134,8 +135,10 @@ const SalesEntry = ({ user }: any) => {
               </Button>
             </Stack>
           </Paper>
+
+          {storeId && <EventNoteCard storeId={storeId} />}
         </Grid>
-        
+
         <Grid item xs={12} md={8}>
           <Paper sx={{ width: '100%', p: 3, border: `1px solid ${theme.palette.divider}`, borderRadius: 5 }}>
             <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
