@@ -8,6 +8,7 @@ import IconifyIcon from 'components/base/IconifyIcon';
 import { ReactElement, useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import UserDropdown from './UserDropdown';
+import CopilotDrawer from '../../../components/CopilotDrawer';
 import { notificationService } from '../../../services/notificationService';
 import { storeService } from '../../../services/storeService';
 import { authService } from '../../../services/authService';
@@ -42,6 +43,7 @@ const Topbar = ({ onLogout }: TopbarProps): ReactElement => {
   const [notiLoading, setNotiLoading] = useState(false);
   const [storeId, setStoreId] = useState<number | null>(null);
   const [isHq, setIsHq] = useState(false);
+  const [copilotOpen, setCopilotOpen] = useState(false);
 
   useEffect(() => {
     const token = authService.getToken();
@@ -157,6 +159,9 @@ const Topbar = ({ onLogout }: TopbarProps): ReactElement => {
 
         {/* 우측 알림 + 유저 */}
         <Stack direction="row" gap={{ xs: 1.5, sm: 3.75 }} alignItems="center" justifyContent="flex-end" mr={{ xs: 1, sm: 3.75 }} flexShrink={0}>
+          <IconButton sx={{ padding: 1 }} title="AI 코파일럿" aria-label="AI 코파일럿" onClick={() => setCopilotOpen(true)}>
+            <IconifyIcon icon="mingcute:robot-line" width={29} height={32} />
+          </IconButton>
           <Badge
             color="error"
             badgeContent={notifications.length > 0 ? notifications.length : undefined}
@@ -169,6 +174,8 @@ const Topbar = ({ onLogout }: TopbarProps): ReactElement => {
           <UserDropdown onLogout={onLogout} />
         </Stack>
       </Toolbar>
+
+      <CopilotDrawer open={copilotOpen} onClose={() => setCopilotOpen(false)} storeId={storeId} isHq={isHq} />
 
       {/* Notification Popover */}
       <Popover

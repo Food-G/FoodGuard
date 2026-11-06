@@ -8,15 +8,21 @@ import com.foodguard.security.StoreAccessGuard;
 import com.foodguard.service.AgentProposalService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -131,6 +137,33 @@ public class AgentController {
         } catch (RestClientException e) {
             return ResponseEntity.status(502).body(Map.of("status", "error",
                     "message", "에이전트 서비스 호출 실패: " + e.getMessage()));
+        }
+    }
+
+    // ── Copilot (사람 → Spring → agent-service, 조회는 요청한 사람의 JWT 로 한다) ──
+
+    /** AGENT 계정은 호출할 수 없다. 사용자 토큰은 그대로 넘기기만 하고 기록하지 않는다. */
+    @PreAuthorize("hasAnyRole('OWNER', 'HQ_ADMIN')")
+    @PostMapping("/chat")
+    public ResponseEntity<?> chat(@RequestBody Map<String, Object> body,
+                                  @RequestHeader(HttpHeaders.AUTHORIZATION) String authorization) {
+        Long storeId = body.get("storeId") != null ? Long.valueOf(body.get("storeId").toString()) : null;
+        if (storeId != null) guard.assertCanAccessStore(storeId);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("X-User-Token", authorization.replaceFirst("^Bearer ", ""));
+        Map<String, Object> request = new HashMap<>();
+        request.put("question", body.get("question"));
+        request.put("history", body.getOrDefault("history", List.of()));
+        request.put("storeId", storeId);
+        try {
+            return ResponseEntity.ok(restTemplate.postForObject(agentServiceUrl + "/chat",
+                    new HttpEntity<>(request, headers), Map.class));
+        } catch (HttpStatusCodeException e) {
+            HttpStatusCode status = e.getStatusCode().is4xxClientError() ? HttpStatus.BAD_REQUEST : HttpStatus.BAD_GATEWAY;
+            return ResponseEntity.status(status).body(Map.of("message", "코파일럿 응답 실패 (" + e.getStatusCode().value() + ")"));
+        } catch (RestClientException e) {
+            return ResponseEntity.status(502).body(Map.of("message", "에이전트 서비스에 연결할 수 없습니다."));
         }
     }
 

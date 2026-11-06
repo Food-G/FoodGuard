@@ -20,7 +20,11 @@ const AGENT_LABEL: Record<string, { name: string; icon: string }> = {
   mlops: { name: '예측 운영', icon: 'mingcute:brain-fill' },
   audit: { name: '데이터 감사', icon: 'mingcute:search-line' },
   inbound: { name: '입고 추적', icon: 'mingcute:truck-line' },
+  weekly: { name: '주간 브리핑', icon: 'mingcute:calendar-line' },
+  chat: { name: 'AI 코파일럿', icon: 'mingcute:robot-line' },
 };
+// 데이터를 바꾸지 않는 정보 카드: 승인·거절 대신 "확인"만 한다
+const INFO_TYPES = new Set(['AUDIT_REPORT', 'WEEKLY_BRIEFING']);
 const STATUS_LABEL: Record<string, string> = {
   PENDING: '승인 대기', EXECUTED: '실행됨', REJECTED: '거절됨', FAILED: '실행 실패',
   STALE: '상태 변경됨', EXPIRED: '만료', RUNNING: '실행 중', OK: '완료',
@@ -168,8 +172,8 @@ const ProposalCard = ({ p, isHq, onApprove, onReject, onReplan, onRollback }: {
         <Box flex={1} />
         {p.status === 'PENDING' && canDecide && (
           <>
-            {p.type !== 'AUDIT_REPORT' && <Button size="small" variant="outlined" color="error" onClick={onReject}>거절</Button>}
-            <Button size="small" variant="contained" onClick={onApprove}>{p.type === 'AUDIT_REPORT' ? '확인' : '승인'}</Button>
+            {!INFO_TYPES.has(p.type) && <Button size="small" variant="outlined" color="error" onClick={onReject}>거절</Button>}
+            <Button size="small" variant="contained" onClick={onApprove}>{INFO_TYPES.has(p.type) ? '확인' : '승인'}</Button>
           </>
         )}
         {p.status === 'PENDING' && !canDecide && (
@@ -240,7 +244,7 @@ const AgentInbox = ({ user }: any) => {
   }, [replayId]);
 
   const handleApprove = async (p: AgentProposal) => {
-    if (!await confirm(p.type === 'AUDIT_REPORT' ? '이 리포트를 확인 처리하시겠습니까? 데이터는 바뀌지 않습니다.' : '이 제안을 승인하고 실행하시겠습니까?')) return;
+    if (!await confirm(INFO_TYPES.has(p.type) ? '이 리포트를 확인 처리하시겠습니까? 데이터는 바뀌지 않습니다.' : '이 제안을 승인하고 실행하시겠습니까?')) return;
     try {
       const r = await agentService.approve(p.id);
       if (r.status === 'EXECUTED') setSuccess('승인했습니다. 제안이 실행되었습니다.');

@@ -3,6 +3,7 @@
     GET  /health
     POST /run/{agent}?storeId=&trigger=   Spring 만 호출 (X-Internal-Token). 실행은 백그라운드, runId 를 바로 돌려준다.
     POST /fingerprint/{storeId}            승인 직전 발주안 ID 재계산 (Spring ProposalExecutor.ORDER_CREATE)
+    POST /chat                             Copilot. Spring 만 호출하고 사용자 JWT 를 X-User-Token 으로 넘긴다.
 """
 
 from __future__ import annotations
@@ -12,13 +13,17 @@ import secrets
 import threading
 import uuid
 
-from fastapi import Depends, FastAPI, Header, HTTPException
+from typing import Literal
 
+from fastapi import Depends, FastAPI, Header, HTTPException
+from pydantic import BaseModel, Field
+
+from fgagent import copilot
 from fgagent.agents import AGENTS, order_advisor
 from fgagent.executor import WriteClient
 from fgcli.auth import get_token
 from fgcli.planner import ObserveError
-from fgagent.runtime import runner
+from fgagent.runtime import loop, runner
 from fgcli.auth import _load_env
 
 log = logging.getLogger(__name__)
@@ -54,6 +59,26 @@ def run(agent: str, storeId: int, trigger: str = "MANUAL"):
     run_id = str(uuid.uuid4())
     threading.Thread(target=_run_safely, args=(agent, storeId, trigger, run_id), daemon=True).start()
     return {"status": "accepted", "runId": run_id, "agent": agent, "storeId": storeId}
+
+
+class ChatTurn(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str = Field(max_length=4000)
+
+
+class ChatRequest(BaseModel):
+    question: str = Field(min_length=1, max_length=2000)
+    history: list[ChatTurn] = Field(default_factory=list, max_length=20)
+    storeId: int | None = None
+
+
+@app.post("/chat", dependencies=[Depends(verify_internal_token)])
+def chat(req: ChatRequest, x_user_token: str = Header(...)):
+    """조회는 사용자 토큰으로 하므로 권한 검사는 Spring 이 그대로 한다. 토큰은 기록하지 않는다."""
+    try:
+        return copilot.chat(x_user_token, req.question, [t.model_dump() for t in req.history], req.storeId)
+    except loop.AgentError as e:
+        raise HTTPException(status_code=502, detail=str(e))
 
 
 @app.post("/fingerprint/{store_id}", dependencies=[Depends(verify_internal_token)])

@@ -32,6 +32,14 @@ export interface AgentRun {
   finishedAt: string | null;
 }
 
+export interface ChatReply {
+  runId: string;
+  answer: string;
+  sources: string[];
+  denied: boolean;
+  action: 'none' | 'order_plan';
+}
+
 const qs = (params: Record<string, string | number | null | undefined>) => {
   const q = Object.entries(params).filter(([, v]) => v !== null && v !== undefined && v !== '')
     .map(([k, v]) => `${k}=${encodeURIComponent(String(v))}`).join('&');
@@ -53,6 +61,9 @@ export const agentService = {
   // Spring → agent-service 프록시. 실행은 백그라운드라 runId 만 바로 돌아온다
   run: async (agent: string, storeId: number): Promise<{ runId: string }> =>
     api.post(`/agent/run/${agent}/${storeId}`, {}),
+  // Copilot. 대화 기록은 화면 상태로만 들고 있다가 요청마다 보낸다
+  chat: async (body: { question: string; history: { role: string; content: string }[]; storeId: number | null }): Promise<ChatReply> =>
+    api.post('/agent/chat', body),
   // 모델 교체 되돌리기 (본사만). to = 승격 결과의 archived 시각
   rollbackModel: async (storeId: number, to: string) =>
     api.post(`/predictions/${storeId}/model/rollback${qs({ to })}`, {}),

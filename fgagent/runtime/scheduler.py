@@ -22,6 +22,7 @@ SCHEDULES: dict[str, str] = {
     "mlops": "0 7 * * *",
     "order_advisor": "0 8 * * *",
     "waste": "0 9 * * *",
+    "weekly": "0 8 * * 1",
 }
 
 HQ_REVIEW_POLL = "*/5 * * * *"

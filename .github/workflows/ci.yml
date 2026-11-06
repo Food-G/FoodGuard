@@ -72,3 +72,4 @@ jobs:
       - run: python -m unittest fgagent.test_hq_review -v   # 발주 이상점수·폴링 (네트워크·Claude 없음)
       - run: python -m unittest fgagent.test_auditor -v   # 데이터 품질 점검 (네트워크·Claude 없음)
       - run: python -m unittest fgagent.test_inbound -v   # 입고 지연 규칙 (네트워크·Claude 없음)
+      - run: python -m unittest fgagent.test_copilot -v   # Copilot 권한 가드레일·주간 브리핑 (네트워크·Claude 없음)

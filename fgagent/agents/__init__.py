@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
-from fgagent.agents import auditor, donation_matcher, echo, hq_review, inbound, mlops, order_advisor, waste_guard
+from fgagent.agents import (auditor, donation_matcher, echo, hq_review, inbound, mlops, order_advisor, waste_guard,
+                            weekly_brief)
 
-AGENTS = {m.NAME: m for m in (echo, order_advisor, waste_guard, donation_matcher, mlops, hq_review, auditor, inbound)}
+AGENTS = {m.NAME: m for m in (echo, order_advisor, waste_guard, donation_matcher, mlops, hq_review, auditor, inbound,
+                              weekly_brief)}
