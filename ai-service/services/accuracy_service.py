@@ -11,7 +11,7 @@
 
 from __future__ import annotations
 
-from datetime import timedelta
+from datetime import date, timedelta
 
 import pandas as pd
 from sqlalchemy import bindparam, text
@@ -68,6 +68,32 @@ def _metrics(g: pd.DataFrame) -> dict:
     return out
 
 
+def latest_per_target(log: pd.DataFrame) -> pd.DataFrame:
+    """같은 메뉴·날짜를 여러 번 예측했으면 가장 나중 예측(가장 짧은 horizon)만 남긴다."""
+    return (log.sort_values("horizon").drop_duplicates(["store_id", "menu_id", "date"], keep="first")
+            .reset_index(drop=True))
+
+
+def evaluate_recent_live(db: Session, days: int, store_id: int | None = None) -> dict:
+    """최근 days 일(오늘 제외) 대상의 live 예측 평가.
+
+    실행 하나로는 볼 수 없다: 예측 대상이 실행 다음 날부터라 최신 실행은 아직 판매와 대조할 수 없는 날이 많다.
+    """
+    today = date.today()
+    q = ("SELECT store_id, menu_id, target_date, horizon_days, predicted_qty, model_version "
+         "FROM PREDICTION_LOG WHERE source = 'live' AND horizon_days >= 1 "
+         "AND target_date >= :start AND target_date < :end")
+    params: dict = {"start": today - timedelta(days=days), "end": today}
+    if store_id is not None:
+        q += " AND store_id = :sid"
+        params["sid"] = store_id
+    log = pd.DataFrame(db.execute(text(q), params).fetchall(),
+                       columns=["store_id", "menu_id", "date", "horizon", "pred", "model_version"])
+    if log.empty:
+        return {"error": "no_log", "message": f"최근 {days}일을 대상으로 한 live 예측이 없습니다."}
+    return _report(db, latest_per_target(log), f"recent-{days}d", "live")
+
+
 def evaluate(db: Session, source: str = "backtest", run_id: str | None = None,
              store_id: int | None = None) -> dict:
     run_id = run_id or latest_run_id(db, source, store_id)
@@ -84,7 +110,10 @@ def evaluate(db: Session, source: str = "backtest", run_id: str | None = None,
                        columns=["store_id", "menu_id", "date", "horizon", "pred", "model_version"])
     if log.empty:
         return {"error": "no_log", "message": "조건에 맞는 예측 이력이 없습니다.", "runId": run_id}
+    return _report(db, log, run_id, source)
 
+
+def _report(db: Session, log: pd.DataFrame, run_id: str, source: str) -> dict:
     act = _actuals(db, sorted(log["store_id"].unique().tolist()))
     df = log.merge(act, on=["store_id", "menu_id", "date"], how="inner")
     if df.empty:
@@ -107,4 +136,6 @@ def evaluate(db: Session, source: str = "backtest", run_id: str | None = None,
         "overall": _metrics(df),
         "byHorizon": {int(h): _metrics(g) for h, g in df.groupby("horizon")},
         "byStore": {int(s): _metrics(g) for s, g in df.groupby("store_id")},
+        "byMenu": [{"storeId": int(s), "menuId": int(m), **_metrics(g)}
+                   for (s, m), g in df.groupby(["store_id", "menu_id"])],
     }

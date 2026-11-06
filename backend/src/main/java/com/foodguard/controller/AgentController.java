@@ -57,14 +57,14 @@ public class AgentController {
 
     @PostMapping("/proposals/{id}/approve")
     public ResponseEntity<AgentProposal> approve(@PathVariable Long id) {
-        guard.assertCanAccessStore(proposalService.get(id).getStoreId());
+        assertCanDecide(proposalService.get(id));
         return ResponseEntity.ok(proposalService.approve(id, guard.currentUser().id()));
     }
 
     @PostMapping("/proposals/{id}/reject")
     public ResponseEntity<AgentProposal> reject(@PathVariable Long id,
                                                 @RequestBody(required = false) Map<String, Object> body) {
-        guard.assertCanAccessStore(proposalService.get(id).getStoreId());
+        assertCanDecide(proposalService.get(id));
         String reason = body != null && body.get("reason") != null ? body.get("reason").toString() : null;
         return ResponseEntity.ok(proposalService.reject(id, guard.currentUser().id(), reason));
     }
@@ -131,6 +131,14 @@ public class AgentController {
         } catch (RestClientException e) {
             return ResponseEntity.status(502).body(Map.of("status", "error",
                     "message", "에이전트 서비스 호출 실패: " + e.getMessage()));
+        }
+    }
+
+    /** 그 매장 OWNER 또는 HQ. 예측 모델 교체는 전사 운영 판단이라 HQ 만 (AG-5). */
+    private void assertCanDecide(AgentProposal p) {
+        guard.assertCanAccessStore(p.getStoreId());
+        if ("MODEL_PROMOTE".equals(p.getType()) && !guard.currentUser().isHqAdmin()) {
+            throw new AccessDeniedException("모델 교체는 본사만 승인할 수 있습니다.");
         }
     }
 

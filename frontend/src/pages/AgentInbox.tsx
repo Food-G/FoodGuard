@@ -130,11 +130,13 @@ const DonationView = ({ payload }: { payload: Record<string, any> }) => (
   </Stack>
 );
 
-const ProposalCard = ({ p, onApprove, onReject, onReplan }: {
-  p: AgentProposal; onApprove: () => void; onReject: () => void; onReplan: () => void;
+const ProposalCard = ({ p, isHq, onApprove, onReject, onReplan, onRollback }: {
+  p: AgentProposal; isHq: boolean; onApprove: () => void; onReject: () => void; onReplan: () => void; onRollback: () => void;
 }) => {
   const theme = useTheme();
   const [open, setOpen] = useState(false);
+  // 모델 교체는 전사 운영 판단이라 본사만 승인한다 (서버도 막는다)
+  const canDecide = p.type !== 'MODEL_PROMOTE' || isHq;
   const agent = AGENT_LABEL[p.agent] ?? { name: p.agent, icon: 'mingcute:robot-line' };
   return (
     <Paper sx={{ p: 2.5, border: `1px solid ${theme.palette.divider}`, borderRadius: 3 }}>
@@ -164,11 +166,17 @@ const ProposalCard = ({ p, onApprove, onReject, onReplan }: {
           {open ? '접기' : p.type === 'ORDER_CREATE' ? '실행 결과 보기' : '근거 보기'}
         </Button>
         <Box flex={1} />
-        {p.status === 'PENDING' && (
+        {p.status === 'PENDING' && canDecide && (
           <>
             <Button size="small" variant="outlined" color="error" onClick={onReject}>거절</Button>
             <Button size="small" variant="contained" onClick={onApprove}>승인</Button>
           </>
+        )}
+        {p.status === 'PENDING' && !canDecide && (
+          <Typography variant="caption" color="text.secondary">본사 승인 대상입니다</Typography>
+        )}
+        {p.type === 'MODEL_PROMOTE' && p.status === 'EXECUTED' && isHq && p.execResult?.archived && (
+          <Button size="small" variant="outlined" color="warning" onClick={onRollback}>교체 되돌리기</Button>
         )}
         {p.status === 'STALE' && (
           <Button size="small" variant="contained" color="secondary" onClick={onReplan}>다시 계획</Button>
@@ -251,6 +259,14 @@ const AgentInbox = ({ user }: any) => {
     } catch (e) { setError(errorMessage(e, '거절에 실패했습니다.')); }
   };
 
+  const handleRollback = async (p: AgentProposal) => {
+    if (!await confirm(`매장 ${p.storeId}의 예측 모델을 교체 전으로 되돌리시겠습니까?`)) return;
+    try {
+      await agentService.rollbackModel(p.storeId, p.execResult?.archived);
+      setSuccess('예측 모델을 교체 전으로 되돌렸습니다.');
+    } catch (e) { setError(errorMessage(e, '되돌리기에 실패했습니다.')); }
+  };
+
   const handleRun = async (agent: string, sid: number) => {
     try {
       await agentService.run(agent, sid);
@@ -307,10 +323,11 @@ const AgentInbox = ({ user }: any) => {
           {proposals.length === 0 ? (
             <Typography color="text.secondary" textAlign="center" py={6}>처리할 제안이 없습니다.</Typography>
           ) : proposals.map((p) => (
-            <ProposalCard key={p.id} p={p}
+            <ProposalCard key={p.id} p={p} isHq={isHq}
               onApprove={() => handleApprove(p)}
               onReject={() => setRejectTarget(p)}
-              onReplan={() => handleRun(p.agent, p.storeId)} />
+              onReplan={() => handleRun(p.agent, p.storeId)}
+              onRollback={() => handleRollback(p)} />
           ))}
         </Stack>
       ) : (

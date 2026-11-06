@@ -202,7 +202,7 @@ class DonationServiceTest {
         p.setPayload(Map.of("ingredientId", 1, "quantity", 4.0, "donationType", "INGREDIENT", "orgId", 3));
 
         Map<String, Object> result = new ProposalExecutor(mock(OrderRequestService.class), mock(NotificationService.class),
-                mock(WasteService.class), service, lotRepo, mock(RestTemplate.class)).execute(p);
+                mock(WasteService.class), service, mock(PredictionService.class), lotRepo, mock(RestTemplate.class)).execute(p);
 
         assertEquals(9L, result.get("donationId"));
         verify(donationRepo).save(argThat(d -> "[예시] 가상 푸드뱅크 경남".equals(d.getOrgName())));

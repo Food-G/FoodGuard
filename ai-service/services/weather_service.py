@@ -43,6 +43,11 @@ _OPENMETEO_COORDS: dict[str, tuple[float, float]] = {
 _DEFAULT_COORDS = (37.5665, 126.9780)  # 서울
 
 
+def is_fallback_region(region: Optional[str]) -> bool:
+    """get_coords 가 기본 좌표(서울)로 넘어가는 region 인가 (날씨 피처가 틀어질 수 있음)."""
+    return not region or not any(key in region for key in _OPENMETEO_COORDS)
+
+
 def get_coords(region: Optional[str]) -> tuple[float, float]:
     if not region:
         logger.warning("매장 region 이 비어 있어 기본 좌표(서울)를 사용합니다.")

@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
@@ -34,6 +35,7 @@ public class ProposalExecutor {
     private final NotificationService notificationService;
     private final WasteService wasteService;
     private final DonationService donationService;
+    private final PredictionService predictionService;
     private final InventoryLotRepository lotRepository;
     private final RestTemplate restTemplate;
 
@@ -59,6 +61,7 @@ public class ProposalExecutor {
             case "DISCOUNT_SUGGEST" -> notifyDiscount(p);
             case "WASTE_RECORD" -> recordWaste(p);
             case "DONATION_CREATE" -> createDonation(p);
+            case "MODEL_PROMOTE" -> promoteModel(p);
             // 폐기 위험 감축 힌트 (AG-2): 승인(EXECUTED)된 제안을 발주 참모가 조회해 다음 발주안에 반영한다
             case "ORDER_REDUCE" -> Map.of("ok", true, "note", "다음 발주안에 감축이 반영됩니다.");
             default -> throw new IllegalStateException("아직 실행을 지원하지 않는 제안 타입입니다: " + p.getType());
@@ -144,6 +147,19 @@ public class ProposalExecutor {
                 ((Number) pl.get("orgId")).longValue(),
                 "AI 기부 매칭 제안 #" + p.getId());
         return Map.of("ok", true, "donationId", d.getId());
+    }
+
+    /** 예측 운영(AG-5) 모델 교체. fingerprint = 사람이 본 비교 결과의 챌린저 id. archived 는 되돌릴 때 쓴다. */
+    private Map<String, Object> promoteModel(AgentProposal p) {
+        if (p.getFingerprint() == null) throw new StaleProposalException("fingerprint 가 없는 제안입니다.");
+        try {
+            Map<?, ?> r = predictionService.promoteChallenger(p.getStoreId(), p.getFingerprint());
+            return Map.of("ok", true, "archived", r.get("archived"), "promoted", r.get("promoted"));
+        } catch (HttpClientErrorException.Conflict e) {
+            throw new StaleProposalException("제안 이후 챌린저가 바뀌었습니다. 다시 점검하세요.");
+        } catch (RestClientException e) {
+            throw new CheckUnavailableException("AI 서비스에 연결할 수 없어 모델을 교체하지 못했습니다. 잠시 후 다시 승인하세요.");
+        }
     }
 
     /** 제안을 만든 시점의 발주안 ID 와 지금 다시 계산한 ID 를 비교한다 (산식은 agent-service 의 planner 하나뿐). */

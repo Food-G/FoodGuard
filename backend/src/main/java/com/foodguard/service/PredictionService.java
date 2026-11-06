@@ -41,10 +41,32 @@ public class PredictionService {
     }
 
     /** ai-service /api/accuracy 프록시 (읽기 전용). 내부 토큰은 RestTemplate 인터셉터가 붙인다. */
-    public Map<?, ?> getAccuracy(String source, Long storeId) {
+    public Map<?, ?> getAccuracy(String source, Long storeId, Integer windowDays) {
         String url = aiServiceUrl + "/api/accuracy?source=" + source
-                + (storeId != null ? "&store_id=" + storeId : "");
+                + (storeId != null ? "&store_id=" + storeId : "")
+                + (windowDays != null ? "&window_days=" + windowDays : "");
         return restTemplate.getForObject(url, Map.class);
+    }
+
+    // ── 모델 버전 관리 (AG-5) ────────────────────────────────────────
+
+    public Map<?, ?> getModelStatus(Long storeId) {
+        return restTemplate.getForObject(aiServiceUrl + "/api/train/store/" + storeId + "/status", Map.class);
+    }
+
+    /** 챌린저 학습·비교. 운영 모델은 바뀌지 않고, ai-service 가 매장당 하루 1회로 제한한다. */
+    public Map<?, ?> trainChallenger(Long storeId) {
+        return restTemplate.postForObject(aiServiceUrl + "/api/train/store/" + storeId + "?target=challenger", null, Map.class);
+    }
+
+    public Map<?, ?> promoteChallenger(Long storeId, String expect) {
+        return restTemplate.postForObject(aiServiceUrl + "/api/train/store/" + storeId + "/promote?expect={expect}",
+                null, Map.class, expect);
+    }
+
+    public Map<?, ?> rollbackModel(Long storeId, String to) {
+        return restTemplate.postForObject(aiServiceUrl + "/api/train/store/" + storeId + "/rollback?to={to}",
+                null, Map.class, to);
     }
 
     public List<PredictionResultDto> getPredictions(Long storeId) {

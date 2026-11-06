@@ -50,4 +50,7 @@ export const agentService = {
   // Spring → agent-service 프록시. 실행은 백그라운드라 runId 만 바로 돌아온다
   run: async (agent: string, storeId: number): Promise<{ runId: string }> =>
     api.post(`/agent/run/${agent}/${storeId}`, {}),
+  // 모델 교체 되돌리기 (본사만). to = 승격 결과의 archived 시각
+  rollbackModel: async (storeId: number, to: string) =>
+    api.post(`/predictions/${storeId}/model/rollback${qs({ to })}`, {}),
 };

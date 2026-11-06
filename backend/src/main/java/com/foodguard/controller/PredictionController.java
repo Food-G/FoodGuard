@@ -6,6 +6,7 @@ import com.foodguard.security.StoreAccessGuard;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.bind.annotation.*;
 
@@ -26,7 +27,8 @@ public class PredictionController {
     /** 예측 정확도 (ai-service 프록시). storeId 생략(전 매장)은 HQ 만. */
     @GetMapping("/accuracy")
     public ResponseEntity<?> getAccuracy(@RequestParam(defaultValue = "backtest") String source,
-                                         @RequestParam(required = false) Long storeId) {
+                                         @RequestParam(required = false) Long storeId,
+                                         @RequestParam(required = false) Integer windowDays) {
         if (!source.equals("backtest") && !source.equals("live")) {
             return ResponseEntity.badRequest().body(Map.of("message", "source 는 backtest 또는 live"));
         }
@@ -36,7 +38,47 @@ public class PredictionController {
             throw new AccessDeniedException("전 매장 정확도는 본사만 조회할 수 있습니다.");
         }
         try {
-            return ResponseEntity.ok(predictionService.getAccuracy(source, storeId));
+            return ResponseEntity.ok(predictionService.getAccuracy(source, storeId, windowDays));
+        } catch (RestClientException e) {
+            return ResponseEntity.status(502).body(Map.of("status", "error", "message", e.getMessage()));
+        }
+    }
+
+    /** 예측 모델 상태 (ai-service 프록시). */
+    @GetMapping("/{storeId}/model-status")
+    public ResponseEntity<?> getModelStatus(@PathVariable Long storeId) {
+        guard.assertCanAccessStore(storeId);
+        try {
+            return ResponseEntity.ok(predictionService.getModelStatus(storeId));
+        } catch (RestClientException e) {
+            return ResponseEntity.status(502).body(Map.of("status", "error", "message", e.getMessage()));
+        }
+    }
+
+    /** 챌린저 학습·비교. AGENT 직접 실행 허용(§4.3), 점주는 호출하지 않는다. 운영 모델 교체는 제안 → 본사 승인으로만. */
+    @PostMapping("/{storeId}/challenger")
+    public ResponseEntity<?> trainChallenger(@PathVariable Long storeId) {
+        if (!guard.currentUser().isAgent() && !guard.currentUser().isHqAdmin()) {
+            throw new AccessDeniedException("챌린저 학습은 본사·에이전트만 할 수 있습니다.");
+        }
+        guard.assertCanAccessStoreOrAgent(storeId);
+        try {
+            return ResponseEntity.ok(predictionService.trainChallenger(storeId));
+        } catch (RestClientException e) {
+            return ResponseEntity.status(502).body(Map.of("status", "error", "message", e.getMessage()));
+        }
+    }
+
+    /** 승격 전 모델로 되돌린다. to = 승격 결과의 archived 시각. 본사만. */
+    @PostMapping("/{storeId}/model/rollback")
+    public ResponseEntity<?> rollbackModel(@PathVariable Long storeId, @RequestParam String to) {
+        if (!guard.currentUser().isHqAdmin()) {
+            throw new AccessDeniedException("모델 되돌리기는 본사만 할 수 있습니다.");
+        }
+        try {
+            return ResponseEntity.ok(predictionService.rollbackModel(storeId, to));
+        } catch (HttpClientErrorException e) {
+            return ResponseEntity.status(e.getStatusCode()).body(Map.of("status", "error", "message", e.getMessage()));
         } catch (RestClientException e) {
             return ResponseEntity.status(502).body(Map.of("status", "error", "message", e.getMessage()));
         }

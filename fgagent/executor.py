@@ -15,10 +15,10 @@ from fgcli.client import AI_BASE, API_BASE, FoodGuardClient
 
 
 class WriteClient(FoodGuardClient):
-    def post(self, path: str, body: dict | None = None, base: str = API_BASE) -> tuple[int, Any]:
+    def post(self, path: str, body: dict | None = None, base: str = API_BASE, timeout: int = 120) -> tuple[int, Any]:
         headers = {"Authorization": f"Bearer {self.token}"}
         try:
-            r = requests.post(f"{base}{path}", json=body, headers=headers, timeout=120)
+            r = requests.post(f"{base}{path}", json=body, headers=headers, timeout=timeout)
         except requests.RequestException as e:
             return 0, str(e)
         try:

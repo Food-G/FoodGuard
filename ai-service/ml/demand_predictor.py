@@ -36,9 +36,14 @@ CONFIDENCE_DECAY_PER_DAY = 1.5
 
 
 class DemandPredictor:
-    def __init__(self, store_id: int, menu_id: int):
+    # 학습 정책: 최근 N일만 학습 (None = 전체 이력). 모델 파일에 함께 저장되어 재학습해도 유지된다.
+    # 클래스 속성이라 이 필드가 생기기 전에 저장된 모델은 None(전체 이력)으로 읽힌다.
+    train_window_days: int | None = None
+
+    def __init__(self, store_id: int, menu_id: int, train_window_days: int | None = None):
         self.store_id = store_id
         self.menu_id = menu_id
+        self.train_window_days = train_window_days
         self.model: RandomForestRegressor | None = None
         self.feature_cols: list[str] = FULL_FEATURE_COLS
         self.score: float = 0.0
@@ -54,11 +59,13 @@ class DemandPredictor:
         self,
         df: pd.DataFrame,
         weather_df: Optional[pd.DataFrame] = None,
+        compute_score: bool = True,
     ) -> "DemandPredictor":
         """
         df: pandas DataFrame with columns ['ds' (date), 'y' (int quantity)]
         weather_df: optional DataFrame with ['ds', 'temp_max', 'temp_min',
                     'precipitation', 'is_rainy', 'is_hot', 'is_cold']
+        compute_score: False 면 교차검증을 건너뛴다 (워크포워드 비교처럼 fit 을 반복할 때)
         """
         df = df.copy()
         df["ds"] = pd.to_datetime(df["ds"]).dt.date
@@ -86,6 +93,13 @@ class DemandPredictor:
 
         featured = featured.dropna(subset=base_cols)
 
+        # lag 피처는 전체 이력으로 만든 뒤 학습 행만 줄인다. 행이 너무 적어지면 전체를 쓴다.
+        if self.train_window_days:
+            since = df["ds"].max() - timedelta(days=self.train_window_days)
+            recent = featured[featured["ds"] > since]
+            if len(recent) >= MIN_POINTS_MINIMAL:
+                featured = recent
+
         X = featured[self.feature_cols].fillna(0).values
         y = featured["y"].values
 
@@ -98,7 +112,7 @@ class DemandPredictor:
         )
         self.model.fit(X, y)
 
-        if len(X) >= 10:
+        if compute_score and len(X) >= 10:
             cv_scores = cross_val_score(
                 self.model, X, y, cv=min(5, len(X) // 2), scoring="r2"
             )
@@ -234,8 +248,12 @@ class DemandPredictor:
     # Persistence
     # ------------------------------------------------------------------
 
-    def save(self) -> str:
-        path = self._model_path()
+    def version_label(self, base: str) -> str:
+        """PREDICTION_LOG.model_version 에 남길 이름. 학습 정책까지 구분한다."""
+        return f"{base}-w{self.train_window_days}" if self.train_window_days else base
+
+    def save(self, path: str | None = None) -> str:
+        path = path or self._model_path()
         Path(path).parent.mkdir(parents=True, exist_ok=True)
         joblib.dump(self, path)
         return path

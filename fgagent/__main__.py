@@ -4,6 +4,7 @@
     python -m fgagent order 60006 --no-llm   # Claude 없이 결정적 코어만
     python -m fgagent run echo 60006         # 공통 런타임으로 에이전트 1회 실행 (제안은 웹 승인함으로)
     python -m fgagent serve                  # agent-service :8100 + 스케줄러
+    python -m fgagent report accuracy        # 매장·메뉴별 WAPE 표 (markdown)
 
 쓰기(재예측, 발주)는 반드시 이 터미널에서 사람이 입력한 답을 받은 뒤에만 일어난다.
 실행 직전에 발주안을 다시 계산해 planId 가 바뀌었으면(그 사이 재고·발주가 바뀌면) 멈춘다.
@@ -180,7 +181,16 @@ def main(argv: list[str] | None = None) -> int:
     r.add_argument("--no-llm", action="store_true", help="Claude 없이 결정적 코어만")
     s = sub.add_parser("serve", help="agent-service (FastAPI) + 스케줄러")
     s.add_argument("--port", type=int, default=8100)
+    rp = sub.add_parser("report", help="보고서용 표를 markdown 으로 출력")
+    rp.add_argument("kind", choices=["accuracy"])
+    rp.add_argument("--source", choices=["backtest", "live"], default="backtest")
+    rp.add_argument("--as", dest="role", choices=["hq", "agent"], default="hq")
     a = p.parse_args(argv)
+
+    if a.command == "report":
+        from fgagent.report import accuracy_report
+        print(accuracy_report(executor.WriteClient(get_token(a.role)), a.source))
+        return 0
 
     if a.command == "run":
         from fgagent.runtime import runner

@@ -125,7 +125,7 @@ def predict_and_save_menu(
         days=days,
         forecast_df=forecast_df if (forecast_df is not None and not forecast_df.empty) else None,
     )
-    save_predictions_bulk(db, store_id, menu_id, predictions, model_version=MODEL_VERSION)
+    save_predictions_bulk(db, store_id, menu_id, predictions, model_version=predictor.version_label(MODEL_VERSION))
 
     return predictions
 
@@ -149,7 +149,10 @@ def train_store_models(db: Session, store_id: int) -> dict[int, float]:
             if not hist.empty:
                 weather_df = hist
 
-        predictor = DemandPredictor(store_id, menu_id)
+        # 승격된 학습 정책은 강제 재학습에서도 유지한다
+        current = DemandPredictor.load(store_id, menu_id)
+        predictor = DemandPredictor(store_id, menu_id,
+                                    train_window_days=current.train_window_days if current else None)
         predictor.fit(sales_df, weather_df=weather_df)
 
         if predictor.is_trained:
