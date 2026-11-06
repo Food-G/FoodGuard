@@ -7,8 +7,10 @@ fingerprint(planId)를 다시 계산해 다르면 STALE 로 멈춘다.
 
 from __future__ import annotations
 
+from datetime import date
+
 from fgagent import advisor, executor
-from fgcli.planner import build_plan, observe as observe_store
+from fgcli.planner import _get, build_plan, observe as observe_store
 
 NAME = "order_advisor"
 DEFAULT_MODEL = "claude-sonnet-5-5"
@@ -17,8 +19,19 @@ PROMPT = advisor.PROMPT
 OUTPUT_SCHEMA = advisor.SCHEMA
 
 
+def waste_hints(client, store_id: int, today: date | None = None) -> dict[int, float]:
+    """점주가 승인한 폐기 위험 감축 힌트 중 아직 유효한 것. 매일 다시 계산되는 값이라 합산하지 않고 최댓값을 쓴다."""
+    today = today or date.today()
+    hints: dict[int, float] = {}
+    for p in _get(client, f"/api/agent/proposals?storeId={store_id}&status=EXECUTED&type=ORDER_REDUCE"):
+        if p["payload"]["validUntil"] >= today.isoformat():
+            for it in p["payload"]["items"]:
+                hints[it["ingredientId"]] = max(hints.get(it["ingredientId"], 0.0), it["reduceQty"])
+    return hints
+
+
 def plan_for(client, store_id: int) -> dict:
-    return build_plan(observe_store(client, store_id))
+    return build_plan(observe_store(client, store_id), waste_hints=waste_hints(client, store_id))
 
 
 def refresh_if_stale(client: executor.WriteClient, store_id: int, plan: dict) -> tuple[dict, dict | None]:

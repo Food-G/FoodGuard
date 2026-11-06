@@ -2,6 +2,6 @@
 
 from __future__ import annotations
 
-from fgagent.agents import echo, order_advisor
+from fgagent.agents import echo, order_advisor, waste_guard
 
-AGENTS = {m.NAME: m for m in (echo, order_advisor)}
+AGENTS = {m.NAME: m for m in (echo, order_advisor, waste_guard)}

@@ -66,3 +66,4 @@ jobs:
       - run: pip install requests
       - run: python -m unittest fgcli.test_planner -v   # 발주 참모 산식·판단 (네트워크 없음)
       - run: python -m unittest fgagent.test_runtime -v   # 에이전트 공통 런타임 (네트워크·Claude 없음)
+      - run: python -m unittest fgagent.test_waste_guard -v   # 폐기 위험 후보 산출 (네트워크·Claude 없음)

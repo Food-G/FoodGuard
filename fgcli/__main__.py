@@ -145,6 +145,8 @@ COMMANDS: dict[str, tuple[Callable[[argparse.Namespace], str], Trimmer, str]] = 
                     "재고 원장: 재고가 왜 늘고 줄었나 (SALE·ORDER_DONE·ADJUST·INIT…, 기본 최근 30일, 최신순)"),
     "lots":        (lambda a: f"/api/inventory/{a.store_id}/lots", None,
                     "남은 입고 로트와 유통기한 (식자재별 FIFO 순, daysUntilExpiry 음수 = 이미 지남)"),
+    "waste":       (lambda a: f"/api/waste-prediction/{a.store_id}", None,
+                    "폐기 위험: 7일 내 다 못 쓰고 버려질 양 (위험 높은 순, wasteRate 는 퍼센트, 유통기한 있는 재고만)"),
     "ai-health":   (lambda a: "/health", None, "AI 예측 서비스 가동 확인"),
     "accuracy":    (lambda a: "/api/predictions/accuracy?source=" + a.source
                     + (f"&storeId={a.store}" if a.store else ""), None,
@@ -154,7 +156,7 @@ COMMANDS: dict[str, tuple[Callable[[argparse.Namespace], str], Trimmer, str]] = 
 }
 
 NEEDS_STORE_ID = {"menus", "inventory", "predictions", "recommend", "orders",
-                  "sales", "today", "weekly", "plan", "txns", "lots"}
+                  "sales", "today", "weekly", "plan", "txns", "lots", "waste"}
 NEEDS_MENU_ID = {"recipe"}
 
 

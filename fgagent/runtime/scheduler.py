@@ -16,6 +16,7 @@ log = logging.getLogger(__name__)
 # agent → crontab (분 시 일 월 요일). echo 는 검증용이라 수동 실행만 한다.
 SCHEDULES: dict[str, str] = {
     "order_advisor": "0 8 * * *",
+    "waste": "0 9 * * *",
 }
 
 

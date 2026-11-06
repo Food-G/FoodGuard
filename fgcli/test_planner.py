@@ -53,6 +53,20 @@ class PlannerTest(unittest.TestCase):
         self.assertEqual(risks[100]["coverDays"], 1.4)
         self.assertTrue(p["crosscheck"]["match"])
 
+    def test_폐기_힌트만큼_줄이고_서버_대조는_힌트_전_수량으로(self):
+        p = build_plan(obs(), TODAY, waste_hints={100: 3.0})
+        item = p["items"][0]
+        self.assertEqual(item["orderQty"], 5.4)
+        self.assertIn("폐기 위험 감축 3.0", item["reason"])
+        self.assertTrue(p["crosscheck"]["match"])
+        self.assertIn("waste_hint_applied", [w["type"] for w in p["warnings"]])
+        self.assertNotEqual(p["planId"], build_plan(obs(), TODAY)["planId"])
+
+    def test_폐기_힌트가_발주량보다_크면_항목이_빠진다(self):
+        p = build_plan(obs(), TODAY, waste_hints={100: 100.0})
+        self.assertEqual(p["items"], [])
+        self.assertTrue(p["crosscheck"]["match"])
+
     def test_서버_불일치_경고(self):
         p = build_plan(obs(serverRecommend=[{"ingredientId": 100, "orderQty": 8400}]), TODAY)
         self.assertFalse(p["crosscheck"]["match"])

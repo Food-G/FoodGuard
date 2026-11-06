@@ -106,8 +106,10 @@ def observe(client: FoodGuardClient, store_id: int) -> dict:
 # ── 판단 + 발주안 ──────────────────────────────────────────────────────
 
 
-def build_plan(obs: dict, today: date | None = None) -> dict:
+def build_plan(obs: dict, today: date | None = None, waste_hints: dict[int, float] | None = None) -> dict:
+    """waste_hints: 점주가 승인한 폐기 위험 감축 힌트 {ingredientId: 줄일 양} (AG-2)."""
     today = today or date.today()
+    waste_hints = waste_hints or {}
     warnings: list[dict] = []
     stock = {i["ingredientId"]: i for i in obs["inventory"]}
     pending: dict[int, float] = {}
@@ -191,7 +193,7 @@ def build_plan(obs: dict, today: date | None = None) -> dict:
                              "message": f"{i['ingredientName']} 재고가 음수({i['currentQty']}{i['unit']})입니다. 실재고 확인이 필요합니다."})
 
     # 식자재별 판단
-    items, risks = [], []
+    items, risks, before_hints = [], [], []
     for iid in sorted(set(required) | set(stock)):
         inv = stock.get(iid)
         req = round1(required.get(iid, 0.0))
@@ -200,6 +202,16 @@ def build_plan(obs: dict, today: date | None = None) -> dict:
         name = names.get(iid) or (inv or {}).get("ingredientName")
         unit = units.get(iid) or (inv or {}).get("unit")
         order_qty = round1(max(0.0, req - cur - pend))
+        reason = f"{horizon}일 소요 {req}{unit} − 재고 {cur} − 대기발주 {pend} = {order_qty}{unit}"
+        if order_qty > 0:
+            before_hints.append({"ingredientId": iid, "orderQty": order_qty})
+            cut = min(order_qty, round1(waste_hints.get(iid, 0.0)))
+            if cut > 0:
+                order_qty = round1(order_qty - cut)
+                reason += f" − 폐기 위험 감축 {cut} = {order_qty}{unit}"
+                warnings.append({"type": "waste_hint_applied", "ingredientId": iid,
+                                 "message": f"{name}: 승인된 폐기 위험 힌트로 {cut}{unit} 줄였습니다. "
+                                            "남은 재고의 유통기한이 지난 뒤 부족할 수 있으니 확인하세요."})
         daily = req / horizon if horizon else 0.0
         cover = (cur + pend) / daily if daily > 0 else None
 
@@ -226,11 +238,12 @@ def build_plan(obs: dict, today: date | None = None) -> dict:
                 "ingredientId": iid, "ingredientName": name, "unit": unit,
                 "orderQty": order_qty, "requiredQty": req, "currentStock": cur,
                 "pendingQty": pend,
-                "reason": f"{horizon}일 소요 {req}{unit} − 재고 {cur} − 대기발주 {pend} = {order_qty}{unit}",
+                "reason": reason,
                 "drivers": drivers.get(iid, []),
             })
 
-    crosscheck = _crosscheck(items, obs.get("serverRecommend") or [])
+    # 서버 /recommend 는 힌트를 모르므로 힌트 적용 전 수량으로 대조한다
+    crosscheck = _crosscheck(before_hints, obs.get("serverRecommend") or [])
     if not crosscheck["match"]:
         warnings.append({"type": "crosscheck_mismatch",
                          "message": "독립 재계산과 서버 /recommend 결과가 다릅니다. 발주 전 원인을 확인하세요.",
