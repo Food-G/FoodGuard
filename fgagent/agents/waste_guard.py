@@ -3,7 +3,7 @@
 폐기량은 Spring WastePredictionService(화면과 같은 산식)가, 대응 후보는 여기 decide 가 정한다.
 LLM 은 무엇을 먼저 할지 설명만 한다.
 
-폐기 등록·기부는 후보만 decision 에 남긴다 — 실행은 D-4(WASTE_RECORD), AG-3(DONATION_CREATE) 에서 붙인다.
+기부는 후보만 decision 에 남긴다 — 실행은 AG-3(DONATION_CREATE) 에서 붙인다.
 """
 
 from __future__ import annotations
@@ -119,6 +119,13 @@ def to_proposals(decision: dict, llm: dict | None) -> list[dict]:
             "rationale": (llm["summary"] if llm else
                           f"폐기 위험 {len(decision['reductions'])}개 식자재의 다음 발주를 줄입니다 (Claude 검토 없음).")
             + f" 승인하면 {valid_until}까지 만드는 발주안에 반영됩니다.",
+        })
+    if decision["disposalCandidates"]:
+        proposals.append({
+            "type": "WASTE_RECORD",
+            "payload": {"asOf": decision["asOf"], "items": decision["disposalCandidates"]},
+            "rationale": f"유통기한이 지난 {len(decision['disposalCandidates'])}개 식자재입니다. "
+                         "매장에서 실제로 폐기한 뒤 승인하면 폐기 기록을 남기고 재고에서 차감합니다.",
         })
     return proposals
 

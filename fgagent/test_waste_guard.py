@@ -72,6 +72,13 @@ class ProposalsTest(unittest.TestCase):
         self.assertEqual(ps[0]["payload"]["concerns"], ["우려"])
         self.assertEqual(ps[1]["payload"]["validUntil"], "2026-11-07")
 
+    def test_만료분은_폐기_등록_제안만_만든다(self):
+        ps = waste_guard.to_proposals(waste_guard.decide(obs(row(waste=5.0, expired=5.0, days=-1))), {"summary": "브리핑"})
+        self.assertEqual([p["type"] for p in ps], ["WASTE_RECORD"])
+        self.assertEqual(ps[0]["payload"]["items"][0]["qty"], 5.0)
+        self.assertEqual(ps[0]["payload"]["items"][0]["reason"], "EXPIRED")
+        self.assertIn("실제로 폐기한 뒤", ps[0]["rationale"])
+
     def test_LLM_없이도_제안한다(self):
         ps = waste_guard.to_proposals(waste_guard.decide(obs(row())), None)
         self.assertTrue(all(p["rationale"] for p in ps))

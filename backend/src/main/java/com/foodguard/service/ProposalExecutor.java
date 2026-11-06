@@ -2,6 +2,8 @@ package com.foodguard.service;
 
 import com.foodguard.entity.AgentProposal;
 import com.foodguard.entity.OrderRequest;
+import com.foodguard.entity.WasteRecord;
+import com.foodguard.repository.InventoryLotRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -10,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -28,6 +31,8 @@ public class ProposalExecutor {
 
     private final OrderRequestService orderRequestService;
     private final NotificationService notificationService;
+    private final WasteService wasteService;
+    private final InventoryLotRepository lotRepository;
     private final RestTemplate restTemplate;
 
     @Value("${agent.service.url:http://localhost:8100}")
@@ -50,6 +55,7 @@ public class ProposalExecutor {
             case "ORDER_FLAG" -> Map.of("ok", true, "note", "정보성 제안 — 실행할 동작 없음");
             case "ORDER_CREATE" -> createOrders(p);
             case "DISCOUNT_SUGGEST" -> notifyDiscount(p);
+            case "WASTE_RECORD" -> recordWaste(p);
             // 폐기 위험 감축 힌트 (AG-2): 승인(EXECUTED)된 제안을 발주 참모가 조회해 다음 발주안에 반영한다
             case "ORDER_REDUCE" -> Map.of("ok", true, "note", "다음 발주안에 감축이 반영됩니다.");
             default -> throw new IllegalStateException("아직 실행을 지원하지 않는 제안 타입입니다: " + p.getType());
@@ -92,6 +98,37 @@ public class ProposalExecutor {
         }
         notificationService.create(p.getStoreId(), "[폐기 위험] 판촉 체크리스트: " + String.join(", ", lines), "WASTE");
         return Map.of("ok", true, "notified", lines.size());
+    }
+
+    /**
+     * 폐기 위험(AG-2) 만료분 폐기 등록. 전 항목을 한 트랜잭션으로 처리한다.
+     * 제안 이후 판매 차감이나 먼저 승인한 같은 제안으로 만료 재고가 줄었으면 STALE — 안 만료된 재고를 버리지 않게 한다.
+     */
+    private Map<String, Object> recordWaste(AgentProposal p) {
+        Object raw = p.getPayload().get("items");
+        if (!(raw instanceof List<?> items) || items.isEmpty()) {
+            throw new IllegalStateException("폐기할 항목이 없습니다.");
+        }
+        List<Map<String, Object>> recorded = new ArrayList<>();
+        for (Object o : items) {
+            Map<?, ?> it = (Map<?, ?>) o;
+            long ingredientId = ((Number) it.get("ingredientId")).longValue();
+            double qty = ((Number) it.get("qty")).doubleValue();
+            double expired = lotRepository.findOpenFifo(p.getStoreId(), ingredientId).stream()
+                    .filter(l -> l.getExpiryDate() != null && l.getExpiryDate().isBefore(LocalDate.now()))
+                    .mapToDouble(l -> l.getRemainingQty().doubleValue()).sum();
+            if (qty > expired + 0.005) {
+                throw new StaleProposalException("제안 이후 만료 재고가 바뀌었습니다 (식자재 " + ingredientId
+                        + ": 제안 " + qty + " → 현재 " + expired + "). 다시 점검하세요.");
+            }
+            WasteRecord w = wasteService.record(p.getStoreId(), ingredientId, qty, String.valueOf(it.get("reason")));
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("ingredientId", ingredientId);
+            row.put("qty", qty);
+            row.put("wasteId", w.getId());
+            recorded.add(row);
+        }
+        return Map.of("ok", true, "records", recorded);
     }
 
     /** 제안을 만든 시점의 발주안 ID 와 지금 다시 계산한 ID 를 비교한다 (산식은 agent-service 의 planner 하나뿐). */
