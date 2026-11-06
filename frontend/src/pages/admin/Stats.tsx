@@ -124,6 +124,12 @@ const Stats = () => {
                 </Typography>
              </Stack>
              <Typography variant="body2" color="primary.dark" mt={1}>
+               {stats.forecastAccuracy?.wmape == null
+                 ? '📈 운영 예측 정확도: 예측한 날의 판매가 입력되면 실제 오차를 보여 줍니다.'
+                 : <>📈 운영 예측 정확도: 메뉴×일 {stats.forecastAccuracy.evaluatedDays}건 오차율 <b>{stats.forecastAccuracy.wmape}%</b>
+                     {stats.forecastAccuracy.weeklyWithin10Pct != null && <>, 메뉴 주간 판매량 ±10% 이내 <b>{stats.forecastAccuracy.weeklyWithin10Pct}%</b> ({stats.forecastAccuracy.menuWeeks}개)</>}</>}
+             </Typography>
+             <Typography variant="body2" color="primary.dark" mt={1}>
                {stats.donationCount > 0
                  ? <>💚 기부 완료 {stats.donationCount}건 — 폐기될 뻔한 식자재를 이웃에게 전달했습니다.</>
                  : '💚 아직 기부 완료 기록이 없습니다. 폐기 예측 화면에서 기부를 등록할 수 있습니다.'}

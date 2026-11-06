@@ -86,6 +86,41 @@ class OrderRequestServiceRecommendTest {
         });
     }
 
+    @Test
+    void 보관기한이_발주주기보다_길면_점추정의_1_2배를_확보하고_아니면_그대로다() {
+        Menu menu = new Menu();
+        menu.setId(10L);
+        menu.setMenuName("비빔밥");
+
+        LocalDate today = LocalDate.now();
+        List<PredictionResult> predictions = new ArrayList<>();
+        for (int d = 1; d <= 7; d++) {
+            PredictionResult p = new PredictionResult();
+            p.setMenu(menu);
+            p.setPredictionDate(today.plusDays(d));
+            p.setPredictedQty(10);
+            p.setRecommendedOrderQty(11);  // conformal 보정 1.1배
+            predictions.add(p);
+        }
+        when(predictionResultRepository.findByStore_IdAndPredictionDateGreaterThanEqualOrderByPredictionDateAsc(eq(STORE_ID), any()))
+                .thenReturn(predictions);
+
+        Ingredient carries = ingredient(100L, "두부", 4, 1, 3);    // 3일치, 남으면 다음 발주로 이월
+        Ingredient noCarry = ingredient(200L, "상추", 3, 1, 3);    // 3일치, 남으면 폐기
+        Ingredient unknown = ingredient(300L, "쌀", null, 1, 3);   // 보관기한 모름
+        when(menuIngredientRepository.findByMenuId(10L)).thenReturn(List.of(
+                recipe(menu, carries, "1000"), recipe(menu, noCarry, "1000"), recipe(menu, unknown, "1000")));
+        when(inventoryRepository.findByStoreId(STORE_ID)).thenReturn(List.of());
+        when(orderRequestRepository.findByStoreIdAndStatusIn(eq(STORE_ID), anyList())).thenReturn(List.of());
+
+        Map<String, Double> orderQty = service.recommend(STORE_ID).stream().collect(Collectors.toMap(
+                r -> (String) r.get("ingredientName"), r -> ((Number) r.get("orderQty")).doubleValue()));
+
+        assertThat(orderQty).containsEntry("두부", 36.0);  // max(33, 30 × 1.2)
+        assertThat(orderQty).containsEntry("상추", 33.0);
+        assertThat(orderQty).containsEntry("쌀", 33.0);
+    }
+
     private static Ingredient ingredient(Long id, String name, Integer shelfLife, Integer leadTime, Integer orderCycle) {
         Ingredient ing = new Ingredient();
         ing.setId(id);

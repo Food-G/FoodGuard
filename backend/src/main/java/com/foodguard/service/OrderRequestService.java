@@ -226,7 +226,7 @@ public class OrderRequestService {
         List<Map<String, Object>> result = new ArrayList<>();
         for (Map.Entry<Long, Double> entry : required.entrySet()) {
             Long ingId = entry.getKey();
-            double req = round1(entry.getValue());
+            double req = round1(Math.max(entry.getValue(), carryOverFloor(ingredients.get(ingId), pointRequired.get(ingId))));
             double cur = round1(stock.getOrDefault(ingId, 0.0));
             double alreadyOrdered = round1(pending.getOrDefault(ingId, 0.0));
             double orderQty = round1(Math.max(0, req - cur - alreadyOrdered));
@@ -265,6 +265,16 @@ public class OrderRequestService {
         int cycle = ingredient.getOrderCycleDays() != null ? ingredient.getOrderCycleDays() : DEFAULT_ORDER_CYCLE_DAYS;
         int usable = ingredient.getShelfLifeDays() != null ? Math.min(cycle, ingredient.getShelfLifeDays()) : cycle;
         return lead - 1 + usable;
+    }
+
+    // 보관기한이 발주 주기보다 길면 남은 재고가 다음 발주에서 차감되어 버려지지 않으므로 품절 쪽으로 더 둔다.
+    // 발주 시뮬레이션으로 정한 값 (ai-service simulate_orders.CARRY_OVER_BUFFER, PROJECT_STATUS 17절). 보관기한을 모르면 적용하지 않는다
+    private static final double CARRY_OVER_BUFFER = 1.2;
+
+    private static double carryOverFloor(Ingredient ingredient, double pointQty) {
+        int cycle = ingredient.getOrderCycleDays() != null ? ingredient.getOrderCycleDays() : DEFAULT_ORDER_CYCLE_DAYS;
+        boolean carries = ingredient.getShelfLifeDays() != null && ingredient.getShelfLifeDays() > cycle;
+        return carries ? pointQty * CARRY_OVER_BUFFER : 0;
     }
 
     // ── 3단계 검수 흐름 ─────────────────────────────────────────────────────────

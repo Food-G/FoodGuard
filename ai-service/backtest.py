@@ -159,7 +159,7 @@ def run(
     for origin in sorted(plan):
         past = {k: df[df["ds"] <= origin] for k, df in series.items()}
         past = {k: df for k, df in past.items() if len(df) > 0}
-        model = DemandPredictor().fit(past)
+        model = DemandPredictor().fit(past, with_scores=False)
         totals = store_totals(past)
         if compare:
             lstm = LSTMForecaster().fit(past, origin)
@@ -270,7 +270,7 @@ def run_cold_start(series: dict[SeriesKey, pd.DataFrame], origin_row: int = 35, 
 
         for k in new_days:
             past = {**others, key: df.iloc[origin_row - k: origin_row]}
-            model = DemandPredictor().fit(past)
+            model = DemandPredictor().fit(past, with_scores=False)
             preds = baselines(past[key], targets, store_totals(past)[key[0]])
             out = {p["date"]: p["predicted_qty"] for p in model.predict(*key, days=HORIZON, start_date=origin)}
             preds[MODEL] = {t: out[t] for t in targets}
@@ -320,8 +320,8 @@ def run_events(series: dict[SeriesKey, pd.DataFrame], events: dict[int, dict[dat
     for origin in origins:
         past = {k: df[df["ds"] <= origin] for k, df in series.items()}
         models = {
-            "특이사항 피처 없음": DemandPredictor().fit(past),
-            "특이사항 피처 있음 (event_lift)": DemandPredictor().fit(past, events=events),
+            "특이사항 피처 없음": DemandPredictor().fit(past, with_scores=False),
+            "특이사항 피처 있음 (event_lift)": DemandPredictor().fit(past, events=events, with_scores=False),
         }
         for (sid, mid), df in series.items():
             actual = dict(zip(df["ds"], df["y"]))
@@ -340,6 +340,68 @@ def run_events(series: dict[SeriesKey, pd.DataFrame], events: dict[int, dict[dat
     print("\n특이사항 배율은 실제 배율에 ±15% 오차를 둔 값 (claude 추정 흉내). 예측값은 두 경우 모두 XGBoost 가 낸다")
 
 
+def db_weather(series: dict[SeriesKey, pd.DataFrame]) -> dict[int, pd.DataFrame]:
+    """매장별 실측 날씨 (Open-Meteo). 조회 실패한 매장은 뺀다."""
+    from database import SessionLocal
+    from services.data_service import get_store_region
+    from services.weather_service import fetch_historical_weather, get_coords
+
+    db = SessionLocal()
+    try:
+        out = {}
+        for sid in {s for s, _ in series}:
+            days = [d for (s, _), df in series.items() if s == sid for d in (df["ds"].min(), df["ds"].max())]
+            w = fetch_historical_weather(*get_coords(get_store_region(db, sid)), min(days), max(days))
+            if not w.empty:
+                out[sid] = w
+        return out
+    finally:
+        db.close()
+
+
+def run_weather(series: dict[SeriesKey, pd.DataFrame], weather: dict[int, pd.DataFrame],
+                min_train: int = 28, step: int = 7) -> None:
+    """
+    날씨 피처 기여도 (Badorf & Hoberg 2020): 같은 글로벌 모델을 날씨 없이·있이 학습해 7일 예측 오차를 비교한다.
+    과거 시점의 예보를 재현할 수 없어 실측 날씨를 넣으므로, 운영(실제 예보)에서 기대할 수 있는 효과의 상한이다.
+    """
+    series = {k: df.sort_values("ds").reset_index(drop=True) for k, df in series.items() if k[0] in weather}
+    plan: dict[date, list[SeriesKey]] = defaultdict(list)
+    for key, df in series.items():
+        for i in range(min_train - 1, len(df), step):
+            origin = df["ds"].iloc[i]
+            if origin + timedelta(days=HORIZON) > df["ds"].iloc[-1]:
+                break
+            plan[origin].append(key)
+
+    records = []  # (method, 비·폭염·한파 날 여부, 실제, 예측)
+    for origin, keys in sorted(plan.items()):
+        past = {k: df[df["ds"] <= origin] for k, df in series.items()}
+        past = {k: df for k, df in past.items() if len(df) > 0}
+        plain = DemandPredictor().fit(past, with_scores=False)
+        known = {sid: w[w["ds"] <= origin] for sid, w in weather.items()}
+        with_weather = DemandPredictor().fit(past, weather=known, with_scores=False)
+        for sid, mid in keys:
+            actual = dict(zip(series[(sid, mid)]["ds"], series[(sid, mid)]["y"]))
+            flags = weather[sid].set_index("ds")[["is_rainy", "is_hot", "is_cold"]].max(axis=1).to_dict()
+            for method, preds in (
+                ("날씨 없음", plain.predict(sid, mid, days=HORIZON, start_date=origin)),
+                ("실측 날씨 (예보가 완벽할 때의 상한)",
+                 with_weather.predict(sid, mid, days=HORIZON, start_date=origin, forecast_df=weather[sid])),
+            ):
+                for p in preds:
+                    if p["date"] in actual:
+                        records.append((method, bool(flags.get(p["date"], 0)), actual[p["date"]], p["predicted_qty"]))
+
+    r = pd.DataFrame(records, columns=["method", "bad_weather", "y", "pred"])
+    r["ae"] = (r["y"] - r["pred"]).abs()
+    print(f"날씨 기여도: 매장 {len(weather)}곳, 예측 시점 {len(plan)}개, 평가 {len(r) // 2}개\n")
+    print("| 방법 | 전체 wMAPE | 비·폭염·한파 날 wMAPE | 그 외 날 wMAPE |")
+    print("|---|---|---|---|")
+    for method, g in r.groupby("method", sort=False):
+        print(f"| {method} | {wmape(g):.2f}% | {wmape(g[g['bad_weather']]):.2f}% | {wmape(g[~g['bad_weather']]):.2f}% |")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     src = parser.add_mutually_exclusive_group(required=True)
@@ -348,6 +410,7 @@ def main() -> None:
     src.add_argument("--db", action="store_true", help="DB SALES_DATA 의 모든 매장x메뉴")
     parser.add_argument("--store", type=int, help="--db 와 함께: 이 매장 메뉴만 평가 (학습은 전체)")
     parser.add_argument("--cold-start", action="store_true", help="--db 와 함께: 신메뉴(이력 1·3·5일) 예측 비교")
+    parser.add_argument("--weather", action="store_true", help="--db 와 함께: 날씨 피처 기여도 비교 (실측 날씨, Open-Meteo)")
     parser.add_argument("--compare", action="store_true", help="Prophet·LSTM 비교 실험 추가 (requirements-experiment.txt 필요)")
     parser.add_argument("--min-train", type=int, help="첫 예측 시점까지의 최소 학습 일수 (기본: 합성 90, DB 28)")
     parser.add_argument("--step", type=int, default=2, help="예측 시점 간격(일 단위 행 수, 기본 2)")
@@ -359,6 +422,9 @@ def main() -> None:
         run_events(*synthetic_event_series(), min_train=args.min_train or 90)
     elif args.cold_start:
         run_cold_start(db_series()[0])
+    elif args.weather:
+        series = db_series()[0]
+        run_weather(series, db_weather(series), args.min_train or 28, args.step)
     else:
         series, recipes = db_series()
         run(series, args.min_train or 28, args.step, store=args.store, recipes=recipes, compare=args.compare)

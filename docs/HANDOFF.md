@@ -55,11 +55,19 @@
 
 - 완료: 권한 검사(본사 전용 경로, 매장 소유 검사, 회원가입 HQ 차단), 주간 ±10% 지표. 매출 계획 기능은 만들었다가 팀 판단으로 뺐다 (빈 `SALES_TARGET` 테이블만 공유 DB 에 남음)
 - 2026-10-30 bootRun 으로 확인: 권한 점검 19/19 (점주→다른 매장 403, 본사 전용 403/200, HQ 회원가입 400). 본사·점주 화면 전체를 실제 계정으로 눌러 보는 확인은 아직
-- AI 서비스(8000)는 인증이 없고 CORS `*` 다. 외부에 열지 말고 백엔드와 같은 내부망에서만 접근하게 배포
-- 운영 설정: `ddl-auto=update`·`show-sql=true` 는 개발용. 운영은 `validate`·`false`, CORS 는 운영 도메인으로
+- AI 서비스(8000): 127.0.0.1 바인딩·CORS 제거·내부 키 완료 (2026-11-06, PROJECT_STATUS 17절). 운영에서는 양쪽 `.env` 에 같은 키(`INTERNAL_API_KEY`, `AI_INTERNAL_KEY`)를 넣는다
+- 운영 설정: `SPRING_PROFILES_ACTIVE=prod` (`application-prod.properties`, `APP_CORS_ALLOWED_ORIGINS` 필요). `ddl-auto=none`. `validate` 는 공유 DB 의 대문자 `STORE`·`USER` 때문에 실패한다 (17절)
 - 배포 구성(EC2·Docker·HTTPS)이 없다. 계획서의 "CI/CD 자동 배포"는 CI 만 있음
 - 예측 요청 한 번에 약 25초(백엔드 동기 호출, 타임아웃 60초). 매장이 늘면 비동기·캐시 필요
 - 공용 식자재(`store_id` 없음)는 아무 점주나 수정 가능 — 본사 전용으로 할지 결정
+
+### 2026-11-06 고도화 (PROJECT_STATUS 17절)
+
+- 이월 안전재고: 보관기한 > 발주 주기인 식자재만 필요량 ≥ 점추정 × 1.2. 시뮬레이션 5개 시나리오 중 4개에서 비용 최저 (2일 주기만 관행 ×1.2 가 낫다). **`INGREDIENT` 설정값이 비어 있어 지금은 발주량이 바뀌지 않는다. 팀이 식자재별 보관기한·주기를 넣어야 효과가 난다**
+- 신뢰도: K-fold → 매장별 최근 28영업일 시간순 평가
+- 날씨 기여도 측정: 상한으로도 0.01%p. 보고서에 날씨 튜닝을 성과로 쓰지 말 것
+- 본사 통계에 운영 예측 정확도 추가: 현재 모델의 지난 날짜 예측이 아직 0건이라 값은 비어 있다
+- 남은 결정: 공유 DB `STORE`·`USER` 소문자 변경(`validate` 사용), junho 의 PREDICTION_LOG(공유 DB 에 `prediction_log` 테이블은 이미 있음), 원가 가정
 
 ### 발주 근거 설명 (claude CLI, 2026-10-30, PROJECT_STATUS 14절)
 
@@ -96,13 +104,14 @@
 
 | 확인 | 명령 (위치) | 기대값 |
 |---|---|---|
-| AI 단위 테스트 | `python -m pytest tests` (ai-service) | 24 passed |
-| 백엔드 단위 테스트 | `gradlew.bat test --tests "com.foodguard.service.*"` (backend) | BUILD SUCCESSFUL (7개) |
+| AI 단위 테스트 | `python -m pytest tests` (ai-service) | 40 passed |
+| 백엔드 단위 테스트 | `gradlew.bat test --tests "com.foodguard.service.*" --tests "com.foodguard.security.*"` (backend) | BUILD SUCCESSFUL (15개) |
 | 프론트 타입체크 | `npx tsc --noEmit` (frontend) | 오류 0 |
-| DB 백테스트 | `python backtest.py --db --step 7` (ai-service) | 1,765 평가일, 글로벌 모델 wMAPE **9.2%** / MASE **0.902**, 요일 평균(4주) 9.9% / 0.952, 식자재 7일 커버리지 **55.4%** (평균 잉여율 4.3%, 부족률 3.0%) |
+| DB 백테스트 | `python backtest.py --db --step 7` (ai-service) | 1,765 평가일, 글로벌 모델 wMAPE **9.2%** / MASE **0.900**, 요일 평균(4주) 9.9% / 0.952, 식자재 7일 커버리지 **56.2%** (평균 잉여율 4.4%, 부족률 3.0%) |
 | 합성 백테스트 | `python backtest.py --synthetic` (ai-service) | 글로벌 모델 14.8% / 0.817 |
 | DB 모델 비교 | `python backtest.py --db --step 7 --compare` (ai-service, 약 15분, requirements-experiment.txt) | XGBoost 9.2% / 0.902, Prophet 9.7% / 0.965, LSTM 12.6% / 1.490 |
-| DB 발주 시뮬레이션 | `python simulate_orders.py --db` (ai-service, 약 5분) | 주 1회 시나리오 FoodGuard 폐기율 4.7% / 품절률 11.0% / 비용 21.2 |
+| DB 발주 시뮬레이션 | `python simulate_orders.py --db` (ai-service, 약 5분) | 주 1회 FoodGuard 폐기율 4.7% / 품절률 11.0% / 비용 21.2, 3일·보관 4일 비용 8.9 |
+| 날씨 기여도 | `python backtest.py --db --weather --step 7` (ai-service) | 날씨 없음 9.16%, 실측 날씨 9.15% |
 
 출력에 한글이 깨지면 `PYTHONIOENCODING=utf-8` 을 설정한다.
 

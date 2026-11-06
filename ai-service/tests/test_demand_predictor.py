@@ -60,6 +60,24 @@ def test_menu_without_history_predicts_zero():
 def test_scores_cover_every_menu_with_history():
     series, _ = _store_with_new_menu(new_days=3)
     model = DemandPredictor().fit(series)
-    # 이력이 긴 메뉴는 out-of-fold wMAPE 기반, 짧은 신메뉴는 보수적 고정값
+    # 이력이 긴 메뉴는 최근 4주 시간순 wMAPE 기반, 짧은 신메뉴는 보수적 고정값
     assert set(model.scores) == set(series)
     assert model.scores[(1, 12)] > model.scores[(1, 13)]
+
+
+def test_scores_use_only_past_for_recent_weeks():
+    # 마지막 4주만 판매가 불규칙한 메뉴: K-fold 라면 그 구간을 학습에 넣어 오차가 작게 잡힌다
+    series, _ = _store_with_new_menu(new_days=3)
+    df = series[(1, 12)].copy()
+    tail = df.index >= len(df) - 28
+    df.loc[tail, "y"] = np.where(df.index[tail] % 2 == 0, df.loc[tail, "y"] * 3, 0.0)
+    noisy = DemandPredictor().fit({**series, (1, 12): df})
+    assert noisy.scores[(1, 12)] < DemandPredictor().fit(series).scores[(1, 12)] - 20
+
+
+def test_without_scores_predictions_are_identical():
+    series, _ = _store_with_new_menu(new_days=3)
+    full = DemandPredictor().fit(series)
+    fast = DemandPredictor().fit(series, with_scores=False)
+    assert fast.scores == {}
+    assert [p["predicted_qty"] for p in fast.predict(1, 12, days=7)] == [p["predicted_qty"] for p in full.predict(1, 12, days=7)]

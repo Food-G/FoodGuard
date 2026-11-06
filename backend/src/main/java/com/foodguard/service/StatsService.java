@@ -2,17 +2,22 @@ package com.foodguard.service;
 
 import com.foodguard.entity.DonationRecord;
 import com.foodguard.entity.OrderRequest;
+import com.foodguard.entity.SalesDayFlag;
 import com.foodguard.entity.Store;
 import com.foodguard.entity.WasteRecord;
 import com.foodguard.repository.DonationRecordRepository;
 import com.foodguard.repository.OrderRequestRepository;
+import com.foodguard.repository.PredictionResultRepository;
 import com.foodguard.repository.SalesDataRepository;
+import com.foodguard.repository.SalesDayFlagRepository;
 import com.foodguard.repository.StoreRepository;
 import com.foodguard.repository.WasteRecordRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.time.temporal.WeekFields;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -26,6 +31,8 @@ public class StatsService {
     private final OrderRequestRepository orderRequestRepository;
     private final StoreRepository storeRepository;
     private final DonationRecordRepository donationRecordRepository;
+    private final PredictionResultRepository predictionResultRepository;
+    private final SalesDayFlagRepository salesDayFlagRepository;
 
     @Transactional(readOnly = true)
     public Map<String, Object> hq() {
@@ -71,6 +78,10 @@ public class StatsService {
         result.put("stores", stores);
         result.put("recommendation", recommendationStats(orders));
         result.put("donationCount", donations.size());
+        result.put("forecastAccuracy", forecastAccuracy(
+                predictionResultRepository.findPastPredictions(LocalDate.now()),
+                salesDataRepository.sumQuantityByDay(),
+                salesDayFlagRepository.findAll()));
         return result;
     }
 
@@ -114,6 +125,52 @@ public class StatsService {
         r.put("manualWithRecommendation", changes.length);
         r.put("manualAvgChangePct", changes.length == 0 ? null : round1(Arrays.stream(changes).average().orElse(0)));
         r.put("manualWithoutRecommendation", manual.size() - changes.length);
+        return r;
+    }
+
+    // 운영 예측 정확도 = 저장된 예측 vs 실제 판매 (계획서 목표: 메뉴별 주간 ±10%). 백테스트가 아니라 실제로 내보낸 예측을 잰다
+    // 그 매장 판매 입력이 있는 날만 비교하고, 휴무일·그 메뉴 품절일은 뺀다. 7일 모두 비교된 주만 주간 지표에 넣는다
+    static Map<String, Object> forecastAccuracy(List<Object[]> predictions, List<Object[]> sales, List<SalesDayFlag> flags) {
+        Map<String, Double> actual = new HashMap<>();
+        Set<String> enteredDays = new HashSet<>();
+        for (Object[] s : sales) {
+            actual.put(s[0] + "/" + s[1] + "/" + s[2], ((Number) s[3]).doubleValue());
+            enteredDays.add(s[0] + "/" + s[2]);
+        }
+        Set<String> excluded = new HashSet<>();
+        for (SalesDayFlag f : flags) {
+            excluded.add("SOLD_OUT".equals(f.getFlagType())
+                    ? f.getStoreId() + "/" + f.getMenuId() + "/" + f.getFlagDate()
+                    : f.getStoreId() + "/" + f.getFlagDate());
+        }
+
+        double errorSum = 0, actualSum = 0;
+        int days = 0;
+        Map<String, double[]> weeks = new HashMap<>();  // 매장/메뉴/주 -> [예측 합, 실제 합, 일수]
+        for (Object[] p : predictions) {
+            LocalDate date = (LocalDate) p[2];
+            String dayKey = p[0] + "/" + date;
+            String menuDayKey = p[0] + "/" + p[1] + "/" + date;
+            if (!enteredDays.contains(dayKey) || excluded.contains(dayKey) || excluded.contains(menuDayKey)) continue;
+            double predicted = ((Number) p[3]).doubleValue();
+            double sold = actual.getOrDefault(menuDayKey, 0.0);  // 입력이 있는 영업일에 없는 메뉴 = 판매 0
+            errorSum += Math.abs(predicted - sold);
+            actualSum += sold;
+            days++;
+            String week = date.get(WeekFields.ISO.weekBasedYear()) + "-" + date.get(WeekFields.ISO.weekOfWeekBasedYear());
+            double[] w = weeks.computeIfAbsent(p[0] + "/" + p[1] + "/" + week, k -> new double[3]);
+            w[0] += predicted;
+            w[1] += sold;
+            w[2]++;
+        }
+        List<double[]> fullWeeks = weeks.values().stream().filter(w -> w[2] == 7).toList();
+        long within = fullWeeks.stream().filter(w -> w[1] > 0 && Math.abs(w[0] - w[1]) / w[1] <= 0.1).count();
+
+        Map<String, Object> r = new LinkedHashMap<>();
+        r.put("evaluatedDays", days);
+        r.put("wmape", actualSum == 0 ? null : round1(errorSum / actualSum * 100));
+        r.put("menuWeeks", fullWeeks.size());
+        r.put("weeklyWithin10Pct", fullWeeks.isEmpty() ? null : round1(within * 100.0 / fullWeeks.size()));
         return r;
     }
 

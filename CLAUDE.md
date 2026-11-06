@@ -138,12 +138,12 @@ lag 피처(`lag_7`, `lag_14`)는 행 위치가 아니라 **달력 기준 같은 
 
 부분 입력일: 매장 전체 판매량이 직전 28영업일 중앙값의 40% 미만인 날은 수요가 아니라 입력 누락으로 보고 휴무처럼 뺀다 (`data_service.partial_entry_dates`).
 
-신뢰도(confidence)는 R² 대신 **wMAPE** 기반: `clip(100 - wMAPE, 15, 95)`. 예측일이 멀수록 하루당 1.5% 감소 (최소 15%).
+신뢰도(confidence)는 R² 대신 **wMAPE** 기반 (매장별 최근 28영업일 시간순 평가): `clip(100 - wMAPE, 15, 95)`. 예측일이 멀수록 하루당 1.5% 감소 (최소 15%).
 
 ### 안전재고 (recommended_order_qty)
 품절비용 vs 폐기비용의 뉴스벤더 모델(critical fractile)로 목표 분위수를 정한다. 원가 데이터가 DB에 없어 `COST_RATIO=0.4`(판매가의 40%)로 근사, critical fractile = `1 - COST_RATIO = 0.6`.
 분위수는 메뉴·일자가 아니라 **식자재 7일 사용량 기준으로 한 번만** 적용한다 (`ml/calibration.py`, split conformal): 최근 4주 시점을 재학습해 식자재 `실제/예측` 사용량 비율의 0.6 분위수(`safety_factor`)를 구하고 `recommended_order_qty = 점추정 × safety_factor`. 백엔드 `recommend()`가 레시피로 합산하면 식자재 단위 분위수가 된다. 자세한 배경은 `ai-service/PROJECT_STATUS.md` 5절·10절 P1-2.
-백엔드는 식자재마다 `리드타임 − 1 + min(발주 주기, 보관기한)`일 안의 추천량만 발주한다 (`INGREDIENT.shelf_life_days·lead_time_days·order_cycle_days`, 비면 7일치. 10절 P1-3).
+백엔드는 식자재마다 `리드타임 − 1 + min(발주 주기, 보관기한)`일 안의 추천량만 발주한다 (`INGREDIENT.shelf_life_days·lead_time_days·order_cycle_days`, 비면 7일치. 10절 P1-3). 보관기한 > 발주 주기면 남은 재고가 이월되므로 필요량 ≥ 점추정 × 1.2 (17절).
 
 ### 날씨 피처 (6개)
 `temp_max`, `temp_min`, `precipitation`, `is_rainy`, `is_hot`, `is_cold`
@@ -153,10 +153,12 @@ lag 피처(`lag_7`, `lag_14`)는 행 위치가 아니라 **달력 기준 같은 
 # ai-service/.env
 DB_URL=mysql+pymysql://...
 KMA_API_KEY=기상청_공공데이터_API_키
+INTERNAL_API_KEY=...   # 운영 필수, 백엔드 AI_INTERNAL_KEY 와 같은 값. 비우면 검사 안 함
 
 # backend/.env (application.properties 가 spring.config.import 로 읽음, 커밋 금지)
 DB_PASSWORD=...
 JWT_SECRET=...
+AI_INTERNAL_KEY=...    # 운영 필수
 ```
 
 ---

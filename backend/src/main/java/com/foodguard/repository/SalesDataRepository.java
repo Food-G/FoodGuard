@@ -21,6 +21,10 @@ public interface SalesDataRepository extends JpaRepository<SalesData, Long> {
     @Query("SELECT s.store.id, COALESCE(SUM(s.quantity * m.price), 0) FROM SalesData s JOIN s.menu m WHERE s.saleDate BETWEEN :start AND :end AND s.isDeleted = false GROUP BY s.store.id")
     List<Object[]> sumRevenueAllStoresBetween(@Param("start") LocalDate start, @Param("end") LocalDate end);
 
+    // [매장, 메뉴, 날짜, 판매량]
+    @Query("SELECT s.store.id, s.menu.id, s.saleDate, SUM(s.quantity) FROM SalesData s WHERE s.isDeleted = false GROUP BY s.store.id, s.menu.id, s.saleDate")
+    List<Object[]> sumQuantityByDay();
+
     // [연, 월, 매출액] 전 가맹점 월별 매출
     @Query("SELECT YEAR(s.saleDate), MONTH(s.saleDate), COALESCE(SUM(s.quantity * m.price), 0) FROM SalesData s JOIN s.menu m WHERE s.isDeleted = false GROUP BY YEAR(s.saleDate), MONTH(s.saleDate)")
     List<Object[]> sumRevenueByMonth();

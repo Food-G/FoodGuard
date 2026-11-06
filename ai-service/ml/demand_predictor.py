@@ -29,7 +29,6 @@ from typing import Optional
 import joblib
 import numpy as np
 import pandas as pd
-from sklearn.model_selection import KFold, cross_val_predict
 from xgboost import XGBRegressor
 
 from config import settings
@@ -54,7 +53,9 @@ CRITICAL_FRACTILE = round(1.0 - settings.COST_RATIO, 4)
 LEVEL_WINDOW = 28
 # scale 로 나눠 비율로 넣는 피처
 SCALED_COLS = ["lag_7", "lag_14", "rolling_mean_7", "rolling_mean_14", "rolling_std_7"]
-# 학습 행이 이보다 적은 메뉴는 out-of-fold 오차가 불안정해 confidence 를 보수적 고정값으로 둔다
+# confidence 를 잴 때 매장마다 떼어 두는 최근 영업일 수
+HOLDOUT_DAYS = 28
+# 평가 행이 이보다 적은 메뉴는 오차가 불안정해 confidence 를 보수적 고정값으로 둔다
 MIN_ROWS_FOR_SCORE = 10
 DEFAULT_CONFIDENCE = 25.0
 
@@ -106,6 +107,7 @@ class DemandPredictor:
         series: dict[SeriesKey, pd.DataFrame],
         weather: Optional[dict[int, pd.DataFrame]] = None,
         events: Optional[dict[int, dict[date, float]]] = None,
+        with_scores: bool = True,
     ) -> "DemandPredictor":
         """
         series: {(store_id, menu_id): DataFrame ['ds', 'y'(, 'sold_out')]} — 전체 매장×메뉴 영업일 이력
@@ -114,6 +116,7 @@ class DemandPredictor:
         events: {store_id: {날짜: 예상 증감 배율}} — 점주 특이사항을 claude 가 숫자로 바꾼 값 (미래 날짜 포함).
                 학습 이력에 특이사항 날이 있을 때만 피처(event_lift)로 쓴다. 배율을 예측에 곱하지 않고
                 XGBoost 가 과거 특이사항 날의 실제 판매로 얼마나 믿을지 배운다
+        with_scores: confidence 기준값을 잰다. 모델을 한 번 더 학습하므로 confidence 를 안 쓰는 재학습(보정·백테스트)은 끈다
         """
         weather = {sid: w for sid, w in (weather or {}).items() if w is not None and not w.empty}
         self._events = events or {}
@@ -137,7 +140,6 @@ class DemandPredictor:
                              + (["event_lift"] if self.use_events else []))
         self._categories = {c: sorted(int(v) for v in train[c].unique()) for c in ("store_id", "menu_id")}
 
-        # 시간순으로 정렬해 두면 아래 KFold 가 날짜 구간 단위 fold 가 된다
         train = train.sort_values("ds", kind="stable").reset_index(drop=True)
         X = self._design(train)
         y = (train["y"] / train["scale"]).to_numpy()
@@ -148,17 +150,31 @@ class DemandPredictor:
         self.model = XGBRegressor(objective="reg:absoluteerror", **params)
         self.model.fit(X, y)
 
-        # 메뉴별 confidence: out-of-fold 예측으로 메뉴마다 실제 오차율(wMAPE)을 잰다
-        oof = cross_val_predict(XGBRegressor(objective="reg:absoluteerror", **params), X, y, cv=KFold(5))
-        train["oof_ae"] = (train["y"] - np.clip(oof, 0, None) * train["scale"]).abs()
-        self.scores = {key: DEFAULT_CONFIDENCE for key in self._histories}
-        for (sid, mid), g in train.groupby(["store_id", "menu_id"]):
-            if len(g) >= MIN_ROWS_FOR_SCORE:
-                wmape = float(g["oof_ae"].sum() / max(g["y"].sum(), 1e-9) * 100)
-                self.scores[(int(sid), int(mid))] = float(np.clip(100.0 - wmape, 15.0, 95.0))
+        self.scores = self._holdout_scores(train, X, y, params) if with_scores else {}
 
         self.trained_at = datetime.now()  # #8
         return self
+
+    def _holdout_scores(self, train: pd.DataFrame, X: pd.DataFrame, y: np.ndarray, params: dict) -> dict[SeriesKey, float]:
+        """
+        메뉴별 confidence 기준값. 매장마다 마지막 HOLDOUT_DAYS 영업일을 떼고 나머지로 학습한 모델의 오차율(wMAPE)을 잰다.
+        K-fold 는 미래 구간으로 과거를 예측하는 fold 가 섞인다 (Bergmeir et al. 2018).
+        매장마다 기간이 달라 다른 매장의 같은 날짜는 학습에 남는다. 한 매장 안에서는 시간 순서를 지킨다.
+        """
+        scores = {key: DEFAULT_CONFIDENCE for key in self._histories}
+        rank = train.groupby("store_id")["ds"].transform(lambda s: s.rank(method="dense", ascending=False))
+        holdout = (rank <= HOLDOUT_DAYS).to_numpy()
+        if holdout.all():
+            return scores
+        model = XGBRegressor(objective="reg:absoluteerror", **params)
+        model.fit(X[~holdout], y[~holdout])
+        tail = train[holdout].copy()
+        tail["ae"] = (tail["y"] - np.clip(model.predict(X[holdout]), 0, None) * tail["scale"]).abs()
+        for (sid, mid), g in tail.groupby(["store_id", "menu_id"]):
+            if len(g) >= MIN_ROWS_FOR_SCORE:
+                wmape = float(g["ae"].sum() / max(g["y"].sum(), 1e-9) * 100)
+                scores[(int(sid), int(mid))] = float(np.clip(100.0 - wmape, 15.0, 95.0))
+        return scores
 
     def _training_rows(
         self,
