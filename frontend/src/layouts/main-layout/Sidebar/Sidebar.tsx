@@ -71,7 +71,7 @@ const Sidebar = ({ open, role, setMobileOpen, onMouseEnter, onMouseLeave }: Side
   ] : [
     { title: '에코 대시보드', icon: 'mingcute:leaf-line', path: '/', active: true },
     { title: '가게 등록', icon: 'mingcute:store-2-line', path: '/store', active: true },
-    { title: 'POS 시스템', icon: 'mingcute:cashier-2-line', path: '/pos', active: true, extraIcon: 'ph:cash-register', blackIcon: true },
+    { title: 'POS 시스템', icon: 'mingcute:card-pay-line', path: '/pos', active: true, extraIcon: 'ph:cash-register', blackIcon: true },
     { title: 'AI 수요 예측', icon: 'mingcute:brain-fill', path: '/predictions', active: true },
     { title: '식자재 발주', icon: 'mingcute:refresh-2-line', path: '/orders', active: true },
     { title: '식자재 관리', icon: 'mingcute:vegetable-line', path: '/ingredients', active: true },
