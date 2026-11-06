@@ -195,9 +195,9 @@ const AgentInbox = ({ user }: any) => {
   const isHq = user?.role === 'HQ_ADMIN';
   const { storeId, storeLoading } = useMyStore(user);
   const confirm = useConfirm();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const replayId = searchParams.get('replay');
-  const agentFilter = searchParams.get('agent');
+  const agentFilter = searchParams.get('agent');  // 쉼표로 여러 에이전트 (브리핑 카드에서 이동)
 
   const [tab, setTab] = useState(replayId ? 1 : 0);
   const [showDone, setShowDone] = useState(false);
@@ -220,7 +220,7 @@ const AgentInbox = ({ user }: any) => {
         agentService.getRuns(scope),
       ]);
       // 본사 발주 심사 결과는 승인 대상이 아니라 발주 관리 화면에 표시한다
-      setProposals((ps ?? []).filter((p) => p.agent !== 'hq_review' && (!agentFilter || p.agent === agentFilter)));
+      setProposals((ps ?? []).filter((p) => p.agent !== 'hq_review' && (!agentFilter || agentFilter.split(',').includes(p.agent))));
       setRuns(rs ?? []);
     } catch (e) {
       setError(errorMessage(e, '에이전트 정보를 불러오지 못했습니다.'));
@@ -284,6 +284,10 @@ const AgentInbox = ({ user }: any) => {
       <Stack direction="row" alignItems="center" gap={1}>
         <Typography variant="h5" fontWeight={700}>AI 승인함</Typography>
         <Chip label={`승인 대기 ${proposals.filter((p) => p.status === 'PENDING').length}건`} color="warning" size="small" />
+        {agentFilter && (
+          <Chip size="small" variant="outlined" onDelete={() => setSearchParams({})}
+            label={`필터: ${agentFilter.split(',').map((a) => AGENT_LABEL[a]?.name ?? a).join(', ')}`} />
+        )}
         <Box flex={1} />
         {!isHq && storeId && (
           <>

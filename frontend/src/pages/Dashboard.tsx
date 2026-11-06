@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Box, Typography, Badge, Paper, Stack, useTheme, alpha, CircularProgress } from '@mui/material';
 import IconifyIcon from '../components/base/IconifyIcon';
+import AgentBriefing from '../components/AgentBriefing';
 import { storeService } from '../services/storeService';
 import { salesService } from '../services/salesService';
 import { inventoryService } from '../services/inventoryService';
@@ -23,7 +24,8 @@ const OWNER_TILES: TileProps[] = [
   { title: '식자재 관리',     icon: 'mdi:carrot',                color: '#f57c00', path: '/ingredients' },
   { title: '메뉴 관리',       icon: 'mingcute:fork-spoon-line',  color: '#0288d1', path: '/menus' },
   { title: '판매 입력',       icon: 'mingcute:chart-line-line',  color: '#00897b', path: '/sales' },
-  // 폐기예측 & 기부, 기부 이력 타일은 백엔드 API 가 없어 임시로 숨김 → DEV_ROADMAP AG-2/AG-3 완료 시 복구
+  { title: '폐기예측 & 기부', icon: 'mingcute:delete-2-line',    color: '#c2185b', path: '/waste-prediction' },
+  { title: '기부 이력',       icon: 'mingcute:heart-line',       color: '#5d4037', path: '/donations' },
 ];
 
 const ADMIN_TILES: TileProps[] = [
@@ -105,6 +107,7 @@ const Dashboard = ({ user }: any) => {
   const role = user?.role || 'OWNER';
   const tiles = role === 'HQ_ADMIN' ? ADMIN_TILES : OWNER_TILES;
 
+  const [storeId, setStoreId] = useState<number | null>(null);
   const [storeName, setStoreName] = useState('');
   const [today, setToday] = useState<{ revenue: number; qty: number } | null>(null);
   const [orderCount, setOrderCount] = useState(0);
@@ -118,6 +121,7 @@ const Dashboard = ({ user }: any) => {
       .then(async (stores: any[]) => {
         if (!stores?.length) { setLoading(false); return; }
         const sid: number = stores[0].id;
+        setStoreId(sid);
         setStoreName(stores[0].storeName ?? '');
 
         const end = new Date();
@@ -162,6 +166,8 @@ const Dashboard = ({ user }: any) => {
   const weekTotal = useMemo(() => week.reduce((s, w) => s + w.revenue, 0), [week]);
 
   return (
+    <Stack gap={{ xs: 3, md: 4 }}>
+    <AgentBriefing hq={role === 'HQ_ADMIN'} storeId={storeId} />
     <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: { xs: 3, md: 4 }, alignItems: 'flex-start' }}>
       {/* ── 좌측: 3×3 타일 ── */}
       <Box sx={{ width: { xs: '100%', md: 480 }, flexShrink: 0 }}>
@@ -261,6 +267,7 @@ const Dashboard = ({ user }: any) => {
         </Box>
       )}
     </Box>
+    </Stack>
   );
 };
 

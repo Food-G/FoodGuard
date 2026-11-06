@@ -56,7 +56,7 @@ export const agentService = {
   approve: async (id: number): Promise<AgentProposal> => api.post(`/agent/proposals/${id}/approve`, {}),
   reject: async (id: number, reason: string): Promise<AgentProposal> =>
     api.post(`/agent/proposals/${id}/reject`, { reason }),
-  getRuns: async (storeId?: number | null): Promise<AgentRun[]> => api.get(`/agent/runs${qs({ storeId })}`),
+  getRuns: async (storeId?: number | null, agent?: string): Promise<AgentRun[]> => api.get(`/agent/runs${qs({ storeId, agent })}`),
   getRun: async (runId: string): Promise<AgentRun> => api.get(`/agent/runs/${runId}`),
   // Spring → agent-service 프록시. 실행은 백그라운드라 runId 만 바로 돌아온다
   run: async (agent: string, storeId: number): Promise<{ runId: string }> =>

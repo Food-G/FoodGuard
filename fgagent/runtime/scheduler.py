@@ -75,7 +75,8 @@ def poll_hq_review() -> None:
 
 
 def stores_with_new_delays(orders: list[dict], now: datetime, seen_at: float) -> list[int]:
-    """지연이 있고 지난번과 달라졌거나 24시간이 지난 매장. 그대로면 실행 기록을 매시 쌓지 않는다."""
+    """지연이 있고 지난번과 달라졌거나 24시간이 지난 매장. 그대로면 실행 기록을 매시 쌓지 않는다.
+    지연이 모두 풀린 때도 한 번 실행한다: 브리핑이 최근 실행 기록을 보므로, 안 남기면 끝난 지연이 계속 보인다."""
     by_store: dict[int, list[dict]] = {}
     for o in orders:
         by_store.setdefault(o["store"]["id"], []).append(o)
@@ -83,7 +84,7 @@ def stores_with_new_delays(orders: list[dict], now: datetime, seen_at: float) ->
     for sid, rows in sorted(by_store.items()):
         key = inbound.delay_key(rows, now)
         last_key, last_at = _inbound_seen.get(sid, (None, 0.0))
-        if key and (key != last_key or seen_at - last_at >= INBOUND_REPEAT_SEC):
+        if (key or last_key) and (key != last_key or seen_at - last_at >= INBOUND_REPEAT_SEC):
             targets.append(sid)
     return targets
 

@@ -143,6 +143,17 @@ class PollTest(unittest.TestCase):
         self.assertEqual(scheduler.stores_with_new_delays(orders, NOW, 1000.0 + scheduler.INBOUND_REPEAT_SEC), [1])
         self.assertEqual(scheduler.stores_with_new_delays(orders + [order(oid=2, store=1)], NOW, 1001.0), [1])
 
+    def test_지연이_풀리면_한_번_더_실행해_기록을_비운다(self):
+        delayed, resolved = [order(store=1)], [order(store=1, status="DONE")]
+        self.assertEqual(scheduler.stores_with_new_delays(resolved, NOW, 1000.0), [])   # 처음부터 지연 없음
+        scheduler._inbound_seen[1] = (ib.delay_key(delayed, NOW), 1000.0)
+        self.assertEqual(scheduler.stores_with_new_delays(resolved, NOW, 1001.0), [1])
+        scheduler._inbound_seen[1] = (ib.delay_key(resolved, NOW), 1001.0)
+        self.assertEqual(scheduler.stores_with_new_delays(resolved, NOW, 1001.0 + scheduler.INBOUND_REPEAT_SEC), [])
+
+    def test_지연이_풀린_실행은_알림을_보내지_않는다(self):
+        self.assertEqual(ib.notifications(decision(order(status="DONE")), None), [])
+
     def test_실패하면_다음_시간에_다시(self):
         client = mock.Mock()
         client.get.return_value = [order(store=1, ordered=100)]
