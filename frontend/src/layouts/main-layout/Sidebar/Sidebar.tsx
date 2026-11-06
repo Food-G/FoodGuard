@@ -78,8 +78,8 @@ const Sidebar = ({ open, role, setMobileOpen, onMouseEnter, onMouseLeave }: Side
     { title: '식자재 관리', icon: 'ph:carrot-fill', path: '/ingredients', active: true },
     { title: '자원 현황', icon: 'mingcute:inventory-line', path: '/inventory', active: true },
     { title: 'AI 승인함', icon: 'mingcute:robot-line', path: '/agent-inbox', active: true },
-    // 폐기예측 & 기부(/waste-prediction), 기부 이력(/donations)은 백엔드 API 가 없어 임시로 숨김
-    // → DEV_ROADMAP AG-2/AG-3 완료 시 복구
+    { title: '폐기 예측', icon: 'mingcute:delete-2-line', path: '/waste-prediction', active: true },
+    // 기부 이력(/donations)은 백엔드 API 가 없어 임시로 숨김 → DEV_ROADMAP AG-3 완료 시 복구
   ];
 
   return (

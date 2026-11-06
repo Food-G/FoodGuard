@@ -22,6 +22,15 @@ const DONATION_TYPES = [
   { value: 'INGREDIENT', label: '식재료 (원재료 기부)' },
 ];
 
+const RISK_CHIP: Record<string, { label: string; color: any }> = {
+  HIGH: { label: '높음', color: 'error' },
+  MEDIUM: { label: '보통', color: 'warning' },
+  LOW: { label: '낮음', color: 'success' },
+};
+
+// 기부 API 는 AG-3 에서 만든다. 그때 true 로 바꾼다 (DEV_ROADMAP P0-3).
+const DONATION_ENABLED = false;
+
 const WastePrediction = ({ user }: any) => {
   const theme = useTheme();
   const { storeId, storeLoading } = useMyStore(user);
@@ -83,7 +92,7 @@ const WastePrediction = ({ user }: any) => {
       field: 'daysUntilExpiry', headerName: 'D-', width: 80, align: 'center', headerAlign: 'center',
       renderCell: (p) => (
         <Typography fontWeight={700} color={p.value <= 3 ? 'error.main' : p.value <= 7 ? 'warning.main' : 'text.primary'}>
-          D-{p.value}
+          {p.value < 0 ? '만료' : `D-${p.value}`}
         </Typography>
       ),
     },
@@ -112,8 +121,15 @@ const WastePrediction = ({ user }: any) => {
       ),
     },
     {
+      field: 'riskLevel', headerName: '위험도', width: 90, align: 'center', headerAlign: 'center',
+      renderCell: (p) => (
+        <Chip label={RISK_CHIP[p.value]?.label ?? p.value} color={RISK_CHIP[p.value]?.color ?? 'default'} size="small" />
+      ),
+    },
+    ...(DONATION_ENABLED ? [{
       field: 'actions', headerName: '기부', width: 110, sortable: false,
-      renderCell: (p) => p.row.wastePrediction > 0 ? (
+      // 기한이 오늘이거나 지난 식자재는 기부할 수 없다 (식품 안전)
+      renderCell: (p) => p.row.wastePrediction > 0 && p.row.daysUntilExpiry >= 1 ? (
         <Button variant="contained" size="small" color="secondary"
           startIcon={<IconifyIcon icon="mingcute:heart-fill" width={14} />}
           onClick={() => setDonationTarget(p.row)}
@@ -121,18 +137,24 @@ const WastePrediction = ({ user }: any) => {
           기부 등록
         </Button>
       ) : null,
-    },
+    } as GridColDef] : []),
   ];
 
   const wasteItems = rows.filter(r => r.wastePrediction > 0);
 
   return (
     <Stack gap={3}>
-      <Stack direction="row" justifyContent="flex-end">
-        <Button variant="outlined" startIcon={<IconifyIcon icon="mingcute:history-line" width={16} />}
-          href="/donations">
-          기부 이력
+      <Stack direction="row" justifyContent="flex-end" gap={1}>
+        <Button variant="contained" startIcon={<IconifyIcon icon="mingcute:robot-line" width={16} />}
+          href="/agent-inbox?agent=waste">
+          에이전트 제안 보기
         </Button>
+        {DONATION_ENABLED && (
+          <Button variant="outlined" startIcon={<IconifyIcon icon="mingcute:history-line" width={16} />}
+            href="/donations">
+            기부 이력
+          </Button>
+        )}
       </Stack>
 
       <AlertMessages error={error} success={success}
@@ -148,7 +170,7 @@ const WastePrediction = ({ user }: any) => {
             </Typography>
           </Stack>
           <Typography variant="body2" color="text.secondary">
-            유통기한 내 소비 예측량보다 재고가 많습니다. 기부를 통해 환경을 보호하세요.
+            유통기한 내 소비 예측량보다 재고가 많습니다. 에이전트 제안에서 대응 방법을 확인하세요.
           </Typography>
         </Paper>
       )}
@@ -167,7 +189,7 @@ const WastePrediction = ({ user }: any) => {
                 유통기한이 설정된 재고가 없습니다.
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                발주 검수 시 유통기한을 입력하면 폐기 예측이 활성화됩니다.
+                식자재 보관일수가 설정된 재고가 입고되면 폐기 예측이 활성화됩니다.
               </Typography>
             </Stack>
           ) : (

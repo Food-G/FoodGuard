@@ -165,6 +165,7 @@ const AgentInbox = ({ user }: any) => {
   const confirm = useConfirm();
   const [searchParams] = useSearchParams();
   const replayId = searchParams.get('replay');
+  const agentFilter = searchParams.get('agent');
 
   const [tab, setTab] = useState(replayId ? 1 : 0);
   const [showDone, setShowDone] = useState(false);
@@ -186,14 +187,14 @@ const AgentInbox = ({ user }: any) => {
         agentService.getProposals(scope, showDone ? undefined : 'PENDING'),
         agentService.getRuns(scope),
       ]);
-      setProposals(ps ?? []);
+      setProposals((ps ?? []).filter((p) => !agentFilter || p.agent === agentFilter));
       setRuns(rs ?? []);
     } catch (e) {
       setError(errorMessage(e, '에이전트 정보를 불러오지 못했습니다.'));
     } finally {
       setLoading(false);
     }
-  }, [scope, showDone]);
+  }, [scope, showDone, agentFilter]);
 
   useEffect(() => {
     if (!isHq && (storeLoading || !storeId)) { if (!storeLoading) setLoading(false); return; }
@@ -252,6 +253,10 @@ const AgentInbox = ({ user }: any) => {
             <Button variant="contained" startIcon={<IconifyIcon icon="mingcute:refresh-2-line" />}
               onClick={() => handleRun('order_advisor', storeId)}>
               발주안 지금 만들기
+            </Button>
+            <Button variant="contained" color="secondary" startIcon={<IconifyIcon icon="mingcute:delete-2-line" />}
+              onClick={() => handleRun('waste', storeId)}>
+              폐기 위험 점검
             </Button>
           </>
         )}
