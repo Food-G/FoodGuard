@@ -1,13 +1,17 @@
 """식자재 + 메뉴-식자재 연결 데이터 삽입 스크립트"""
+import os
 import sys
 import requests
+from dotenv import load_dotenv
 
 sys.stdout.reconfigure(encoding="utf-8")
+load_dotenv()
 
 BASE = "http://localhost:8080/api"
 
-# ── 로그인 ─────────────────────────────────────────────
-res = requests.post(f"{BASE}/auth/login", json={"email": "jihwan1@gmail.com", "password": "1234"})
+# ── 로그인 (ai-service/.env) ───────────────────────────
+res = requests.post(f"{BASE}/auth/login", json={"email": os.environ["FOODGUARD_OWNER_EMAIL"],
+                                                "password": os.environ["FOODGUARD_OWNER_PASSWORD"]})
 TOKEN = res.text.strip()
 HEADERS = {"Authorization": f"Bearer {TOKEN}", "Content-Type": "application/json"}
 print(f"로그인 성공 (토큰 길이: {len(TOKEN)})\n")

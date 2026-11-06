@@ -1,12 +1,17 @@
+# ⚠ 재실행 금지. 수량을 환산하지 않고 단위 이름만 바꾸므로, 다시 돌리면 재고·레시피 수량이 1000배 어긋날 수 있다.
 """기존 식자재 단위를 발주 기준 단위로 일괄 변환 (g→kg, ml→L)"""
+import os
 import sys
 import requests
+from dotenv import load_dotenv
 
 sys.stdout.reconfigure(encoding="utf-8")
+load_dotenv()
 
 BASE = "http://localhost:8080/api"
 
-res = requests.post(f"{BASE}/auth/login", json={"email": "jihwan1@gmail.com", "password": "1234"})
+res = requests.post(f"{BASE}/auth/login", json={"email": os.environ["FOODGUARD_OWNER_EMAIL"],
+                                                "password": os.environ["FOODGUARD_OWNER_PASSWORD"]})
 TOKEN = res.text.strip()
 HEADERS = {"Authorization": f"Bearer {TOKEN}", "Content-Type": "application/json"}
 

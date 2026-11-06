@@ -19,6 +19,7 @@ ai-service/.env
 ai-service/trained_models/*.joblib
 
 # ── 공통 ───────────────────────────────────
+/node_modules/
 .idea/
 *.iml
 .DS_Store

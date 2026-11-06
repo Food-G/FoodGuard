@@ -1,5 +1,11 @@
 # 자산화 과정에서 발견한 결함 — 수정 내역
 
+**2026-11-06** — DEV_ROADMAP C-1 진행 중 발견
+
+### 스크립트에 계정 비밀번호 하드코딩
+`ai-service/seed_ingredients.py`, `update_ingredient_units.py`에 점주 계정의 이메일과 비밀번호가 평문으로 있었습니다 (R8 위반).
+→ `.env`의 `FOODGUARD_OWNER_EMAIL` / `FOODGUARD_OWNER_PASSWORD`를 읽습니다. **값은 git 히스토리에 남아 있으므로 그 계정의 비밀번호를 바꿔야 합니다.**
+
 **2026-11-06** — DEV_ROADMAP AG-7 진행 중 발견
 
 ### 에이전트 알림 24시간 중복 금지가 동작하지 않던 문제
