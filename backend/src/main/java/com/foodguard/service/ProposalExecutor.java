@@ -1,6 +1,7 @@
 package com.foodguard.service;
 
 import com.foodguard.entity.AgentProposal;
+import com.foodguard.entity.DonationRecord;
 import com.foodguard.entity.OrderRequest;
 import com.foodguard.entity.WasteRecord;
 import com.foodguard.repository.InventoryLotRepository;
@@ -32,6 +33,7 @@ public class ProposalExecutor {
     private final OrderRequestService orderRequestService;
     private final NotificationService notificationService;
     private final WasteService wasteService;
+    private final DonationService donationService;
     private final InventoryLotRepository lotRepository;
     private final RestTemplate restTemplate;
 
@@ -56,6 +58,7 @@ public class ProposalExecutor {
             case "ORDER_CREATE" -> createOrders(p);
             case "DISCOUNT_SUGGEST" -> notifyDiscount(p);
             case "WASTE_RECORD" -> recordWaste(p);
+            case "DONATION_CREATE" -> createDonation(p);
             // 폐기 위험 감축 힌트 (AG-2): 승인(EXECUTED)된 제안을 발주 참모가 조회해 다음 발주안에 반영한다
             case "ORDER_REDUCE" -> Map.of("ok", true, "note", "다음 발주안에 감축이 반영됩니다.");
             default -> throw new IllegalStateException("아직 실행을 지원하지 않는 제안 타입입니다: " + p.getType());
@@ -129,6 +132,18 @@ public class ProposalExecutor {
             recorded.add(row);
         }
         return Map.of("ok", true, "records", recorded);
+    }
+
+    /** 기부 매칭(AG-3): 기부 예정을 만든다. 재고 차감은 점주가 완료 처리할 때 하고, 기관 연락도 점주가 직접 한다. */
+    private Map<String, Object> createDonation(AgentProposal p) {
+        Map<String, Object> pl = p.getPayload();
+        DonationRecord d = donationService.createForOrg(p.getStoreId(),
+                ((Number) pl.get("ingredientId")).longValue(),
+                ((Number) pl.get("quantity")).doubleValue(),
+                String.valueOf(pl.get("donationType")),
+                ((Number) pl.get("orgId")).longValue(),
+                "AI 기부 매칭 제안 #" + p.getId());
+        return Map.of("ok", true, "donationId", d.getId());
     }
 
     /** 제안을 만든 시점의 발주안 ID 와 지금 다시 계산한 ID 를 비교한다 (산식은 agent-service 의 planner 하나뿐). */

@@ -111,6 +111,25 @@ const OrderPlanView = ({ payload }: { payload: Record<string, any> }) => (
   </Stack>
 );
 
+/** 기부 매칭(AG-3): 기관·수량 + 콜드체인 등 우려 + 점주가 직접 보낼 메시지 초안 */
+const DonationView = ({ payload }: { payload: Record<string, any> }) => (
+  <Stack gap={1} mt={1.5}>
+    <Typography variant="body2" fontWeight={700}>
+      {payload.ingredientName} {payload.quantity}{payload.unit} → {payload.orgName} (기한 D-{payload.daysUntilExpiry})
+    </Typography>
+    {(payload.concerns ?? []).map((c: string, i: number) => (
+      <Typography key={i} variant="body2" color="warning.main">⚠ {c}</Typography>
+    ))}
+    <TextField label="요청 메시지 초안 (자동 발송되지 않습니다. 복사해서 직접 보내세요)" value={payload.draftMessage ?? ''}
+      size="small" fullWidth multiline minRows={3} InputProps={{ readOnly: true }} />
+    <Box>
+      <Button size="small" variant="outlined" onClick={() => navigator.clipboard.writeText(payload.draftMessage ?? '')}>
+        메시지 복사
+      </Button>
+    </Box>
+  </Stack>
+);
+
 const ProposalCard = ({ p, onApprove, onReject, onReplan }: {
   p: AgentProposal; onApprove: () => void; onReject: () => void; onReplan: () => void;
 }) => {
@@ -131,6 +150,7 @@ const ProposalCard = ({ p, onApprove, onReject, onReplan }: {
       </Stack>
       <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>{p.rationale}</Typography>
       {p.type === 'ORDER_CREATE' && <OrderPlanView payload={p.payload} />}
+      {p.type === 'DONATION_CREATE' && <DonationView payload={p.payload} />}
       <Collapse in={open}>
         {p.type !== 'ORDER_CREATE' && <Box mt={2}><PayloadView payload={p.payload} /></Box>}
         {p.execResult && (

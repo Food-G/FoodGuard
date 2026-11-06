@@ -21,7 +21,7 @@ const PAGE_SUBTITLES: Record<string, string> = {
   '/ingredients': '식자재 관리',
   '/menus': '메뉴 관리',
   '/sales': '판매 실적 기록',
-  '/waste-prediction': '폐기 예측',
+  '/waste-prediction': '폐기 예측 & 기부',
   '/donations': '기부 이력',
   '/admin/stores': '가맹점 네트워크 관리',
   '/admin/stats': '환경 통계 분석',

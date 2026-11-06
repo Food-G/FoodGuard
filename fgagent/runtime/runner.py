@@ -6,11 +6,13 @@
     decide(obs) -> dict
     to_proposals(decision, llm_output | None) -> list[{"type", "payload", "rationale", ...}]
     notifications(decision, llm_output | None) -> list[{"type", "message"}]   (선택, 에이전트 직접 쓰기 허용)
+    follow_ups(decision) -> list[에이전트 이름]   (선택, 이번 실행이 성공하면 같은 매장에 이벤트로 이어서 실행)
 """
 
 from __future__ import annotations
 
 import json
+import logging
 import os
 
 from fgagent.agents import AGENTS
@@ -19,6 +21,8 @@ from fgagent.runtime import loop, proposals
 from fgagent.runtime.runlog import RunLog
 from fgagent.runtime.tools import build_tools
 from fgcli.auth import get_token
+
+logger = logging.getLogger(__name__)
 
 
 def model_for(agent) -> str:
@@ -55,4 +59,18 @@ def run(name: str, store_id: int, trigger: str = "MANUAL", use_llm: bool = True,
                           error=None if status == "OK" else "제안·알림 제출 실패가 있습니다.")
     except (loop.AgentError, RuntimeError, OSError) as e:
         path = log.finish("FAILED", {"llm": llm}, error=str(e))
-    return {**log.record, "file": str(path)}
+        return {**log.record, "file": str(path)}
+    record = {**log.record, "file": str(path)}
+    if status == "OK":
+        _run_follow_ups(agent, decision, store_id, use_llm)
+    return record
+
+
+def _run_follow_ups(agent, decision: dict, store_id: int, use_llm: bool) -> None:
+    """후속 에이전트 실패는 원래 실행 결과에 영향을 주지 않는다."""
+    for next_name in (agent.follow_ups(decision) if hasattr(agent, "follow_ups") else []):
+        try:
+            rec = run(next_name, store_id, trigger="EVENT", use_llm=use_llm)
+            logger.info("follow-up %s store=%s status=%s", next_name, store_id, rec.get("status"))
+        except (RuntimeError, OSError, SystemExit) as e:
+            logger.error("follow-up %s store=%s 실패: %s", next_name, store_id, e)

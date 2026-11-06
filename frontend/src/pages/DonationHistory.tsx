@@ -60,8 +60,8 @@ const DonationHistory = ({ user }: any) => {
       await donationService.complete(id);
       setSuccess('기부가 완료 처리되었습니다. 재고에서 차감되었습니다.');
       if (storeId) await load(storeId);
-    } catch {
-      setError('완료 처리에 실패했습니다.');
+    } catch (e) {
+      setError((e as Error)?.message || '완료 처리에 실패했습니다.');
     }
   };
 

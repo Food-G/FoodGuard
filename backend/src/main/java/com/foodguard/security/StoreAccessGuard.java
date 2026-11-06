@@ -1,6 +1,7 @@
 package com.foodguard.security;
 
 import com.foodguard.entity.Store;
+import com.foodguard.repository.DonationRecordRepository;
 import com.foodguard.repository.InventoryRepository;
 import com.foodguard.repository.MenuIngredientRepository;
 import com.foodguard.repository.MenuRepository;
@@ -40,6 +41,7 @@ public class StoreAccessGuard {
     private final OrderRequestRepository orderRequestRepository;
     private final SalesDataRepository salesDataRepository;
     private final NotificationRepository notificationRepository;
+    private final DonationRecordRepository donationRecordRepository;
 
     // ── 현재 사용자 ────────────────────────────────────────────────────
 
@@ -125,6 +127,12 @@ public class StoreAccessGuard {
         assertCanAccessStore(salesDataRepository.findById(salesId)
                 .orElseThrow(() -> new AccessDeniedException("매출 기록을 찾을 수 없습니다."))
                 .getStore().getId());
+    }
+
+    public void assertCanAccessDonation(Long donationId) {
+        assertCanAccessStore(donationRecordRepository.findById(donationId)
+                .orElseThrow(() -> new AccessDeniedException("기부 기록을 찾을 수 없습니다."))
+                .getStoreId());
     }
 
     public void assertCanAccessNotification(Long notificationId) {

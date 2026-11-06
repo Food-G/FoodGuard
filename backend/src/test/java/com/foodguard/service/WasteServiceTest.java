@@ -112,7 +112,7 @@ class WasteServiceTest {
 
     private ProposalExecutor executor() {
         return new ProposalExecutor(mock(OrderRequestService.class), mock(NotificationService.class),
-                service, lotRepo, mock(RestTemplate.class));
+                service, mock(DonationService.class), lotRepo, mock(RestTemplate.class));
     }
 
     private AgentProposal wasteProposal(double qty) {

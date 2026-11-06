@@ -3,7 +3,7 @@
 폐기량은 Spring WastePredictionService(화면과 같은 산식)가, 대응 후보는 여기 decide 가 정한다.
 LLM 은 무엇을 먼저 할지 설명만 한다.
 
-기부는 후보만 decision 에 남긴다 — 실행은 AG-3(DONATION_CREATE) 에서 붙인다.
+기부는 후보만 decision 에 남기고, 후보가 있으면 기부 매칭(AG-3)이 이어서 기관을 찾아 제안한다.
 """
 
 from __future__ import annotations
@@ -128,6 +128,10 @@ def to_proposals(decision: dict, llm: dict | None) -> list[dict]:
                          "매장에서 실제로 폐기한 뒤 승인하면 폐기 기록을 남기고 재고에서 차감합니다.",
         })
     return proposals
+
+
+def follow_ups(decision: dict) -> list[str]:
+    return ["donation"] if decision["donationCandidates"] else []
 
 
 def notifications(decision: dict, llm: dict | None) -> list[dict]:

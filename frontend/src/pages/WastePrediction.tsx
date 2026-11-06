@@ -28,9 +28,6 @@ const RISK_CHIP: Record<string, { label: string; color: any }> = {
   LOW: { label: '낮음', color: 'success' },
 };
 
-// 기부 API 는 AG-3 에서 만든다. 그때 true 로 바꾼다 (DEV_ROADMAP P0-3).
-const DONATION_ENABLED = false;
-
 const WastePrediction = ({ user }: any) => {
   const theme = useTheme();
   const { storeId, storeLoading } = useMyStore(user);
@@ -39,6 +36,7 @@ const WastePrediction = ({ user }: any) => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [donationTarget, setDonationTarget] = useState<any>(null);
+  const [orgs, setOrgs] = useState<any[]>([]);
   const [donationForm, setDonationForm] = useState({
     donationType: 'INGREDIENT',
     orgName: '',
@@ -56,6 +54,19 @@ const WastePrediction = ({ user }: any) => {
       .finally(() => setLoading(false));
   }, [storeId, storeLoading]);
 
+  // 목록을 못 불러와도(008 적용 전 등) 기관을 직접 입력해 등록할 수 있다
+  const openDonation = (row: any) => {
+    setDonationTarget(row);
+    setOrgs([]);
+    if (!storeId) return;
+    donationService.getOrgs(storeId, row.category).then((data: any[]) => setOrgs(data ?? [])).catch(() => setOrgs([]));
+  };
+
+  const selectOrg = (orgId: string) => {
+    const org = orgs.find((o) => String(o.id) === orgId);
+    if (org) setDonationForm((f) => ({ ...f, orgName: org.orgName, orgType: org.orgType, orgContact: org.contact ?? '' }));
+  };
+
   const handleDonate = async () => {
     if (!storeId || !donationTarget) return;
     try {
@@ -69,8 +80,9 @@ const WastePrediction = ({ user }: any) => {
       setSuccess(`${donationTarget.ingredientName} 기부 등록이 완료되었습니다.`);
       setDonationTarget(null);
       setDonationForm({ donationType: 'INGREDIENT', orgName: '', orgType: 'FOOD_BANK', orgContact: '', quantity: '', description: '' });
-    } catch {
-      setError('기부 등록에 실패했습니다.');
+    } catch (e) {
+      setDonationTarget(null);
+      setError((e as Error)?.message || '기부 등록에 실패했습니다.');
     }
   };
 
@@ -126,18 +138,18 @@ const WastePrediction = ({ user }: any) => {
         <Chip label={RISK_CHIP[p.value]?.label ?? p.value} color={RISK_CHIP[p.value]?.color ?? 'default'} size="small" />
       ),
     },
-    ...(DONATION_ENABLED ? [{
+    {
       field: 'actions', headerName: '기부', width: 110, sortable: false,
       // 기한이 오늘이거나 지난 식자재는 기부할 수 없다 (식품 안전)
       renderCell: (p) => p.row.wastePrediction > 0 && p.row.daysUntilExpiry >= 1 ? (
         <Button variant="contained" size="small" color="secondary"
           startIcon={<IconifyIcon icon="mingcute:heart-fill" width={14} />}
-          onClick={() => setDonationTarget(p.row)}
+          onClick={() => openDonation(p.row)}
           sx={{ borderRadius: 2, fontSize: 11 }}>
           기부 등록
         </Button>
       ) : null,
-    } as GridColDef] : []),
+    },
   ];
 
   const wasteItems = rows.filter(r => r.wastePrediction > 0);
@@ -149,12 +161,10 @@ const WastePrediction = ({ user }: any) => {
           href="/agent-inbox?agent=waste">
           에이전트 제안 보기
         </Button>
-        {DONATION_ENABLED && (
-          <Button variant="outlined" startIcon={<IconifyIcon icon="mingcute:history-line" width={16} />}
-            href="/donations">
-            기부 이력
-          </Button>
-        )}
+        <Button variant="outlined" startIcon={<IconifyIcon icon="mingcute:history-line" width={16} />}
+          href="/donations">
+          기부 이력
+        </Button>
       </Stack>
 
       <AlertMessages error={error} success={success}
@@ -219,6 +229,12 @@ const WastePrediction = ({ user }: any) => {
               예측 폐기량: <strong>{donationTarget?.wastePrediction} {donationTarget?.unit}</strong>
               (유통기한: {donationTarget?.expiryDate}, D-{donationTarget?.daysUntilExpiry})
             </Alert>
+            {orgs.length > 0 && (
+              <TextField select label="기부처 목록에서 선택" defaultValue=""
+                onChange={(e) => selectOrg(e.target.value)} size="small" fullWidth>
+                {orgs.map(o => <MenuItem key={o.id} value={String(o.id)}>{o.orgName} ({o.region})</MenuItem>)}
+              </TextField>
+            )}
             <TextField select label="기부 유형" value={donationForm.donationType}
               onChange={(e) => setDonationForm(f => ({ ...f, donationType: e.target.value }))} size="small" fullWidth>
               {DONATION_TYPES.map(t => <MenuItem key={t.value} value={t.value}>{t.label}</MenuItem>)}
