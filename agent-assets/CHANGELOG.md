@@ -1,5 +1,13 @@
 # 자산화 과정에서 발견한 결함 — 수정 내역
 
+**2026-11-06** — DEV_ROADMAP AG-7 진행 중 발견
+
+### 에이전트 알림 24시간 중복 금지가 동작하지 않던 문제
+`NOTIFICATION.created_at`은 DB 기본값이 없는데(`DEFAULT NULL`, `SHOW CREATE TABLE` 확인) 엔티티가 `insertable = false`라 항상 NULL로 저장됐습니다.
+중복 검사는 `created_at > 24시간 전`을 찾으므로 항상 "없음"이 되어, 같은 알림이 실행할 때마다 새로 만들어졌을 것입니다. 알림 화면의 시각도 비어 있었을 것입니다.
+→ 앱이 생성 시각을 넣습니다. 기존 행은 NULL로 남습니다. 코드와 스키마로 찾은 결함이고 DB 접속 거부로 실제 행은 확인하지 못했습니다.
+`entity/Notification.java`, `service/NotificationService.java`, 테스트 `NotificationServiceTest`
+
 **2026-10-30** — DEV_ROADMAP P0/B/D-1 진행 중 발견
 
 ### 매장별 정확도 조회가 "이력 없음"으로 나오던 문제

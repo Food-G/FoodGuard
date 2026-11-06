@@ -36,7 +36,8 @@ public class Notification {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String message;
 
-    @Column(name = "created_at", insertable = false, updatable = false)
+    // DB 기본값이 없어(DEFAULT NULL) 앱이 넣어야 한다. 비어 있으면 24시간 중복 검사가 동작하지 않는다
+    @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
     
     public void setIsRead(boolean isRead) { this.isRead = isRead; }

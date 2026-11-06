@@ -3,6 +3,7 @@ package com.foodguard.repository;
 import com.foodguard.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface UserRepository extends JpaRepository<User, Long> {
@@ -12,4 +13,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     // 이메일 중복 체크 (회원가입할 때 사용)
     boolean existsByEmail(String email);
+
+    List<User> findByRole(String role);
 }

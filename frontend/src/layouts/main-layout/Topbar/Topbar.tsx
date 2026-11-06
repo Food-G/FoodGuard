@@ -41,29 +41,31 @@ const Topbar = ({ onLogout }: TopbarProps): ReactElement => {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [notiLoading, setNotiLoading] = useState(false);
   const [storeId, setStoreId] = useState<number | null>(null);
+  const [isHq, setIsHq] = useState(false);
 
   useEffect(() => {
     const token = authService.getToken();
     if (!token) return;
     const decoded = decodeToken(token);
     if (!decoded?.id) return;
+    if (decoded.role === 'HQ_ADMIN') { setIsHq(true); return; }
     storeService.getMyStores(decoded.id).then((stores: any[]) => {
       if (stores?.length) setStoreId(stores[0].id);
     }).catch(() => {});
   }, []);
 
   const fetchNotifications = useCallback(async () => {
-    if (!storeId) return;
+    if (!storeId && !isHq) return;
     setNotiLoading(true);
     try {
-      const data = await notificationService.getUnread(storeId);
+      const data = isHq ? await notificationService.getHqUnread() : await notificationService.getUnread(storeId!);
       setNotifications(Array.isArray(data) ? data : []);
     } catch {
       setNotifications([]);
     } finally {
       setNotiLoading(false);
     }
-  }, [storeId]);
+  }, [storeId, isHq]);
 
   const handleBellClick = (e: React.MouseEvent<HTMLElement>) => {
     setBellAnchor(e.currentTarget);
