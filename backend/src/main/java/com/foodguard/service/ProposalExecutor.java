@@ -27,6 +27,7 @@ import java.util.Map;
 public class ProposalExecutor {
 
     private final OrderRequestService orderRequestService;
+    private final NotificationService notificationService;
     private final RestTemplate restTemplate;
 
     @Value("${agent.service.url:http://localhost:8100}")
@@ -48,6 +49,9 @@ public class ProposalExecutor {
             // 정보성 제안 (AG-0 더미 에이전트, AG-4 위험 표시): 승인은 "확인했음" 기록일 뿐 실행할 동작이 없다
             case "ORDER_FLAG" -> Map.of("ok", true, "note", "정보성 제안 — 실행할 동작 없음");
             case "ORDER_CREATE" -> createOrders(p);
+            case "DISCOUNT_SUGGEST" -> notifyDiscount(p);
+            // 폐기 위험 감축 힌트 (AG-2): 승인(EXECUTED)된 제안을 발주 참모가 조회해 다음 발주안에 반영한다
+            case "ORDER_REDUCE" -> Map.of("ok", true, "note", "다음 발주안에 감축이 반영됩니다.");
             default -> throw new IllegalStateException("아직 실행을 지원하지 않는 제안 타입입니다: " + p.getType());
         };
     }
@@ -73,6 +77,21 @@ public class ProposalExecutor {
             created.add(row);
         }
         return Map.of("ok", true, "orders", created);
+    }
+
+    /** 폐기 위험(AG-2) 판촉 제안: 가격·메뉴를 바꾸지 않고 점주가 할 일을 알림으로 남긴다. */
+    private Map<String, Object> notifyDiscount(AgentProposal p) {
+        Object raw = p.getPayload().get("items");
+        if (!(raw instanceof List<?> items) || items.isEmpty()) {
+            throw new IllegalStateException("판촉 대상 품목이 없습니다.");
+        }
+        List<String> lines = new ArrayList<>();
+        for (Object o : items) {
+            Map<?, ?> it = (Map<?, ?>) o;
+            lines.add(it.get("ingredientName") + "(" + it.get("menus") + ")");
+        }
+        notificationService.create(p.getStoreId(), "[폐기 위험] 판촉 체크리스트: " + String.join(", ", lines), "WASTE");
+        return Map.of("ok", true, "notified", lines.size());
     }
 
     /** 제안을 만든 시점의 발주안 ID 와 지금 다시 계산한 ID 를 비교한다 (산식은 agent-service 의 planner 하나뿐). */

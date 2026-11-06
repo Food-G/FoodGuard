@@ -23,7 +23,7 @@ import java.util.Set;
 public class AgentProposalService {
 
     static final Set<String> TYPES = Set.of(
-            "ORDER_CREATE", "WASTE_RECORD", "DONATION_CREATE", "DISCOUNT_SUGGEST", "MODEL_PROMOTE", "ORDER_FLAG");
+            "ORDER_CREATE", "WASTE_RECORD", "DONATION_CREATE", "DISCOUNT_SUGGEST", "ORDER_REDUCE", "MODEL_PROMOTE", "ORDER_FLAG");
 
     private final AgentProposalRepository proposalRepository;
     private final StoreRepository storeRepository;
