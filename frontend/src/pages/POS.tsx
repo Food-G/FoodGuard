@@ -414,7 +414,7 @@ const POS = ({ user }: any) => {
                 ))}
               </Stack>
               {selectedTable.guests > selectedTable.seats && (
-                <Alert severity="warning" sx={{ mx: 1.5, mt: 1, py: 0, flexDirection: 'row', alignItems: 'center' }}>착석 인원이 좌석 수보다 많습니다.</Alert>
+                <Alert severity="warning" sx={{ mx: 1.5, mt: 1, py: 0 }}>착석 인원이 좌석 수보다 많습니다.</Alert>
               )}
 
               {/* 메뉴 목록 */}

@@ -93,7 +93,7 @@ const Clock = ({ user }: any) => {
 
       <Box sx={{ height: 56, mb: 1 }} role="status" aria-live="polite">
         {result && (
-          <Alert severity={result.ok ? 'success' : 'error'} sx={{ height: '100%', flexDirection: 'row', alignItems: 'center', fontSize: 17, fontWeight: 700, py: 0 }}>
+          <Alert severity={result.ok ? 'success' : 'error'} sx={{ height: '100%', fontSize: 17, fontWeight: 700, py: 0 }}>
             {result.text}
           </Alert>
         )}
