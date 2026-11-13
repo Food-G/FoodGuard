@@ -97,6 +97,10 @@ const Signup = () => {
     e.preventDefault();
     setError('');
 
+    if (formData.password.length < 8) {
+      setError('비밀번호는 8자 이상이어야 합니다.');
+      return;
+    }
     if (formData.password !== formData.confirmPassword) {
       setError('비밀번호가 일치하지 않습니다.');
       return;
@@ -267,7 +271,7 @@ const Signup = () => {
                 }}
               >
                 <MenuItem value="OWNER">가맹점 점주</MenuItem>
-                <MenuItem value="HQ_ADMIN">본사 관리자</MenuItem>
+                {/* 본사 관리자 계정은 회원가입으로 만들 수 없다 (백엔드 UserService.signup) */}
               </Select>
             </FormControl>
 

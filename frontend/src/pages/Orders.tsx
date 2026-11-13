@@ -1,22 +1,27 @@
 import { useEffect, useState } from 'react';
 import {
   Typography, Box, Paper, Button, CircularProgress, Chip, Stack, useTheme,
+  Dialog, DialogTitle, DialogContent, DialogActions,
+  TextField, MenuItem, Select, FormControl, InputLabel, IconButton, Tooltip,
 } from '@mui/material';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { orderService } from '../services/orderService';
+import { notificationService } from '../services/notificationService';
+import { api } from '../services/api';
 import IconifyIcon from '../components/base/IconifyIcon';
 import QrScanner from '../components/QrScanner';
 import OrderExplainDialog from '../components/OrderExplainDialog';
+import OrderReviewDialog from '../components/agent/OrderReviewDialog';
 import { useMyStore } from '../hooks/useMyStore';
 import { useConfirm } from '../hooks/useConfirm';
 import AlertMessages from '../components/AlertMessages';
 
 const STATUS_LABEL: Record<string, string> = {
-  REQUESTED: '대기중',
+  REQUESTED: '승인 대기',
   APPROVED: '승인됨',
-  HQ_SENT: '발송완료',
-  DRIVER_RECEIVED: '배달기사 수령',
-  DONE: '완료',
+  HQ_SENT: '발송중',
+  DRIVER_RECEIVED: '배달기사 검수완료',
+  DONE: '입고완료',
   CANCELLED: '취소됨',
   REJECTED: '거절됨',
 };
@@ -40,7 +45,12 @@ const Orders = ({ user }: any) => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [scanning, setScanning] = useState(false);
+  const [orderDialog, setOrderDialog] = useState(false);
   const [explainOpen, setExplainOpen] = useState(false);
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [ingredients, setIngredients] = useState<any[]>([]);
+  const [orderForm, setOrderForm] = useState({ ingredientId: '', quantity: '' });
+  const [submitting, setSubmitting] = useState(false);
 
   const loadOrders = async (sid: number) => {
     try {
@@ -53,6 +63,7 @@ const Orders = ({ user }: any) => {
         unit: item.ingredient?.unit ?? '',
         status: item.status,
         orderedAt: item.orderedAt ? new Date(item.orderedAt).toLocaleString() : '-',
+        qrToken: item.qrToken ?? null,
       })));
     } catch {
       setError('발주 내역을 불러오지 못했습니다.');
@@ -63,8 +74,55 @@ const Orders = ({ user }: any) => {
     if (!storeId) { if (!storeLoading) setLoading(false); return; }
     loadOrders(storeId).finally(() => setLoading(false));
     const timer = setInterval(() => loadOrders(storeId), 5000);
+    // 페이지 진입 시 ORDER 알림 모두 읽음 처리
+    notificationService.getUnread(storeId).then((data: any[]) => {
+      (data ?? []).filter((n) => n.type === 'ORDER').forEach((n) => notificationService.markAsRead(n.id).catch(() => {}));
+    }).catch(() => {});
     return () => clearInterval(timer);
   }, [storeId, storeLoading]);
+  const handleOwnerQrScan = async (qrData: string) => {
+    setScanning(false);
+    try {
+      const tokenMatch = qrData.match(/[?&]token=([^&]+)/);
+      if (!tokenMatch) { setError('QR 코드 형식이 올바르지 않습니다.'); return; }
+      const result = await orderService.scanQrByOwner(decodeURIComponent(tokenMatch[1]));
+      setSuccess(`${result.ingredientName} 검수 완료. 재고에 반영되었습니다.`);
+      if (storeId) await loadOrders(storeId);
+    } catch {
+      setError('QR 스캔 처리에 실패했습니다. 배달기사 수령 확인 후 검수 가능합니다.');
+    }
+  };
+
+  const driversReceivedQrCodes = rows
+    .filter((r: any) => r.status === 'DRIVER_RECEIVED' && r.qrToken)
+    .map((r: any) => ({
+      data: `${window.location.origin}/owner/scan?token=${r.qrToken}`,
+      label: `${r.name} ${r.quantity}${r.unit}`,
+    }));
+
+  const openOrderDialog = async () => {
+    if (!ingredients.length) {
+      const data = await api.get('/ingredients').catch(() => []);
+      setIngredients(data ?? []);
+    }
+    setOrderForm({ ingredientId: '', quantity: '' });
+    setOrderDialog(true);
+  };
+
+  const handleOrderSubmit = async () => {
+    if (!storeId || !orderForm.ingredientId || !orderForm.quantity) return;
+    setSubmitting(true);
+    try {
+      await orderService.create({ storeId, ingredientId: Number(orderForm.ingredientId), quantity: Number(orderForm.quantity) });
+      setSuccess('발주 신청이 완료되었습니다.');
+      setOrderDialog(false);
+      await loadOrders(storeId);
+    } catch {
+      setError('발주 신청에 실패했습니다.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
   const handleCancel = async (id: number) => {
     if (!await confirm('발주를 취소하시겠습니까?')) return;
     try {
@@ -73,17 +131,6 @@ const Orders = ({ user }: any) => {
       if (storeId) await loadOrders(storeId);
     } catch {
       setError('취소에 실패했습니다.');
-    }
-  };
-
-  const handleQrScan = async (qrData: string) => {
-    setScanning(false);
-    try {
-      const result = await orderService.scanQr(qrData);
-      setSuccess(`${result.ingredientName} 검수 완료. 재고에 반영되었습니다.`);
-      if (storeId) await loadOrders(storeId);
-    } catch {
-      setError('QR 스캔 처리에 실패했습니다.');
     }
   };
 
@@ -120,7 +167,7 @@ const Orders = ({ user }: any) => {
       ),
     },
     {
-      field: 'status', headerName: '상태', width: 110,
+      field: 'status', headerName: '상태', width: 130,
       renderCell: (params) => (
         <Chip
           label={STATUS_LABEL[params.value] ?? params.value}
@@ -130,33 +177,43 @@ const Orders = ({ user }: any) => {
       ),
     },
     {
-      field: 'actions', headerName: '관리', width: 160,
-      renderCell: (params) => {
-        if (params.row.status === 'REQUESTED') {
-          return (
+      field: 'actions', headerName: '관리', width: 180,
+      renderCell: (params) => (
+        <Stack direction="row" alignItems="center" gap={0.5}>
+          {params.row.status === 'REQUESTED' && (
             <Button color="error" size="small" variant="outlined"
               onClick={() => handleCancel(params.id as number)} sx={{ borderRadius: 2 }}>
               취소
             </Button>
-          );
-        }
-        if (params.row.status === 'DRIVER_RECEIVED') {
-          return (
+          )}
+          {params.row.status === 'DRIVER_RECEIVED' && (
             <Button color="success" size="small" variant="contained"
               onClick={() => setScanning(true)} sx={{ borderRadius: 2 }}
               startIcon={<span>📷</span>}>
               QR 스캔
             </Button>
-          );
-        }
-        return null;
-      },
+          )}
+          <Tooltip title="삭제">
+            <IconButton size="small" color="error" onClick={() => handleCancel(params.id as number)}>
+              <IconifyIcon icon="mingcute:delete-2-line" width={18} />
+            </IconButton>
+          </Tooltip>
+        </Stack>
+      ),
     },
   ];
 
   return (
     <Stack gap={3} sx={{ bgcolor: 'background.default' }}>
-      <Stack direction="row" justifyContent="flex-end" gap={1.5}>
+      <Stack direction="row" justifyContent="flex-end" gap={2}>
+        <Button
+          variant="outlined"
+          startIcon={<IconifyIcon icon="mingcute:add-circle-line" />}
+          onClick={openOrderDialog}
+          sx={{ px: 3, py: 1.5, borderRadius: 3 }}
+        >
+          발주 신청
+        </Button>
         <Button
           variant="outlined"
           startIcon={<IconifyIcon icon="mingcute:question-line" />}
@@ -165,6 +222,15 @@ const Orders = ({ user }: any) => {
           sx={{ px: 3, py: 1.5, borderRadius: 3 }}
         >
           AI 추천 근거 보기
+        </Button>
+        <Button
+          variant="outlined"
+          startIcon={<IconifyIcon icon="mingcute:user-star-line" />}
+          onClick={() => setReviewOpen(true)}
+          disabled={!storeId}
+          sx={{ px: 3, py: 1.5, borderRadius: 3 }}
+        >
+          AI 발주 참모
         </Button>
         <Button
           variant="contained"
@@ -180,6 +246,49 @@ const Orders = ({ user }: any) => {
       </Stack>
 
       {storeId && <OrderExplainDialog open={explainOpen} storeId={storeId} onClose={() => setExplainOpen(false)} />}
+      {storeId && <OrderReviewDialog open={reviewOpen} storeId={storeId} onClose={() => setReviewOpen(false)} onOrdered={() => loadOrders(storeId)} />}
+
+      <Dialog open={orderDialog} onClose={() => setOrderDialog(false)} maxWidth="xs" fullWidth>
+        <DialogTitle fontWeight={700}>발주 신청</DialogTitle>
+        <DialogContent>
+          <Stack gap={2.5} mt={1}>
+            <FormControl fullWidth size="small">
+              <InputLabel>식자재 선택</InputLabel>
+              <Select
+                label="식자재 선택"
+                value={orderForm.ingredientId}
+                onChange={e => setOrderForm(f => ({ ...f, ingredientId: e.target.value }))}
+              >
+                {ingredients.map((ing: any) => (
+                  <MenuItem key={ing.id} value={ing.id}>
+                    {ing.name} ({ing.unit})
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <TextField
+              label="수량"
+              type="number"
+              size="small"
+              value={orderForm.quantity}
+              onChange={e => setOrderForm(f => ({ ...f, quantity: e.target.value }))}
+              inputProps={{ min: 0.1, step: 0.1 }}
+              fullWidth
+            />
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setOrderDialog(false)}>취소</Button>
+          <Button
+            variant="contained"
+            onClick={handleOrderSubmit}
+            disabled={submitting || !orderForm.ingredientId || !orderForm.quantity}
+            startIcon={submitting ? <CircularProgress size={14} color="inherit" /> : null}
+          >
+            신청
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <AlertMessages error={error} success={success}
         onClearError={() => setError('')} onClearSuccess={() => setSuccess('')} />
@@ -187,8 +296,9 @@ const Orders = ({ user }: any) => {
       {scanning && (
         <QrScanner
           title="점주 검수 QR 스캔"
-          onScan={handleQrScan}
+          onScan={handleOwnerQrScan}
           onClose={() => setScanning(false)}
+          displayQrCodes={driversReceivedQrCodes}
         />
       )}
 

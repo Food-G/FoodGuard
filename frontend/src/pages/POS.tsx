@@ -7,7 +7,7 @@ import {
 } from '@mui/material';
 import IconifyIcon from '../components/base/IconifyIcon';
 import { menuService } from '../services/menuService';
-import { salesService } from '../services/salesService';
+import { discountService, errorText, ActiveDiscount } from '../services/agentService';
 import { storeService } from '../services/storeService';
 
 interface OrderItem {
@@ -15,6 +15,8 @@ interface OrderItem {
   menuName: string;
   price: number;
   qty: number;
+  listPrice?: number;
+  discountPct?: number | null;
 }
 
 interface Table {
@@ -46,6 +48,7 @@ const POS = ({ user }: any) => {
   const [tables, setTables] = useState<Table[]>(defaultTables);
   const [selected, setSelected] = useState<number | null>(null);
   const [menus, setMenus] = useState<any[]>([]);
+  const [discounts, setDiscounts] = useState<ActiveDiscount[]>([]);
   const [storeId, setStoreId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [paying, setPaying] = useState(false);
@@ -63,6 +66,7 @@ const POS = ({ user }: any) => {
         if (!stores?.length) { setLoading(false); return; }
         const sid = stores[0].id;
         setStoreId(sid);
+        discountService.active(sid).then(setDiscounts).catch(() => {});
         return menuService.getByStore(sid);
       })
       .then((ms: any[]) => ms && setMenus(ms.filter((m: any) => m.isActive !== false && m.isActive !== 0)))
@@ -113,13 +117,19 @@ const POS = ({ user }: any) => {
   const onCanvasMouseUp = () => { dragRef.current = null; resizeRef.current = null; };
 
   // ── 주문 ────────────────────────────────────────────────────────────
+  const discountOf = (menuId: number) => discounts.find(d => d.menuId === menuId);
+
   const addToOrder = (menu: any) => {
+    const discount = discountOf(menu.id);
     setTables(prev => prev.map(t => {
       if (t.id !== selected) return t;
-      const existing = t.orders.find(o => o.menuId === menu.menuId);
+      const existing = t.orders.find(o => o.menuId === menu.id);
       const orders = existing
-        ? t.orders.map(o => o.menuId === menu.menuId ? { ...o, qty: o.qty + 1 } : o)
-        : [...t.orders, { menuId: menu.menuId, menuName: menu.menuName, price: menu.price, qty: 1 }];
+        ? t.orders.map(o => o.menuId === menu.id ? { ...o, qty: o.qty + 1 } : o)
+        : [...t.orders, {
+            menuId: menu.id, menuName: menu.menuName, qty: 1, listPrice: menu.price,
+            price: discount ? discount.discountedPrice : menu.price, discountPct: discount?.discountPct,
+          }];
       return { ...t, status: 'occupied', orders };
     }));
   };
@@ -139,16 +149,16 @@ const POS = ({ user }: any) => {
     if (!selectedTable || !storeId || selectedTable.orders.length === 0) return;
     setPaying(true);
     try {
-      const today = new Date().toISOString().split('T')[0];
-      await Promise.all(
-        selectedTable.orders.map(o =>
-          salesService.create({ storeId, menuId: o.menuId, quantity: o.qty, saleDate: today })
-        )
-      );
-      setReceipt({ tableName: selectedTable.name, orders: [...selectedTable.orders], total: totalPrice });
+      // 가격은 서버가 오늘 할인으로 다시 계산한다. 영수증은 서버 결과로 그린다
+      const result = await discountService.checkout(storeId, selectedTable.orders.map(o => ({ menuId: o.menuId, quantity: o.qty })));
+      setReceipt({
+        tableName: selectedTable.name,
+        total: result.total,
+        orders: result.lines.map(l => ({ menuId: l.menuId, menuName: l.menuName, price: l.unitPrice, qty: l.quantity, listPrice: l.listPrice, discountPct: l.discountPct })),
+      });
       setReceiptOpen(true);
-    } catch {
-      setSuccessMsg('결제 처리 중 오류가 발생했습니다.');
+    } catch (e) {
+      setSuccessMsg(errorText(e, '결제 처리 중 오류가 발생했습니다.'));
       setTimeout(() => setSuccessMsg(''), 3000);
     } finally {
       setPaying(false);
@@ -351,7 +361,7 @@ const POS = ({ user }: any) => {
                     <Typography variant="body2" color="text.disabled" p={1}>등록된 메뉴 없음</Typography>
                   ) : menus.map(menu => (
                     <Stack
-                      key={menu.menuId}
+                      key={menu.id}
                       direction="row"
                       alignItems="center"
                       justifyContent="space-between"
@@ -365,7 +375,13 @@ const POS = ({ user }: any) => {
                     >
                       <Box>
                         <Typography variant="body2" fontWeight={600} lineHeight={1.2}>{menu.menuName}</Typography>
-                        <Typography variant="caption" color="text.secondary">₩{menu.price?.toLocaleString()}</Typography>
+                        {discountOf(menu.id) ? (
+                          <Typography variant="caption" color="error.main" fontWeight={700}>
+                            <s style={{ color: '#999', fontWeight: 400 }}>₩{menu.price?.toLocaleString()}</s> ₩{discountOf(menu.id)!.discountedPrice.toLocaleString()} ({discountOf(menu.id)!.discountPct}%)
+                          </Typography>
+                        ) : (
+                          <Typography variant="caption" color="text.secondary">₩{menu.price?.toLocaleString()}</Typography>
+                        )}
                       </Box>
                       <IconifyIcon icon="mingcute:add-circle-line" color={theme.palette.primary.main} width={22} />
                     </Stack>

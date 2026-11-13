@@ -67,12 +67,14 @@ const Sidebar = ({ open, role, setMobileOpen, onMouseEnter, onMouseLeave }: Side
   const menuItems = role === 'HQ_ADMIN' ? [
     { title: '통합 관리 센터', icon: 'mingcute:home-5-line', path: '/admin', active: true },
     { title: '가맹점 네트워크', icon: 'mingcute:grid-fill', path: '/admin/stores', active: true },
+    { title: '발주 관리', icon: 'mingcute:truck-line', path: '/admin/orders', active: true },
     { title: '환경 통계 분석', icon: 'mingcute:chart-bar-fill', path: '/admin/stats', active: true },
   ] : [
     { title: '에코 대시보드', icon: 'mingcute:leaf-line', path: '/', active: true },
     { title: '가게 등록', icon: 'mingcute:store-2-line', path: '/store', active: true },
     { title: 'POS 시스템', icon: 'mingcute:card-pay-line', path: '/pos', active: true, extraIcon: 'ph:cash-register', blackIcon: true },
     { title: 'AI 수요 예측', icon: 'mingcute:brain-fill', path: '/predictions', active: true },
+    { title: 'AI 운영 비서', icon: 'mingcute:chat-3-line', path: '/assistant', active: true },
     { title: '식자재 발주', icon: 'mingcute:refresh-2-line', path: '/orders', active: true },
     { title: '식자재 관리', icon: 'mingcute:vegetable-line', path: '/ingredients', active: true },
     { title: '자원 현황', icon: 'mingcute:inventory-line', path: '/inventory', active: true },

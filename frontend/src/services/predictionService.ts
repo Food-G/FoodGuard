@@ -6,6 +6,7 @@ export interface PredictionResult {
   menuName: string;
   predictionDate: string;
   predictedQty: number;
+  recommendedOrderQty: number;
   confidence: number;
   modelVersion: string;
   createdAt: string;

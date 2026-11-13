@@ -3,7 +3,7 @@ import {
   Typography, Box, Paper, Button, CircularProgress, Stack,
   useTheme, Chip, TextField, MenuItem, IconButton, Alert,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  Divider,
+  Divider, Dialog, DialogTitle, DialogContent, DialogActions,
 } from '@mui/material';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { inventoryService } from '../services/inventoryService';
@@ -13,6 +13,8 @@ import { menuIngredientService, MenuIngredient } from '../services/menuIngredien
 import IconifyIcon from '../components/base/IconifyIcon';
 import { api } from '../services/api';
 import { useConfirm } from '../hooks/useConfirm';
+import InvoiceImportDialog from '../components/agent/InvoiceImportDialog';
+import WatchdogCard from '../components/agent/WatchdogCard';
 
 const Inventory = ({ user }: any) => {
   const theme = useTheme();
@@ -22,6 +24,8 @@ const Inventory = ({ user }: any) => {
   const [rows, setRows] = useState<any[]>([]);
   const [loadingInventory, setLoadingInventory] = useState(true);
   const [storeId, setStoreId] = useState<number | null>(null);
+  const [invoiceOpen, setInvoiceOpen] = useState(false);
+  const [watchKey, setWatchKey] = useState(0);
 
   // 메뉴 식자재 구성
   const [menus, setMenus] = useState<any[]>([]);
@@ -37,6 +41,10 @@ const Inventory = ({ user }: any) => {
   const [form, setForm] = useState({ ingredientId: '', qtyPerUnit: '', unit: '' });
   const [submitting, setSubmitting] = useState(false);
 
+  // 폐기 기록 (실제 폐기량 → 폐기율 측정 기준)
+  const [wasteTarget, setWasteTarget] = useState<any | null>(null);
+  const [wasteForm, setWasteForm] = useState({ quantity: '', reason: 'EXPIRED' });
+
   // 발주 단위 → 레시피 소단위 변환
   const toRecipeUnit = (base: string) => base === 'kg' ? 'g' : base === 'L' ? 'ml' : '개';
 
@@ -48,9 +56,8 @@ const Inventory = ({ user }: any) => {
       setStoreId(sid);
       loadInventory(sid);
       menuService.getByStore(sid).then((m: any[]) => setMenus(m ?? []));
+      loadAllIngredients(sid);
     }).catch(console.error);
-
-    loadAllIngredients();
   }, [user]);
 
   const loadInventory = (sid: number) => {
@@ -58,6 +65,7 @@ const Inventory = ({ user }: any) => {
     inventoryService.getByStore(sid).then((data: any[]) => {
       setRows((data ?? []).map((item: any) => ({
         id: item.id,
+        ingredientId: item.ingredient?.id,
         name: item.ingredient?.name ?? '',
         category: item.ingredient?.category ?? '',
         quantity: item.currentQty ?? item.quantity,
@@ -122,9 +130,9 @@ const Inventory = ({ user }: any) => {
     }
   };
 
-  const loadAllIngredients = async () => {
+  const loadAllIngredients = async (sid: number) => {
     try {
-      const data = await api.get('/ingredients');
+      const data = await api.get(`/ingredients?storeId=${sid}`);
       setAllIngredients(data ?? []);
     } catch {
       setError('식자재 목록을 불러오지 못했습니다.');
@@ -140,6 +148,23 @@ const Inventory = ({ user }: any) => {
       loadInventory(storeId);
     } catch {
       setError('재고 삭제에 실패했습니다.');
+    }
+  };
+
+  const handleWasteSubmit = async () => {
+    if (!storeId || !wasteTarget || !(Number(wasteForm.quantity) > 0)) return;
+    try {
+      await inventoryService.recordWaste({
+        storeId,
+        ingredientId: wasteTarget.ingredientId,
+        quantity: Number(wasteForm.quantity),
+        reason: wasteForm.reason,
+      });
+      setSuccess(`${wasteTarget.name} ${wasteForm.quantity}${wasteTarget.unit} 폐기가 기록되었습니다.`);
+      setWasteTarget(null);
+      loadInventory(storeId);
+    } catch {
+      setError('폐기 기록에 실패했습니다.');
     }
   };
 
@@ -159,11 +184,35 @@ const Inventory = ({ user }: any) => {
     { field: 'quantity', headerName: '현재고', width: 150, align: 'right', headerAlign: 'right' },
     { field: 'unit', headerName: '단위', width: 100 },
     { field: 'updatedAt', headerName: '최근 업데이트', width: 250 },
+    {
+      field: 'actions', headerName: '', width: 100, sortable: false, align: 'center',
+      renderCell: (params) => (
+        <Button
+          size="small"
+          color="error"
+          onClick={() => { setWasteForm({ quantity: '', reason: 'EXPIRED' }); setWasteTarget(params.row); }}
+        >
+          폐기
+        </Button>
+      ),
+    },
   ];
   return (
     <Stack gap={4} sx={{ bgcolor: 'background.default' }}>
       {error && <Alert severity="error" onClose={() => setError('')}>{error}</Alert>}
       {success && <Alert severity="success" onClose={() => setSuccess('')}>{success}</Alert>}
+
+      {storeId && <WatchdogCard storeId={storeId} refreshKey={watchKey} />}
+
+      <Stack direction="row" justifyContent="flex-end">
+        <Button variant="outlined" disabled={!storeId} startIcon={<IconifyIcon icon="mingcute:camera-line" />} onClick={() => setInvoiceOpen(true)}>
+          거래명세서로 입고 (AI)
+        </Button>
+      </Stack>
+      {storeId && (
+        <InvoiceImportDialog open={invoiceOpen} storeId={storeId} ingredients={allIngredients} onClose={() => setInvoiceOpen(false)}
+          onSaved={() => { loadInventory(storeId); setWatchKey((k) => k + 1); setSuccess('거래명세서 품목을 재고에 반영했습니다.'); }} />
+      )}
 
       {/* 메뉴별 식자재 구성 */}
       <Paper sx={{ p: 3, border: `1px solid ${theme.palette.divider}`, borderRadius: 3 }}>
@@ -330,7 +379,45 @@ const Inventory = ({ user }: any) => {
             />
           )}
         </Box>
-      </Paper>    </Stack>
+      </Paper>
+
+      <Dialog open={!!wasteTarget} onClose={() => setWasteTarget(null)} maxWidth="xs" fullWidth>
+        <DialogTitle>폐기 기록 — {wasteTarget?.name}</DialogTitle>
+        <DialogContent>
+          <Stack gap={2} sx={{ pt: 1 }}>
+            <TextField
+              label={`폐기 수량 (${wasteTarget?.unit ?? ''}, 현재고 ${wasteTarget?.quantity ?? 0})`}
+              type="number"
+              autoFocus
+              value={wasteForm.quantity}
+              onChange={(e) => setWasteForm((p) => ({ ...p, quantity: e.target.value }))}
+              inputProps={{ step: '0.1', min: '0' }}
+            />
+            <TextField
+              select
+              label="사유"
+              value={wasteForm.reason}
+              onChange={(e) => setWasteForm((p) => ({ ...p, reason: e.target.value }))}
+            >
+              <MenuItem value="EXPIRED">유통기한 경과</MenuItem>
+              <MenuItem value="SPOILED">변질·파손</MenuItem>
+              <MenuItem value="OTHER">기타</MenuItem>
+            </TextField>
+          </Stack>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setWasteTarget(null)}>취소</Button>
+          <Button
+            variant="contained"
+            color="error"
+            onClick={handleWasteSubmit}
+            disabled={!(Number(wasteForm.quantity) > 0)}
+          >
+            기록
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </Stack>
   );
 };
 

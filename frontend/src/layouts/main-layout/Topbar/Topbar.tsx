@@ -13,12 +13,46 @@ import { storeService } from '../../../services/storeService';
 import { authService } from '../../../services/authService';
 import { decodeToken } from '../../../utils/jwt';
 
+const DAY_KO = ['일', '월', '화', '수', '목', '금', '토'];
+
+function useDateTime() {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  const d = now;
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const dateStr = `${d.getFullYear()}.${pad(d.getMonth()+1)}.${pad(d.getDate())}(${DAY_KO[d.getDay()]})`;
+  const ampm = d.getHours() < 12 ? '오전' : '오후';
+  const h = d.getHours() % 12 || 12;
+  const timeStr = `${ampm} ${pad(h)}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  return `${dateStr} ${timeStr}`;
+}
+
+function useTemperature() {
+  const [temp, setTemp] = useState<string>('--');
+  useEffect(() => {
+    const fetch_ = () =>
+      fetch('https://api.open-meteo.com/v1/forecast?latitude=37.5665&longitude=126.9780&current_weather=true')
+        .then(r => r.json())
+        .then(d => setTemp(`${Math.round(d.current_weather.temperature)}°C`))
+        .catch(() => {});
+    fetch_();
+    const t = setInterval(fetch_, 10 * 60 * 1000);
+    return () => clearInterval(t);
+  }, []);
+  return temp;
+}
+
 const PAGE_SUBTITLES: Record<string, string> = {
   '/pos': 'POS 시스템',
   '/orders': '식자재 발주',
   '/predictions': 'AI 수요 예측',
+  '/assistant': 'AI 운영 비서',
   '/inventory': '실시간 자원 및 재고 현황',
   '/ingredients': '식자재 관리',
+  '/store': '가게 등록',
   '/menus': '메뉴 관리',
   '/sales': '판매 실적 기록',
   '/waste-prediction': '폐기 예측 & 기부',
@@ -35,6 +69,8 @@ interface TopbarProps {
 const Topbar = ({ onLogout }: TopbarProps): ReactElement => {
   const navigate = useNavigate();
   const location = useLocation();
+  const dateTime = useDateTime();
+  const temperature = useTemperature();
   const subtitle = PAGE_SUBTITLES[location.pathname] ?? '';
   // Notification state
   const [bellAnchor, setBellAnchor] = useState<null | HTMLElement>(null);
@@ -52,36 +88,54 @@ const Topbar = ({ onLogout }: TopbarProps): ReactElement => {
     }).catch(() => {});
   }, []);
 
-  const fetchNotifications = useCallback(async () => {
+  const fetchNotifications = useCallback(async (initial = false) => {
     if (!storeId) return;
-    setNotiLoading(true);
+    if (initial) setNotiLoading(true);
     try {
       const data = await notificationService.getUnread(storeId);
-      setNotifications(Array.isArray(data) ? data : []);
-    } catch {
-      setNotifications([]);
-    } finally {
-      setNotiLoading(false);
+      const incoming = Array.isArray(data) ? data : [];
+      setNotifications(prev => {
+        const existingIds = new Set(prev.map(n => n.id));
+        const newOnes = incoming
+          .filter(n => !existingIds.has(n.id))
+          .map(n => ({ ...n, _localRead: false }));
+        return [...prev, ...newOnes];
+      });
+    } catch {} finally {
+      if (initial) setNotiLoading(false);
     }
   }, [storeId]);
+
+  useEffect(() => {
+    if (!storeId) return;
+    fetchNotifications(true);
+    const t = setInterval(() => fetchNotifications(false), 30000);
+    return () => clearInterval(t);
+  }, [storeId, fetchNotifications]);
 
   const handleBellClick = (e: React.MouseEvent<HTMLElement>) => {
     setBellAnchor(e.currentTarget);
     fetchNotifications();
   };
 
+  // 읽음 처리 — 목록에서 제거하지 않고 로컬 isRead만 표시
   const handleMarkRead = async (id: number) => {
-    try {
-      await notificationService.markAsRead(id);
-      setNotifications(prev => prev.filter(n => n.id !== id));
-    } catch {}
+    setNotifications(prev =>
+      prev.map(n => n.id === id && !n._localRead ? { ...n, _localRead: true } : n)
+    );
+    try { await notificationService.markAsRead(id); } catch {}
+  };
+
+  // X 버튼 — 목록에서 직접 제거
+  const handleDismiss = (id: number) => {
+    setNotifications(prev => prev.filter(n => n.id !== id));
   };
 
   const handleMarkAllRead = async () => {
+    setNotifications(prev => prev.map(n => ({ ...n, _localRead: true })));
     for (const n of notifications) {
       try { await notificationService.markAsRead(n.id); } catch {}
     }
-    setNotifications([]);
   };
 
   const notiTypeIcon: Record<string, string> = {
@@ -137,13 +191,17 @@ const Topbar = ({ onLogout }: TopbarProps): ReactElement => {
 
         {/* 우측 알림 + 유저 */}
         <Stack direction="row" gap={3.75} alignItems="center" justifyContent="flex-end" mr={3.75} flex="1 1 20%">
+          <Typography variant="h6" color="text.secondary" fontWeight={500} noWrap sx={{ letterSpacing: 0.2 }}>
+            {dateTime} · {temperature}
+          </Typography>
           <Badge
             color="error"
-            badgeContent={notifications.length > 0 ? notifications.length : undefined}
+            badgeContent={notifications.filter(n => !n._localRead).length || undefined}
             max={9}
             sx={{ '& .MuiBadge-badge': { top: 6, right: 6, fontSize: 10, minWidth: 18, height: 18 } }}
           >
-            <IconButton sx={{ padding: 1 }} onClick={handleBellClick}>              <IconifyIcon icon="ph:bell-bold" width={29} height={32} />
+            <IconButton sx={{ padding: 1 }} onClick={handleBellClick}>
+              <IconifyIcon icon="ph:bell-bold" width={29} height={32} color="#111111" />
             </IconButton>
           </Badge>
           <UserDropdown onLogout={onLogout} />
@@ -201,14 +259,17 @@ const Topbar = ({ onLogout }: TopbarProps): ReactElement => {
                   {idx > 0 && <Divider />}
                   <ListItem
                     alignItems="flex-start"
+                    onMouseEnter={() => handleMarkRead(noti.id)}
                     sx={{
                       px: 2.5, py: 1.75,
-                      cursor: 'pointer',
+                      cursor: 'default',
                       '&:hover': { bgcolor: 'action.hover' },
-                      bgcolor: 'primary.50',
+                      bgcolor: noti._localRead ? 'transparent' : 'primary.50',
+                      opacity: noti._localRead ? 0.6 : 1,
+                      transition: 'opacity 0.2s, background-color 0.2s',
                     }}
                     secondaryAction={
-                      <IconButton size="small" onClick={() => handleMarkRead(noti.id)} sx={{ opacity: 0.5, '&:hover': { opacity: 1 } }}>
+                      <IconButton size="small" onClick={() => handleDismiss(noti.id)} sx={{ opacity: 0.4, '&:hover': { opacity: 1 } }}>
                         <IconifyIcon icon="mingcute:close-line" width={14} />
                       </IconButton>
                     }
