@@ -7,7 +7,8 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
-RUN mkdir -p trained_models && chown -R foodguard /app
+# claude-auth 볼륨은 처음 붙을 때 이 폴더의 소유자를 따른다. 없으면 root 소유로 생겨 로그인 정보를 저장하지 못한다
+RUN mkdir -p trained_models /home/foodguard/.claude && chown -R foodguard /app /home/foodguard/.claude
 USER foodguard
 # 컨테이너 안에서만 열리고 compose 가 외부 포트를 내지 않는다. main.py 가 INTERNAL_API_KEY 없이는 기동을 거부한다
 ENV AI_SERVICE_HOST=0.0.0.0 TZ=Asia/Seoul
