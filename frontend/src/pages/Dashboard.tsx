@@ -1,14 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
-import {
-  Box, Typography, Badge, Chip, CircularProgress, Button, ButtonBase,
-  Dialog, DialogTitle, DialogContent, Table, TableHead, TableBody, TableRow, TableCell, IconButton,
-} from '@mui/material';
+import { Box, Typography, Badge, Chip, CircularProgress, Button, ButtonBase } from '@mui/material';
 import IconifyIcon from '../components/base/IconifyIcon';
 import { inventoryService } from '../services/inventoryService';
 import { salesService } from '../services/salesService';
 import { storeService } from '../services/storeService';
 import { MOCK_RESERVATIONS } from './reservationsMock';
+import { employeeService, attendanceService, Employee, Attendance } from '../services/employeeService';
+import { hhmm, localDate, minutesBetween, minutesLabel } from '../helpers/date';
 
 /* ───────── 공통 ───────── */
 // 키보드 포커스가 보이도록 (마우스 클릭에는 표시하지 않음)
@@ -28,9 +27,6 @@ const CARD_SX = {
 const MockChip = () => (
   <Chip label="예시" size="small" sx={{ height: 20, fontSize: 11, fontWeight: 700, bgcolor: '#F1F3F7', color: '#44474E' }} />
 );
-
-const localDate = (d: Date) =>
-  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
 /* ───────── 기능 타일 ───────── */
 interface TileProps {
@@ -89,6 +85,8 @@ const OWNER_GROUPS: { title: string; tiles: TileProps[] }[] = [
       { title: '판매 입력', desc: '판매량 직접 입력·휴무/품절 기록', icon: 'mingcute:chart-line-line', color: '#00796B', path: '/sales' },
       { title: '예약 현황', desc: '오늘·예정 예약 확인', icon: 'mingcute:calendar-2-line', color: '#1976D2', path: '/reservations' },
       { title: '메뉴 관리', desc: '메뉴·가격·레시피 관리', icon: 'mingcute:fork-spoon-line', color: '#0277BD', path: '/menus' },
+      { title: '직원 관리', desc: '명단·근무 스케줄·주휴수당', icon: 'mingcute:user-2-line', color: '#5E35B1', path: '/staff' },
+      { title: '출퇴근', desc: '직원 PIN 출퇴근 기록', icon: 'mingcute:time-line', color: '#00695C', path: '/clock' },
     ],
   },
   {
@@ -270,17 +268,8 @@ const InventoryAlertWidget = ({ items, loading }: { items: any[]; loading: boole
   );
 };
 
-/* ───────── 직원 출퇴근 (출퇴근 API 가 없어 예시 데이터) ───────── */
-const MOCK_EMPLOYEES: { name: string; in: string | null; out: string | null }[] = [
-  { name: '정태현',     in: '09:00', out: '15:00' },
-  { name: '서준호',     in: '10:30', out: null },
-  { name: '김지환',     in: '08:45', out: null },
-  { name: '지현윤',     in: null,    out: null },
-  { name: '몽흐데르겔', in: '11:00', out: null },
-];
-
+/* ───────── 직원 출퇴근 (오늘 출퇴근 기록) ───────── */
 type EmpStatus = 'working' | 'off' | 'absent';
-const empStatus = (e: typeof MOCK_EMPLOYEES[number]): EmpStatus => (!e.in ? 'absent' : e.out ? 'off' : 'working');
 
 const STATUS_CHIP: Record<EmpStatus, { label: string; bg: string; color: string; border: string }> = {
   working: { label: '근무중', bg: '#E8F5E9', color: '#1B5E20', border: '#A5D6A7' },
@@ -288,94 +277,70 @@ const STATUS_CHIP: Record<EmpStatus, { label: string; bg: string; color: string;
   absent:  { label: '미출근', bg: '#FFEBEE', color: '#B71C1C', border: '#FFCDD2' },
 };
 
-const toMinutes = (hhmm: string) => { const [h, m] = hhmm.split(':').map(Number); return h * 60 + m; };
-
-// 퇴근 전이면 지금까지 근무 시간
-const workDuration = (e: typeof MOCK_EMPLOYEES[number], now: Date) => {
-  if (!e.in) return '-';
-  const end = e.out ? toMinutes(e.out) : now.getHours() * 60 + now.getMinutes();
-  const mins = Math.max(0, end - toMinutes(e.in));
-  return `${Math.floor(mins / 60)}시간 ${mins % 60}분`;
-};
-
 const StatusChip = ({ status }: { status: EmpStatus }) => {
   const s = STATUS_CHIP[status];
   return <Chip label={s.label} size="small" sx={{ height: 22, fontSize: 12, fontWeight: 700, bgcolor: s.bg, color: s.color, border: `1px solid ${s.border}` }} />;
 };
 
-const EmployeeWidget = () => {
-  const [open, setOpen] = useState(false);
+const EmployeeWidget = ({ storeId }: { storeId: number | null }) => {
+  const [employees, setEmployees] = useState<Employee[] | null>(null);
+  const [records, setRecords] = useState<Attendance[]>([]);
   const now = new Date();
-  const onCount = MOCK_EMPLOYEES.filter((e) => empStatus(e) === 'working').length;
+
+  useEffect(() => {
+    if (!storeId) return;
+    const load = () => {
+      const today = localDate(new Date());
+      employeeService.getByStore(storeId).then(setEmployees).catch(() => {});
+      attendanceService.getByStore(storeId, today, today).then(setRecords).catch(() => {});
+    };
+    load();
+    const timer = setInterval(load, 60_000);
+    return () => clearInterval(timer);
+  }, [storeId]);
+
+  // 재직 직원마다 오늘 첫 출근·마지막 퇴근·근무 시간(근무 중이면 지금까지)
+  const rows = (employees ?? []).filter((e) => e.active).map((e) => {
+    const mine = records.filter((r) => r.employeeId === e.id);
+    const status: EmpStatus = mine.length === 0 ? 'absent' : mine.some((r) => !r.clockOut) ? 'working' : 'off';
+    const minutes = mine.reduce((s, r) => s + minutesBetween(r.clockIn, r.clockOut ?? now), 0);
+    return { e, status, in: mine[0]?.clockIn, out: status === 'off' ? mine[mine.length - 1].clockOut : null, minutes };
+  });
+  const onCount = rows.filter((r) => r.status === 'working').length;
 
   return (
-    <>
-      <ButtonBase
-        component="div"
-        onClick={() => setOpen(true)}
-        aria-label="직원 출퇴근 상세 보기"
-        sx={{ ...CARD_SX, ...FOCUS_SX, borderTop: '3px solid #1976D2', flexDirection: 'column', alignItems: 'stretch', textAlign: 'left' }}
-      >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
-          <IconifyIcon icon="mingcute:user-2-fill" width={22} height={22} color="#1976D2" />
-          <Typography fontWeight={700} fontSize={16} color="#1A1C1E">직원 출퇴근 현황</Typography>
-          <MockChip />
-          <Typography fontSize={13} fontWeight={700} color="#1B5E20" sx={{ ml: 'auto' }}>근무중 {onCount}명</Typography>
-        </Box>
+    <ButtonBase
+      component={RouterLink}
+      to="/staff"
+      aria-label="직원 출퇴근 현황, 직원 관리로 이동"
+      sx={{ ...CARD_SX, ...FOCUS_SX, borderTop: '3px solid #1976D2', flexDirection: 'column', alignItems: 'stretch', textAlign: 'left' }}
+    >
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+        <IconifyIcon icon="mingcute:user-2-fill" width={22} height={22} color="#1976D2" />
+        <Typography fontWeight={700} fontSize={16} color="#1A1C1E">직원 출퇴근 현황</Typography>
+        <Typography fontSize={13} fontWeight={700} color="#1B5E20" sx={{ ml: 'auto' }}>근무중 {onCount}명</Typography>
+      </Box>
+      {employees == null ? (
+        <Typography fontSize={14} color="#44474E">{storeId ? '불러오는 중…' : '-'}</Typography>
+      ) : rows.length === 0 ? (
+        <Typography fontSize={14} color="#44474E">등록된 직원이 없습니다. 눌러서 직원을 등록하세요.</Typography>
+      ) : (
         <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 1 }}>
-          {MOCK_EMPLOYEES.map((emp) => {
-            const status = empStatus(emp);
-            return (
-              <Box key={emp.name} sx={{ px: 1.5, py: 1, borderRadius: 2, bgcolor: status === 'absent' ? '#FAFAFA' : '#F7F9FF', border: '1px solid #E8EAF0' }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8, justifyContent: 'space-between' }}>
-                  <Typography fontSize={14} fontWeight={700} color="#1A1C1E" noWrap>{emp.name}</Typography>
-                  <StatusChip status={status} />
-                </Box>
-                <Typography fontSize={13} color="#44474E" sx={{ mt: 0.3 }}>
-                  {status === 'absent' ? '출근 기록 없음' : `${emp.in} ~ ${emp.out ?? '근무중'}`}
-                </Typography>
-                {status !== 'absent' && (
-                  <Typography fontSize={12} color="#44474E">{workDuration(emp, now)}</Typography>
-                )}
+          {rows.map(({ e, status, in: clockIn, out, minutes }) => (
+            <Box key={e.id} sx={{ px: 1.5, py: 1, borderRadius: 2, bgcolor: status === 'absent' ? '#FAFAFA' : '#F7F9FF', border: '1px solid #E8EAF0' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8, justifyContent: 'space-between' }}>
+                <Typography fontSize={14} fontWeight={700} color="#1A1C1E" noWrap>{e.name}</Typography>
+                <StatusChip status={status} />
               </Box>
-            );
-          })}
+              <Typography fontSize={13} color="#44474E" sx={{ mt: 0.3 }}>
+                {status === 'absent' ? '출근 기록 없음' : `${hhmm(clockIn)} ~ ${out ? hhmm(out) : '근무중'}`}
+              </Typography>
+              {status !== 'absent' && <Typography fontSize={12} color="#44474E">{minutesLabel(minutes)}</Typography>}
+            </Box>
+          ))}
         </Box>
-      </ButtonBase>
-
-      <Dialog open={open} onClose={() => setOpen(false)} fullWidth maxWidth="sm">
-        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          직원 출퇴근 상세 <MockChip />
-          <IconButton aria-label="닫기" onClick={() => setOpen(false)} sx={{ ml: 'auto' }}>
-            <IconifyIcon icon="mingcute:close-line" width={20} height={20} />
-          </IconButton>
-        </DialogTitle>
-        <DialogContent>
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>이름</TableCell>
-                <TableCell>상태</TableCell>
-                <TableCell>출근</TableCell>
-                <TableCell>퇴근</TableCell>
-                <TableCell>근무 시간</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {MOCK_EMPLOYEES.map((emp) => (
-                <TableRow key={emp.name}>
-                  <TableCell sx={{ fontWeight: 700 }}>{emp.name}</TableCell>
-                  <TableCell><StatusChip status={empStatus(emp)} /></TableCell>
-                  <TableCell>{emp.in ?? '-'}</TableCell>
-                  <TableCell>{emp.out ?? '-'}</TableCell>
-                  <TableCell>{workDuration(emp, now)}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </DialogContent>
-      </Dialog>
-    </>
+      )}
+    </ButtonBase>
   );
 };
 
@@ -474,7 +439,7 @@ const Dashboard = ({ user }: any) => {
 
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           <InventoryAlertWidget items={inventory} loading={invLoading} />
-          <EmployeeWidget />
+          <EmployeeWidget storeId={storeId} />
         </Box>
       </Box>
     </Box>

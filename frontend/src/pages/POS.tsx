@@ -9,6 +9,7 @@ import IconifyIcon from '../components/base/IconifyIcon';
 import { menuService } from '../services/menuService';
 import { discountService, errorText, ActiveDiscount } from '../services/agentService';
 import { storeService } from '../services/storeService';
+import { posTableService } from '../services/posTableService';
 
 interface OrderItem {
   menuId: number;
@@ -28,17 +29,19 @@ interface Table {
   h: number;
   status: 'empty' | 'occupied';
   orders: OrderItem[];
+  seats: number;   // 좌석 수 (배치와 함께 저장)
+  guests: number;  // 착석 인원 (주문처럼 화면 상태로만)
 }
 
 let nextId = 7;
 
 const defaultTables = (): Table[] => [
-  { id: 1, name: '1번', x: 40,  y: 60,  w: 100, h: 80, status: 'empty', orders: [] },
-  { id: 2, name: '2번', x: 180, y: 60,  w: 100, h: 80, status: 'empty', orders: [] },
-  { id: 3, name: '3번', x: 320, y: 60,  w: 100, h: 80, status: 'empty', orders: [] },
-  { id: 4, name: '4번', x: 40,  y: 190, w: 100, h: 80, status: 'empty', orders: [] },
-  { id: 5, name: '5번', x: 180, y: 190, w: 100, h: 80, status: 'empty', orders: [] },
-  { id: 6, name: '6번', x: 320, y: 190, w: 100, h: 80, status: 'empty', orders: [] },
+  { id: 1, name: '1번', seats: 4, guests: 0, x: 40,  y: 60,  w: 100, h: 80, status: 'empty', orders: [] },
+  { id: 2, name: '2번', seats: 4, guests: 0, x: 180, y: 60,  w: 100, h: 80, status: 'empty', orders: [] },
+  { id: 3, name: '3번', seats: 4, guests: 0, x: 320, y: 60,  w: 100, h: 80, status: 'empty', orders: [] },
+  { id: 4, name: '4번', seats: 4, guests: 0, x: 40,  y: 190, w: 100, h: 80, status: 'empty', orders: [] },
+  { id: 5, name: '5번', seats: 4, guests: 0, x: 180, y: 190, w: 100, h: 80, status: 'empty', orders: [] },
+  { id: 6, name: '6번', seats: 4, guests: 0, x: 320, y: 190, w: 100, h: 80, status: 'empty', orders: [] },
 ];
 
 const POS = ({ user }: any) => {
@@ -55,6 +58,7 @@ const POS = ({ user }: any) => {
   const [receiptOpen, setReceiptOpen] = useState(false);
   const [receipt, setReceipt] = useState<{ tableName: string; orders: OrderItem[]; total: number } | null>(null);
   const [successMsg, setSuccessMsg] = useState('');
+  const [savingLayout, setSavingLayout] = useState(false);
 
   const dragRef = useRef<{ id: number; ox: number; oy: number; tx: number; ty: number } | null>(null);
   const resizeRef = useRef<{ id: number; sx: number; sy: number; ow: number; oh: number } | null>(null);
@@ -66,6 +70,12 @@ const POS = ({ user }: any) => {
         if (!stores?.length) { setLoading(false); return; }
         const sid = stores[0].id;
         setStoreId(sid);
+        // 저장된 배치가 있으면 기본 배치 대신 쓴다
+        posTableService.getByStore(sid).then(saved => {
+          if (!saved?.length) return;
+          setTables(saved.map((t, i) => ({ id: i + 1, name: t.name, x: t.x, y: t.y, w: t.w, h: t.h, seats: t.seats, guests: 0, status: 'empty', orders: [] })));
+          nextId = saved.length + 1;
+        }).catch(() => {});
         discountService.active(sid).then(setDiscounts).catch(() => {});
         return menuService.getByStore(sid);
       })
@@ -140,7 +150,7 @@ const POS = ({ user }: any) => {
       const orders = t.orders
         .map(o => o.menuId === menuId ? { ...o, qty: o.qty + delta } : o)
         .filter(o => o.qty > 0);
-      return { ...t, status: orders.length > 0 ? 'occupied' : 'empty', orders };
+      return { ...t, status: orders.length > 0 || t.guests > 0 ? 'occupied' : 'empty', orders };
     }));
   };
 
@@ -167,7 +177,7 @@ const POS = ({ user }: any) => {
 
   const handleReceiptClose = () => {
     setReceiptOpen(false);
-    setTables(prev => prev.map(t => t.id === selected ? { ...t, status: 'empty', orders: [] } : t));
+    setTables(prev => prev.map(t => t.id === selected ? { ...t, status: 'empty', orders: [], guests: 0 } : t));
     setSelected(null);
     setSuccessMsg('결제 완료. 판매 실적이 기록되었습니다.');
     setTimeout(() => setSuccessMsg(''), 3000);
@@ -176,7 +186,30 @@ const POS = ({ user }: any) => {
   // ── 테이블 관리 ──────────────────────────────────────────────────────
   const addTable = () => {
     const id = nextId++;
-    setTables(prev => [...prev, { id, name: `${id}번`, x: 60, y: 60, w: 100, h: 80, status: 'empty', orders: [] }]);
+    setTables(prev => [...prev, { id, name: `${id}번`, seats: 4, guests: 0, x: 60, y: 60, w: 100, h: 80, status: 'empty', orders: [] }]);
+  };
+
+  // 선택한 테이블의 좌석 수·착석 인원 (0 미만 불가, 좌석은 1 이상)
+  const updateSelected = (patch: Partial<Pick<Table, 'seats' | 'guests'>>) => {
+    setTables(prev => prev.map(t => {
+      if (t.id !== selected) return t;
+      const next = { ...t, ...patch };
+      return { ...next, status: next.orders.length > 0 || next.guests > 0 ? 'occupied' : 'empty' };
+    }));
+  };
+
+  const saveLayout = async () => {
+    if (!storeId) return;
+    setSavingLayout(true);
+    try {
+      await posTableService.save(storeId, tables.map(({ name, x, y, w, h, seats }) => ({ name, x, y, w, h, seats })));
+      setSuccessMsg('테이블 배치와 좌석 수를 저장했습니다.');
+    } catch (e) {
+      setSuccessMsg(errorText(e, '테이블 배치를 저장하지 못했습니다.'));
+    } finally {
+      setSavingLayout(false);
+      setTimeout(() => setSuccessMsg(''), 3000);
+    }
   };
 
   const removeTable = (e: React.MouseEvent, id: number) => {
@@ -202,6 +235,9 @@ const POS = ({ user }: any) => {
           </Stack>
           <Button variant="outlined" size="small" startIcon={<IconifyIcon icon="mingcute:add-line" />} onClick={addTable}>
             테이블 추가
+          </Button>
+          <Button variant="contained" size="small" startIcon={<IconifyIcon icon="mingcute:save-2-line" />} onClick={saveLayout} disabled={!storeId || savingLayout}>
+            {savingLayout ? '저장 중…' : '배치 저장'}
           </Button>
         </Stack>
       </Stack>
@@ -270,6 +306,9 @@ const POS = ({ user }: any) => {
                     '& .MuiChip-label': { px: 0.8 },
                   }}
                 />
+                <Typography fontSize={11} fontWeight={600} lineHeight={1} color={table.guests > table.seats ? 'error.main' : 'text.secondary'}>
+                  {table.guests > 0 ? `착석 ${table.guests}/${table.seats}명` : `${table.seats}인석`}
+                </Typography>
                 {table.orders.length > 0 && (
                   <Typography fontSize={10} color="text.secondary" lineHeight={1}>
                     {table.orders.reduce((s, o) => s + o.qty, 0)}개 주문
@@ -350,6 +389,33 @@ const POS = ({ user }: any) => {
                   </IconButton>
                 </Stack>
               </Box>
+
+              {/* 좌석 수 · 착석 인원 */}
+              <Stack direction="row" gap={1.5} sx={{ p: 1.5, borderBottom: `1px solid ${theme.palette.divider}` }}>
+                {([
+                  { key: 'guests', label: '착석 인원', min: 0 },
+                  { key: 'seats', label: '좌석 수', min: 1 },
+                ] as const).map(({ key, label, min }) => (
+                  <Box key={key} sx={{ flex: 1 }}>
+                    <Typography variant="caption" fontWeight={700} color="text.secondary">{label}</Typography>
+                    <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mt: 0.5, px: 0.5, borderRadius: 1.5, border: `1px solid ${theme.palette.divider}` }}>
+                      <IconButton size="small" aria-label={`${label} 줄이기`} disabled={selectedTable[key] <= min}
+                        onClick={() => updateSelected({ [key]: selectedTable[key] - 1 })}>
+                        <IconifyIcon icon="mingcute:minus-line" width={16} />
+                      </IconButton>
+                      <Typography fontWeight={800} color={key === 'guests' && selectedTable.guests > selectedTable.seats ? 'error.main' : 'text.primary'}>
+                        {selectedTable[key]}명
+                      </Typography>
+                      <IconButton size="small" aria-label={`${label} 늘리기`} onClick={() => updateSelected({ [key]: selectedTable[key] + 1 })}>
+                        <IconifyIcon icon="mingcute:add-line" width={16} />
+                      </IconButton>
+                    </Stack>
+                  </Box>
+                ))}
+              </Stack>
+              {selectedTable.guests > selectedTable.seats && (
+                <Alert severity="warning" sx={{ mx: 1.5, mt: 1, py: 0, flexDirection: 'row', alignItems: 'center' }}>착석 인원이 좌석 수보다 많습니다.</Alert>
+              )}
 
               {/* 메뉴 목록 */}
               <Box sx={{ p: 1.5, borderBottom: `1px solid ${theme.palette.divider}` }}>

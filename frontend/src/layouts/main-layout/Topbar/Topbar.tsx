@@ -57,6 +57,8 @@ const PAGE_SUBTITLES: Record<string, string> = {
   '/sales': '판매 실적 기록',
   '/waste-prediction': '폐기 예측 & 기부',
   '/donations': '기부 이력',
+  '/staff': '직원 관리',
+  '/clock': '출퇴근',
   '/admin/stores': '가맹점 네트워크 관리',
   '/admin/stats': '환경 통계 분석',
   '/admin/orders': '발주 관리',

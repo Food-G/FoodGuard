@@ -32,6 +32,8 @@ const ScanComplete = lazy(() => import('./pages/ScanComplete'));
 const OwnerScanComplete = lazy(() => import('./pages/OwnerScanComplete'));
 const Reservations = lazy(() => import('./pages/Reservations'));
 const SalesStats = lazy(() => import('./pages/SalesStats'));
+const Staff = lazy(() => import('./pages/Staff'));
+const Clock = lazy(() => import('./pages/Clock'));
 
 function App() {
   const { user, login, logout, isLoggedIn } = useAuth();
@@ -139,6 +141,18 @@ function App() {
             <Route path="/reservations" element={
               <ProtectedRoute role="OWNER">
                 <Reservations />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/staff" element={
+              <ProtectedRoute role="OWNER">
+                <Staff user={user} />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/clock" element={
+              <ProtectedRoute role="OWNER">
+                <Clock user={user} />
               </ProtectedRoute>
             } />
 

@@ -10,6 +10,8 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 import java.util.Map;
 
+import static java.util.Map.entry;
+
 /**
  * 점주는 자기 매장 데이터만, 본사 관리자(HQ_ADMIN)는 모든 매장 데이터에 접근한다.
  * 매장 주인 = STORE.hq_user_id (Store.user). 위반 시 AccessDeniedException → 403
@@ -19,17 +21,20 @@ import java.util.Map;
 public class StoreAccess {
 
     // 엔티티 id 로 소속 매장 id 를 찾는 쿼리 (경로의 {id}·{menuId} 가 가리키는 엔티티별)
-    static final Map<String, String> STORE_ID_QUERY = Map.of(
-            "Inventory", "select x.store.id from Inventory x where x.id = :id",
-            "Menu", "select x.store.id from Menu x where x.id = :id",
-            "MenuIngredient", "select x.menu.store.id from MenuIngredient x where x.id = :id",
-            "Ingredient", "select x.store.id from Ingredient x where x.id = :id",
-            "Notification", "select x.store.id from Notification x where x.id = :id",
-            "OrderRequest", "select x.store.id from OrderRequest x where x.id = :id",
-            "SalesData", "select x.store.id from SalesData x where x.id = :id",
-            "SalesDayFlag", "select x.storeId from SalesDayFlag x where x.id = :id",
-            "StoreEventNote", "select x.storeId from StoreEventNote x where x.id = :id",
-            "DonationRecord", "select x.storeId from DonationRecord x where x.id = :id"
+    static final Map<String, String> STORE_ID_QUERY = Map.ofEntries(
+            entry("Inventory", "select x.store.id from Inventory x where x.id = :id"),
+            entry("Menu", "select x.store.id from Menu x where x.id = :id"),
+            entry("MenuIngredient", "select x.menu.store.id from MenuIngredient x where x.id = :id"),
+            entry("Ingredient", "select x.store.id from Ingredient x where x.id = :id"),
+            entry("Notification", "select x.store.id from Notification x where x.id = :id"),
+            entry("OrderRequest", "select x.store.id from OrderRequest x where x.id = :id"),
+            entry("SalesData", "select x.store.id from SalesData x where x.id = :id"),
+            entry("SalesDayFlag", "select x.storeId from SalesDayFlag x where x.id = :id"),
+            entry("StoreEventNote", "select x.storeId from StoreEventNote x where x.id = :id"),
+            entry("DonationRecord", "select x.storeId from DonationRecord x where x.id = :id"),
+            entry("Employee", "select x.storeId from Employee x where x.id = :id"),
+            entry("EmployeeSchedule", "select x.storeId from EmployeeSchedule x where x.id = :id"),
+            entry("Attendance", "select x.storeId from Attendance x where x.id = :id")
     );
 
     private final EntityManager entityManager;
