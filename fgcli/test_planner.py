@@ -90,13 +90,17 @@ class PlannerTest(unittest.TestCase):
         # 실제로 겪은 상황: 소고기 재고 0, 소요 전부를 넉 달 묵은 REQUESTED 발주가 메우고 있었다
         inv = [{"ingredientId": 100, "ingredientName": "패티", "unit": "kg", "currentQty": 0.0, "minThreshold": 0},
                obs()["inventory"][1]]
-        pend = [{"id": 9, "ingredientId": 100, "qty": 20.0, "status": "REQUESTED", "orderedAt": "2026-06-19"}]
+        pend = [{"id": 9, "ingredientId": 100, "ingredientName": "패티", "qty": 20.0, "status": "REQUESTED",
+                 "orderedAt": "2026-06-19"}]
         p = build_plan(obs(inventory=inv, pendingOrders=pend, serverRecommend=[]), TODAY)
         risks = {r["ingredientId"]: r["risk"] for r in p["risks"]}
         self.assertEqual(risks[100], "awaiting_delivery")
         self.assertEqual(p["items"], [])   # 수량 산식은 서버와 같게 유지 (경고로만 알린다)
         stale = [w for w in p["warnings"] if w["type"] == "pending_stale"]
         self.assertEqual(stale[0]["orderIds"], [9])
+        # 어떤 식자재의 발주인지 문구에 있어야 LLM 이 다른 식자재에 연결하지 않는다
+        self.assertEqual(stale[0]["ingredientIds"], [100])
+        self.assertIn("#9 패티", stale[0]["message"])
 
     def test_최근_발주는_오래됨_경고_없음(self):
         self.assertNotIn("pending_stale", [w["type"] for w in build_plan(obs(), TODAY)["warnings"]])

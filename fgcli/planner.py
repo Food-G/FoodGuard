@@ -147,10 +147,13 @@ def build_plan(obs: dict, today: date | None = None, waste_hints: dict[int, floa
              if o.get("orderedAt") and (today - date.fromisoformat(o["orderedAt"])).days > STALE_PENDING_DAYS]
     if stale:
         oldest = min(o["orderedAt"] for o in stale)
+        # 어떤 식자재인지 적는다. 빠지면 LLM 이 엉뚱한 식자재에 연결해 설명한다 (2026-11-13 평가에서 확인)
+        which = ", ".join(f"#{o['id']} {o.get('ingredientName') or o['ingredientId']}" for o in stale)
         warnings.append({
             "type": "pending_stale", "orderIds": [o["id"] for o in stale],
-            "message": f"진행 중 발주 {len(stale)}건이 {STALE_PENDING_DAYS}일 넘게 처리되지 않았습니다 (가장 오래된 것 {oldest}). "
-                       "발주안은 이 수량이 들어온다고 보고 뺐으므로, 본사에 상태를 확인하거나 취소 후 다시 계획하세요.",
+            "ingredientIds": sorted({o["ingredientId"] for o in stale}),
+            "message": f"진행 중 발주 {len(stale)}건이 {STALE_PENDING_DAYS}일 넘게 처리되지 않았습니다 ({which}, 가장 오래된 것 {oldest}). "
+                       "발주안은 이 식자재의 대기발주 수량이 들어온다고 보고 뺐으므로, 본사에 상태를 확인하거나 취소 후 다시 계획하세요.",
         })
 
     if obs.get("recentSalesDays") == 0:

@@ -19,6 +19,8 @@ from fgcli.client import FoodGuardClient
 EXCLUDED = {"whoami", "my-stores", "plan", "ai-health"}
 
 MAX_ITEMS = 100  # 목록이 길면 잘라서 컨텍스트를 아낀다 (잘렸다는 사실은 알린다)
+ORDER_LISTS = {"orders", "orders-all"}
+ACTIVE_ORDER_STATUSES = ("REQUESTED", "APPROVED", "HQ_SENT", "DRIVER_RECEIVED")
 
 _INT = {"type": "integer"}
 _DATE = {"type": "string", "description": "YYYY-MM-DD"}
@@ -96,12 +98,24 @@ def run_command(client: FoodGuardClient, name: str, args: dict, bound_store: int
     if isinstance(result, list):
         if trimmer:
             result = [trimmer(x) for x in result]
+        extra: dict = {}
+        if name in ORDER_LISTS:
+            # 진행 중 발주 먼저, 그다음 최신순. 서버는 오래된 순으로 주므로 그냥 자르면 지금 필요한 발주가 빠진다
+            # (2026-11-13 평가: 675건 중 앞 100건이 모두 완료 건이라 "진행 중 0건"으로 답했다)
+            result = sorted(result, key=lambda o: str(o.get("orderedAt") or ""), reverse=True)
+            result.sort(key=lambda o: o.get("status") not in ACTIVE_ORDER_STATUSES)
+            by_status: dict[str, int] = {}
+            for o in result:
+                by_status[o.get("status")] = by_status.get(o.get("status"), 0) + 1
+            extra = {"byStatus": by_status,
+                     "activeCount": sum(n for s, n in by_status.items() if s in ACTIVE_ORDER_STATUSES),
+                     "order": "진행 중 발주 먼저, 그다음 최신순"}
         total = len(result)
         if total > MAX_ITEMS:
-            return {"count": MAX_ITEMS, "total": total,
+            return {"count": MAX_ITEMS, "total": total, **extra,
                     "truncated": f"전체 {total}건 중 앞 {MAX_ITEMS}건만 표시했습니다.",
                     "items": result[:MAX_ITEMS]}
-        return {"count": total, "items": result}
+        return {"count": total, **extra, "items": result}
     return result
 
 

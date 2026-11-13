@@ -96,16 +96,19 @@ public class WastePredictionService {
 
         // 예측이 없는 날은 최근 판매 평균으로 채운다
         Map<Long, Double> fallback = null;
-        boolean usedFallback = false;
+        int fallbackDays = 0;
         List<Map<Long, Double>> menuQtyPerDay = new ArrayList<>();
         for (int d = 0; d < HORIZON_DAYS; d++) {
             Map<Long, Double> day = menuQtyByDate.get(today.plusDays(d));
             if (day == null) {
                 if (fallback == null) fallback = recentDailyAverage(storeId, today);
-                usedFallback = true;
+                fallbackDays++;
                 day = fallback;
             }
             menuQtyPerDay.add(day);
+        }
+        if (fallbackDays > 0 && fallbackDays < HORIZON_DAYS) {
+            warnings.add("7일 중 예측이 없는 " + fallbackDays + "일은 최근 판매 평균으로 채웠습니다.");
         }
         if (fallback != null && fallback.isEmpty()) {
             warnings.add("예측이 없는 날이 있고 최근 " + FALLBACK_SALES_DAYS + "일 판매도 없어 그날 소모를 0 으로 계산했습니다.");
@@ -130,7 +133,9 @@ public class WastePredictionService {
             int byRisk = Integer.compare(riskOrder(a), riskOrder(b));
             return byRisk != 0 ? byRisk : Long.compare((Long) a.get("daysUntilExpiry"), (Long) b.get("daysUntilExpiry"));
         });
-        String basis = usedFallback ? "fallback_avg" : "prediction";
+        // 예측은 보통 내일부터라 오늘 하루만 평균으로 채워도 전부 fallback_avg 로 보였다 (2026-11-13 평가).
+        // 일부만 채웠으면 mixed 로 구분한다
+        String basis = fallbackDays == 0 ? "prediction" : fallbackDays < HORIZON_DAYS ? "mixed" : "fallback_avg";
         rows.forEach(r -> r.put("basis", basis));
         return new Report(rows, basis, warnings);
     }

@@ -65,6 +65,16 @@ class ToolsTest(unittest.TestCase):
         self.assertEqual(c.paths, ["/api/inventory/60006/txns",
                                    "/api/inventory/60006/txns?from=2026-10-01&ingredientId=5"])
 
+    def test_order_list_puts_active_first_and_counts_status(self):
+        done = [{"id": i, "status": "DONE", "orderedAt": f"2026-06-{i % 28 + 1:02d}T10:00:00"} for i in range(MAX_ITEMS + 20)]
+        active = [{"id": 900, "status": "REQUESTED", "orderedAt": "2026-11-13T09:00:00"},
+                  {"id": 901, "status": "HQ_SENT", "orderedAt": "2026-11-12T09:00:00"}]
+        out = run_command(FakeClient(done + active), "orders", {}, bound_store=1)  # 서버는 오래된 순
+        self.assertEqual([o["id"] for o in out["items"][:2]], [900, 901])
+        self.assertEqual(out["activeCount"], 2)
+        self.assertEqual(out["byStatus"]["DONE"], MAX_ITEMS + 20)
+        self.assertIn("truncated", out)
+
     def test_accuracy_bound_store(self):
         c = FakeClient({})
         run_command(c, "accuracy", {"source": "live"}, bound_store=60006)

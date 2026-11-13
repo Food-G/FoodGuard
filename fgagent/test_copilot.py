@@ -10,6 +10,7 @@ import json
 import os
 import sys
 import unittest
+from datetime import date
 from types import SimpleNamespace
 from unittest import mock
 
@@ -176,7 +177,21 @@ class CliFallbackTest(ChatCase):
         result, user_input = self._run(OWNER, 1)
         self.assertIn("<조회결과>", user_input)
         self.assertEqual({a for _, a in self.http.calls}, {f"Bearer {OWNER}"})
-        self.assertEqual(set(result["sources"]), set(copilot.OWNER_CONTEXT))
+        self.assertEqual(set(result["sources"]), set(copilot.OWNER_CONTEXT) | {"salesSummary"})
+
+    def test_판매_요약은_일별_매출과_최근7일_메뉴순위(self):
+        today = date(2026, 11, 13)
+        rows = [
+            {"saleDate": "2026-11-12", "quantity": 10, "menu": {"id": 1, "menuName": "불고기", "price": 12000}},
+            {"saleDate": "2026-11-12", "quantity": 4, "menu": {"id": 2, "menuName": "냉면", "price": 10000}},
+            {"saleDate": "2026-11-10", "quantity": 7, "menu": {"id": 2, "menuName": "냉면", "price": 10000}},
+            {"saleDate": "2026-11-01", "quantity": 99, "menu": {"id": 2, "menuName": "냉면", "price": 10000}},  # 7일 밖
+        ]
+        client = SimpleNamespace(get=lambda path: rows)
+        s = copilot.sales_summary(client, 1, today)
+        self.assertEqual(s["today"], "2026-11-13")
+        self.assertEqual(next(d for d in s["daily"] if d["date"] == "2026-11-12"), {"date": "2026-11-12", "qty": 14, "revenue": 160000})
+        self.assertEqual(s["menuQtyLast7Days"]["items"], [{"menuName": "냉면", "qty": 11}, {"menuName": "불고기", "qty": 10}])
 
     def test_본사_컨텍스트는_본사만(self):
         self._run(OWNER, None)

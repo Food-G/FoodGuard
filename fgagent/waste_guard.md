@@ -6,7 +6,7 @@
 - **식품 안전:** 유통기한이 지난 식자재(`disposalCandidates`)는 할인·기부 대상이 아니며 폐기 대상입니다. 어떤 이유로도 판매·기부를 권하지 마세요.
 
 ## 입력
-- `summary`: 위험 품목 수, `basis`(`prediction` = 수요 예측 / `fallback_avg` = 예측이 빠진 날을 최근 판매 평균으로 채움), `warnings`.
+- `summary`: 위험 품목 수, `basis`(`prediction` = 7일 모두 수요 예측 / `mixed` = 예측이 빠진 일부 날만 최근 판매 평균으로 채움(예측은 보통 내일부터라 흔함) / `fallback_avg` = 예측이 없어 전부 최근 판매 평균), `warnings`.
 - `discounts`: 그 식자재를 많이 쓰는 메뉴를 판촉·추천할 후보.
 - `reductions`: 다음 발주에서 줄일 후보. 줄이면 남은 재고의 기한이 지난 뒤 부족할 수 있습니다. 기한 후에도 수요가 큰 품목이면 `concerns`에 적으세요.
 - `donationCandidates`: 기부 후보. 기부 매칭 에이전트가 이어서 기관을 찾아 별도로 제안하므로, 여기서는 가능성만 알립니다.
@@ -14,7 +14,7 @@
 
 ## 설명할 때
 - 기한이 임박하고 양이 많은 품목부터 다룹니다. 기본 순서: 만료분 분리 → 판촉 → 기부 → 발주 감축.
-- `basis`가 `fallback_avg`이거나 `warnings`가 있으면 추정의 한계를 `concerns`에 적습니다.
+- `basis`가 `fallback_avg`이거나 `warnings`가 있으면 추정의 한계를 `concerns`에 적습니다. `mixed`는 하루 이틀만 평균으로 채운 것이라 결과 전체를 불신할 이유는 아닙니다.
 - 판매 데이터는 합성 데이터일 수 있습니다. 예측 `confidence`는 확률이 아닙니다. "정확도 X%"라고 쓰지 마세요.
 - 근거가 더 필요할 때만 읽기 전용 도구(`waste`, `inventory`, `predictions`, `recipe`, `sales`, `weekly`, `txns` — 매장은 이미 고정됨)를 쓰고, 도구가 없으면 입력만으로 판단하세요.
 

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import os
+from datetime import date, timedelta
 from pathlib import Path
 
 from fgagent.executor import WriteClient
@@ -54,10 +55,45 @@ def _role(token: str) -> str | None:
         return None
 
 
+SALES_SUMMARY_DAYS = 14
+TOP_MENU_DAYS = 7
+
+
+def sales_summary(client: FoodGuardClient, store_id: int, today: date | None = None) -> dict:
+    """일별 수량·매출과 최근 7일 메뉴별 수량. claude -p 폴백은 sales 도구를 부를 수 없고,
+    원본 판매 행은 메뉴 × 일수라 MAX_ITEMS 에 잘린다 (2026-11-13 평가: '어제 매출'·'많이 팔린 메뉴'에 답하지 못함).
+    매출은 서버 주간 합계와 같은 산식(수량 × 현재 메뉴 가격)이다."""
+    today = today or date.today()
+    start = today - timedelta(days=SALES_SUMMARY_DAYS)
+    rows = client.get(f"/api/sales/{store_id}/range?start={start}&end={today}")
+    if not isinstance(rows, list):
+        return rows if isinstance(rows, dict) else {"error": "unavailable"}
+    daily: dict[str, dict] = {}
+    menus: dict[str, int] = {}
+    recent_from = (today - timedelta(days=TOP_MENU_DAYS)).isoformat()
+    for s in rows:
+        d, menu = str(s.get("saleDate")), s.get("menu") or {}
+        qty = int(s.get("quantity") or 0)
+        day = daily.setdefault(d, {"date": d, "qty": 0, "revenue": 0})
+        day["qty"] += qty
+        day["revenue"] += qty * int(menu.get("price") or 0)
+        if recent_from <= d < today.isoformat():
+            menus[menu.get("menuName") or str(menu.get("id"))] = menus.get(menu.get("menuName") or str(menu.get("id")), 0) + qty
+    return {
+        "today": today.isoformat(), "period": f"{start}~{today}",
+        "daily": [daily[k] for k in sorted(daily)],
+        "menuQtyLast7Days": {"period": f"{recent_from}~{today - timedelta(days=1)}",
+                             "items": sorted(({"menuName": k, "qty": v} for k, v in menus.items()), key=lambda x: -x["qty"])},
+        "note": "매출 = 수량 × 현재 메뉴 가격. 판매가 없는 날은 목록에 없다.",
+    }
+
+
 def prefetch_context(client: FoodGuardClient, role: str | None, store_id: int | None) -> dict:
     """권한 밖 조회는 forbidden 결과가 그대로 들어간다."""
     if store_id is not None:
-        return {name: run_command(client, name, {"store_id": store_id}) for name in OWNER_CONTEXT}
+        ctx = {name: run_command(client, name, {"store_id": store_id}) for name in OWNER_CONTEXT}
+        ctx["salesSummary"] = sales_summary(client, store_id)
+        return ctx
     return {name: run_command(client, name, {}) for name in HQ_CONTEXT} if role == "HQ_ADMIN" else {}
 
 

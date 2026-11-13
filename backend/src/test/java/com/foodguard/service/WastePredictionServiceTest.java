@@ -187,6 +187,31 @@ class WastePredictionServiceTest {
     }
 
     @Test
+    void predictionsFromTomorrowAreMixedNotFallback() {
+        // 실데이터처럼 예측이 내일부터면 오늘 하루만 평균으로 채운다 → fallback_avg 가 아니라 mixed
+        stock(10, lot(10, 2));
+        recipe(1000);
+        List<PredictionResult> rows = new java.util.ArrayList<>();
+        for (int d = 1; d < WastePredictionService.HORIZON_DAYS; d++) {
+            PredictionResult p = new PredictionResult();
+            p.setMenu(menu);
+            p.setPredictionDate(TODAY.plusDays(d));
+            p.setPredictedQty(1);
+            rows.add(p);
+        }
+        when(predRepo.findByStore_IdAndPredictionDateGreaterThanEqualOrderByPredictionDateAsc(STORE, TODAY)).thenReturn(rows);
+        SalesData sale = new SalesData();
+        sale.setMenu(menu);
+        sale.setQuantity(14);
+        when(salesRepo.findByStoreIdAndSaleDateBetweenAndIsDeletedFalse(eq(STORE), any(), any())).thenReturn(List.of(sale));
+
+        var report = service.predict(STORE);
+
+        assertEquals("mixed", report.basis());
+        assertTrue(report.warnings().stream().anyMatch(w -> w.contains("1일은 최근 판매 평균")));
+    }
+
+    @Test
     void menuWithoutRecipeIsWarnedAndConsumesNothing() {
         stock(10, lot(10, 2));
         predictAllDays(10);
