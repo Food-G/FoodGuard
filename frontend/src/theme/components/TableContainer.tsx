@@ -4,7 +4,7 @@ import { Components } from '@mui/material/styles/components';
 const TableContainer: Components<Omit<Theme, 'components'>>['MuiTableContainer'] = {
   defaultProps: {},
   styleOverrides: {
-    root: ({}) => ({
+    root: () => ({
       overflowX: 'auto',
       scrollbarWidth: 'thin',
     }),

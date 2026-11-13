@@ -33,7 +33,7 @@ const MainLayout = ({ children, onLogout }: MainLayoutProps): ReactElement => {
           {children}
         </Box>
       </Box>
-      <Footer open={false} />
+      <Footer />
     </>
   );
 };

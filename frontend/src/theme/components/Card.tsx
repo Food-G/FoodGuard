@@ -4,7 +4,7 @@ import { Components } from '@mui/material/styles/components';
 const Card: Components<Omit<Theme, 'components'>>['MuiCard'] = {
   defaultProps: {},
   styleOverrides: {
-    root: ({}) => ({
+    root: () => ({
       display: 'flex',
       flexDirection: 'column',
     }),

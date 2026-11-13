@@ -4,7 +4,7 @@ import { Components } from '@mui/material/styles/components';
 const CardMedia: Components<Omit<Theme, 'components'>>['MuiCardMedia'] = {
   defaultProps: {},
   styleOverrides: {
-    root: ({}) => ({
+    root: () => ({
       backgroundSize: 'cover',
       backgroundRepeat: 'no-repeat',
     }),
