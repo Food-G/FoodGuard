@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Box, Typography, Badge, Paper, Stack, useTheme, alpha, CircularProgress } from '@mui/material';
 import IconifyIcon from '../components/base/IconifyIcon';
 import AgentBriefing from '../components/AgentBriefing';
+import AgentActivity from '../components/AgentActivity';
 import { storeService } from '../services/storeService';
 import { salesService } from '../services/salesService';
 import { inventoryService } from '../services/inventoryService';
@@ -262,6 +263,9 @@ const Dashboard = ({ user }: any) => {
                   </Typography>
                 </Stack>
               </Paper>
+
+              {/* AI 에이전트 실행 현황 */}
+              {storeId && <AgentActivity storeId={storeId} />}
             </Stack>
           )}
         </Box>

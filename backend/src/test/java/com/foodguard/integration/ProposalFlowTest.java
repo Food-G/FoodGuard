@@ -213,6 +213,29 @@ class ProposalFlowTest extends IntegrationTest {
         getAs(other, "/api/agent/runs/" + runId).andExpect(status().isForbidden());
     }
 
+    @Test
+    void runProgressIsAppendedWhileRunningAndKeptAfterFinish() throws Exception {
+        String runId = java.util.UUID.randomUUID().toString();
+        postAs(agent, "/api/agent/runs", Map.of("runId", runId, "agent", "echo", "storeId", store.getId()))
+                .andExpect(status().isOk());
+        putAs(agent, "/api/agent/runs/" + runId + "/progress", Map.of("phase", "observe")).andExpect(status().isOk());
+        putAs(agent, "/api/agent/runs/" + runId + "/progress", Map.of("phase", "llm")).andExpect(status().isOk());
+        putAs(agent, "/api/agent/runs/" + runId + "/progress", Map.of("phase", "drop table")).andExpect(status().isBadRequest());
+        putAs(owner, "/api/agent/runs/" + runId + "/progress", Map.of("phase", "notify")).andExpect(status().isForbidden());
+
+        getAs(owner, "/api/agent/runs/" + runId).andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("RUNNING"))
+                .andExpect(jsonPath("$.resultJson.progress[*].phase").value(contains("observe", "llm")))
+                .andExpect(jsonPath("$.resultJson.progress[0].at").isNotEmpty());
+
+        putAs(agent, "/api/agent/runs/" + runId, Map.of("status", "OK", "result", Map.of("decision", Map.of())))
+                .andExpect(status().isOk());
+        getAs(owner, "/api/agent/runs/" + runId)
+                .andExpect(jsonPath("$.resultJson.decision").exists())
+                .andExpect(jsonPath("$.resultJson.progress", hasSize(2)));
+        putAs(agent, "/api/agent/runs/" + runId + "/progress", Map.of("phase", "notify")).andExpect(status().isConflict());
+    }
+
     // ── 알림 ─────────────────────────────────────────────────────────
 
     @Test

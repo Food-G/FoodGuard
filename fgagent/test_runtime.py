@@ -225,5 +225,65 @@ class OrderAdvisorTest(unittest.TestCase):
         self.assertFalse(order_advisor.OUTPUT_SCHEMA["properties"]["items"]["items"]["additionalProperties"])
 
 
+class RecordingClient:
+    """runner.run 이 서버에 보내는 쓰기를 순서대로 기록한다."""
+
+    def __init__(self, inventory, fail_progress=False):
+        self.inventory = inventory
+        self.fail_progress = fail_progress
+        self.calls: list[tuple[str, str, dict | None]] = []
+
+    def get(self, path, base=None):
+        self.calls.append(("GET", path, None))
+        return self.inventory
+
+    def post(self, path, body=None, **_):
+        self.calls.append(("POST", path, body))
+        return 200, {}
+
+    def put(self, path, body=None, **_):
+        self.calls.append(("PUT", path, body))
+        if self.fail_progress and path.endswith("/progress"):
+            return 0, "connection refused"
+        return 200, {}
+
+    def phases(self):
+        return [b["phase"] for m, p, b in self.calls if m == "PUT" and p.endswith("/progress")]
+
+
+class RunProgressTest(unittest.TestCase):
+    def _run(self, client, **kw):
+        import tempfile
+        from pathlib import Path
+        from unittest import mock
+        from fgagent.runtime import runlog, runner
+        with tempfile.TemporaryDirectory() as tmp, \
+                mock.patch.object(runner, "WriteClient", lambda _token: client), \
+                mock.patch.object(runner, "get_token", lambda _role: "t"), \
+                mock.patch.object(runlog, "RUNS_DIR", Path(tmp)):
+            return runner.run("echo", 60006, use_llm=False, **kw)
+
+    def test_phases_are_reported_in_order_before_finish(self):
+        c = RecordingClient([])
+        rec = self._run(c)
+        self.assertEqual(rec["status"], "OK")
+        self.assertEqual(c.phases(), ["observe", "decide", "proposals", "notify"])  # LLM 끔 → llm 단계 없음
+        last = c.calls[-1]
+        self.assertEqual((last[0], last[1]), ("PUT", f"/api/agent/runs/{rec['runId']}"))
+        self.assertEqual([p["phase"] for p in rec["progress"]], c.phases())
+
+    def test_failure_stops_at_failing_phase(self):
+        c = RecordingClient({"error": "403"})  # 재고 조회 실패 → observe 에서 예외
+        rec = self._run(c)
+        self.assertEqual(rec["status"], "FAILED")
+        self.assertEqual(c.phases(), ["observe"])
+
+    def test_progress_failure_does_not_stop_run(self):
+        c = RecordingClient([], fail_progress=True)
+        rec = self._run(c)
+        self.assertEqual(rec["status"], "OK")
+        self.assertTrue(any("진행 단계 기록 실패" in w for w in rec["warnings"]))
+
+
 if __name__ == "__main__":
     unittest.main()

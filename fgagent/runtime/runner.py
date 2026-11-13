@@ -40,17 +40,22 @@ def run(name: str, store_id: int, trigger: str = "MANUAL", use_llm: bool = True,
 
     llm: dict | None = None
     try:
+        log.phase("observe")
         obs = agent.observe(client, store_id)
+        log.phase("decide")
         decision = agent.decide(obs)
         if use_llm and (not hasattr(agent, "needs_llm") or agent.needs_llm(decision)):
+            log.phase("llm")
             user_input = ("다음은 결정적 코드가 조회·계산한 결과입니다. 수량을 새로 계산하지 말고 검토·설명하세요.\n\n```json\n"
                           + json.dumps({"storeId": store_id, "decision": decision}, ensure_ascii=False,
                                        indent=2, default=str) + "\n```")
             llm = loop.run_agent(agent.PROMPT, user_input, build_tools(agent.ALLOWED_TOOLS, store_id),
                                  agent.OUTPUT_SCHEMA, model, client)
         llm_out = llm["output"] if llm else None
+        log.phase("proposals")
         submitted = [proposals.submit(client, log.run_id, name, store_id, p)
                      for p in agent.to_proposals(decision, llm_out)]
+        log.phase("notify")
         notified = [proposals.notify(client, store_id, n)
                     for n in (agent.notifications(decision, llm_out) if hasattr(agent, "notifications") else [])]
         result = {"decision": decision, "llm": llm, "proposals": submitted, "notifications": notified}

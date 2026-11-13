@@ -22,9 +22,11 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * 에이전트 제안 큐 + 실행 기록 (DEV_ROADMAP AG-0).
@@ -102,9 +104,39 @@ public class AgentController {
         if (body.get("model") != null) run.setModel(body.get("model").toString());
         if (body.get("inputTokens") != null) run.setInputTokens(((Number) body.get("inputTokens")).intValue());
         if (body.get("outputTokens") != null) run.setOutputTokens(((Number) body.get("outputTokens")).intValue());
-        if (body.get("result") instanceof Map<?, ?> m) run.setResultJson((Map<String, Object>) m);
+        if (body.get("result") instanceof Map<?, ?> m) {
+            // 실행 중에 쌓인 진행 단계는 종료 결과로 덮어쓰지 않는다
+            Map<String, Object> result = new HashMap<>((Map<String, Object>) m);
+            Object progress = run.getResultJson() != null ? run.getResultJson().get("progress") : null;
+            if (progress != null) result.putIfAbsent("progress", progress);
+            run.setResultJson(result);
+        }
         if (body.get("error") != null) run.setError(body.get("error").toString());
         run.setFinishedAt(LocalDateTime.now());
+        return ResponseEntity.ok(runRepository.save(run));
+    }
+
+    private static final Set<String> PHASES = Set.of("observe", "decide", "llm", "proposals", "notify");
+
+    /** 실행 중 단계 진입 기록. 대시보드가 실시간 진행을 그린다. resultJson.progress 에 [{phase, at}] 로 쌓는다. */
+    @PreAuthorize("hasRole('AGENT')")
+    @PutMapping("/runs/{runId}/progress")
+    @Transactional
+    public ResponseEntity<?> recordProgress(@PathVariable String runId, @RequestBody Map<String, Object> body) {
+        String phase = String.valueOf(body.get("phase"));
+        if (!PHASES.contains(phase)) {
+            return ResponseEntity.badRequest().body(Map.of("message", "알 수 없는 단계입니다: " + phase));
+        }
+        AgentRun run = runRepository.findById(runId)
+                .orElseThrow(() -> new IllegalStateException("실행 기록을 찾을 수 없습니다: " + runId));
+        if (!"RUNNING".equals(run.getStatus())) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("message", "이미 끝난 실행입니다."));
+        }
+        Map<String, Object> result = run.getResultJson() != null ? new HashMap<>(run.getResultJson()) : new HashMap<>();
+        List<Object> progress = result.get("progress") instanceof List<?> l ? new ArrayList<>(l) : new ArrayList<>();
+        progress.add(Map.of("phase", phase, "at", LocalDateTime.now().toString()));
+        result.put("progress", progress);
+        run.setResultJson(result);
         return ResponseEntity.ok(runRepository.save(run));
     }
 

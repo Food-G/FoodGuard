@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import {
   Typography, Box, Paper, Button, CircularProgress, Chip, Stack, Tabs, Tab, Collapse,
   Table, TableBody, TableCell, TableHead, TableRow, Dialog, DialogTitle, DialogContent,
-  DialogActions, TextField, useTheme,
+  DialogActions, TextField, LinearProgress, alpha, useTheme,
 } from '@mui/material';
 import IconifyIcon from '../components/base/IconifyIcon';
 import AlertMessages from '../components/AlertMessages';
@@ -35,6 +35,62 @@ const STATUS_COLOR: Record<string, any> = {
 };
 
 const fmt = (s?: string | null) => (s ? new Date(s).toLocaleString() : '-');
+
+// 런타임이 resultJson.progress 에 쌓는 단계 (fgagent/runtime/runner.py)
+const PHASES: { key: string; short: string; busy: string }[] = [
+  { key: 'observe', short: '데이터 조회', busy: '재고·판매 데이터를 조회하고 있습니다' },
+  { key: 'decide', short: '수량 계산', busy: '코드가 수량을 계산하고 있습니다' },
+  { key: 'llm', short: 'AI 검토', busy: 'AI가 결과를 검토하고 설명을 쓰고 있습니다' },
+  { key: 'proposals', short: '제안 제출', busy: '승인함에 제안을 올리고 있습니다' },
+  { key: 'notify', short: '알림', busy: '알림을 보내고 있습니다' },
+];
+const RUN_TIMEOUT_MS = 5 * 60 * 1000;
+
+interface ActiveRun { runId: string; agent: string; startedAt: number; run: AgentRun | null }
+
+/** 실행을 누른 뒤 끝날 때까지 보여주는 진행 배너 */
+const RunningBanner = ({ active, now }: { active: ActiveRun; now: number }) => {
+  const theme = useTheme();
+  const name = AGENT_LABEL[active.agent]?.name ?? active.agent;
+  const progress = ((active.run?.resultJson?.progress ?? []) as { phase: string }[]).map((p) => p.phase);
+  const current = progress[progress.length - 1];
+  const currentIdx = PHASES.findIndex((p) => p.key === current);
+  const sec = Math.max(0, Math.floor((now - active.startedAt) / 1000));
+  return (
+    <Paper elevation={0} role="status" aria-live="polite" sx={{
+      p: { xs: 2, sm: 2.5 }, borderRadius: 3,
+      border: `2px solid ${theme.palette.primary.main}`, bgcolor: alpha(theme.palette.primary.main, 0.04),
+    }}>
+      <Stack direction="row" alignItems="center" gap={2}>
+        <CircularProgress size={40} thickness={4.5} />
+        <Box flex={1} minWidth={0}>
+          <Typography fontWeight={800}>{name} · 생각 중…</Typography>
+          <Typography variant="body2" color="text.secondary">
+            {PHASES[currentIdx]?.busy ?? '에이전트를 시작하고 있습니다'} · {sec}초 경과
+          </Typography>
+        </Box>
+      </Stack>
+      <LinearProgress sx={{ mt: 2, height: 6, borderRadius: 3 }} />
+      <Stack direction="row" gap={1} mt={1.5} flexWrap="wrap">
+        {PHASES.map((p, i) => {
+          const isCurrent = i === currentIdx;
+          const done = i < currentIdx && progress.includes(p.key);
+          return (
+            <Chip key={p.key} size="small" label={p.short}
+              color={isCurrent ? 'primary' : done ? 'success' : 'default'}
+              variant={isCurrent ? 'filled' : 'outlined'}
+              icon={isCurrent ? <CircularProgress size={12} color="inherit" />
+                : done ? <IconifyIcon icon="mingcute:check-line" width={14} /> : undefined}
+              sx={{ opacity: !isCurrent && !done ? 0.5 : 1 }} />
+          );
+        })}
+      </Stack>
+      <Typography variant="caption" color="text.disabled" display="block" mt={1}>
+        다른 화면으로 가도 실행은 계속됩니다. 끝나면 아래 제안 목록이 자동으로 갱신됩니다.
+      </Typography>
+    </Paper>
+  );
+};
 const errorMessage = (e: unknown, fallback: string) => {
   try { return JSON.parse((e as Error).message)?.message ?? fallback; } catch { return (e as Error)?.message || fallback; }
 };
@@ -272,12 +328,53 @@ const AgentInbox = ({ user }: any) => {
     } catch (e) { setError(errorMessage(e, '되돌리기에 실패했습니다.')); }
   };
 
+  const [active, setActive] = useState<ActiveRun | null>(null);
+  const [now, setNow] = useState(Date.now());
+
   const handleRun = async (agent: string, sid: number) => {
+    if (active) return;
+    setError(''); setSuccess('');
     try {
-      await agentService.run(agent, sid);
-      setSuccess('에이전트를 실행했습니다. 잠시 후 결과가 표시됩니다.');
+      const { runId } = await agentService.run(agent, sid);
+      setActive({ runId, agent, startedAt: Date.now(), run: null });
     } catch (e) { setError(errorMessage(e, '에이전트 실행에 실패했습니다. 에이전트 서비스(:8100)를 확인하세요.')); }
   };
+
+  // 실행 중이면 1초마다 상태를 확인하고, 끝나면 결과를 알리고 목록을 다시 불러온다
+  const activeId = active?.runId;
+  const activeAgent = active?.agent;
+  const activeStart = active?.startedAt;
+  useEffect(() => {
+    if (!activeId || !activeAgent || !activeStart) return;
+    let alive = true;
+    const name = AGENT_LABEL[activeAgent]?.name ?? activeAgent;
+    const tick = async () => {
+      setNow(Date.now());
+      if (Date.now() - activeStart > RUN_TIMEOUT_MS) {
+        setActive(null);
+        setError(`${name}: 5분 동안 끝나지 않았습니다. 실행 기록 탭에서 상태를 확인하세요.`);
+        return;
+      }
+      let run: AgentRun;
+      try { run = await agentService.getRun(activeId); } catch { return; }  // 기록이 생기기 전이면 다음 틱에 다시
+      if (!alive) return;
+      if (run.status === 'RUNNING') {
+        setActive((a) => (a && a.runId === activeId ? { ...a, run } : a));
+        return;
+      }
+      setActive(null);
+      const n = Array.isArray(run.resultJson?.proposals) ? run.resultJson.proposals.length : 0;
+      if (run.status === 'OK') setSuccess(`${name} 완료. ${n ? `새 제안 ${n}건이 올라왔습니다.` : '새 제안은 없습니다.'}`);
+      else setError(`${name} 실행 실패: ${run.error ?? '실행 기록 탭에서 확인하세요.'}`);
+      load();
+    };
+    tick();
+    const timer = setInterval(tick, 1000);
+    return () => { alive = false; clearInterval(timer); };
+  }, [activeId, activeAgent, activeStart, load]);
+
+  const runIcon = (agent: string, icon: string) => (active?.agent === agent
+    ? <CircularProgress size={16} color="inherit" /> : <IconifyIcon icon={icon} />);
 
   return (
     <Stack gap={3} sx={{ bgcolor: 'background.default' }}>
@@ -291,15 +388,15 @@ const AgentInbox = ({ user }: any) => {
         <Box flex={1} />
         {!isHq && storeId && (
           <>
-            <Button variant="outlined" startIcon={<IconifyIcon icon="mingcute:play-line" />}
+            <Button variant="outlined" startIcon={runIcon('echo', 'mingcute:play-line')} disabled={!!active}
               onClick={() => handleRun('echo', storeId)}>
               재고 점검 실행(테스트)
             </Button>
-            <Button variant="contained" startIcon={<IconifyIcon icon="mingcute:refresh-2-line" />}
+            <Button variant="contained" startIcon={runIcon('order_advisor', 'mingcute:refresh-2-line')} disabled={!!active}
               onClick={() => handleRun('order_advisor', storeId)}>
-              발주안 지금 만들기
+              {active?.agent === 'order_advisor' ? '발주안 만드는 중…' : '발주안 지금 만들기'}
             </Button>
-            <Button variant="contained" color="secondary" startIcon={<IconifyIcon icon="mingcute:delete-2-line" />}
+            <Button variant="contained" color="secondary" startIcon={runIcon('waste', 'mingcute:delete-2-line')} disabled={!!active}
               onClick={() => handleRun('waste', storeId)}>
               폐기 위험 점검
             </Button>
@@ -309,6 +406,8 @@ const AgentInbox = ({ user }: any) => {
       <Typography variant="body2" color="text.secondary">
         에이전트는 제안만 만듭니다. 수량은 결정적 코드가 계산하고, 승인해야 실행됩니다.
       </Typography>
+
+      {active && <RunningBanner active={active} now={now} />}
 
       <AlertMessages error={error} success={success}
         onClearError={() => setError('')} onClearSuccess={() => setSuccess('')} />

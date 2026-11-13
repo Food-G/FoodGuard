@@ -33,6 +33,14 @@ class RunLog:
         if not self.remote:
             self.record["warnings"].append(f"AGENT_RUN 기록 실패 ({status}): {str(body)[:200]}")
 
+    def phase(self, name: str) -> None:
+        """단계 진입을 서버에 알린다 (대시보드 실시간 표시). 실패해도 실행은 계속한다."""
+        self.record.setdefault("progress", []).append({"phase": name, "at": datetime.now().isoformat()})
+        if getattr(self, "remote", False):
+            code, body = self.client.put(f"/api/agent/runs/{self.run_id}/progress", {"phase": name})
+            if code != 200:
+                self.record["warnings"].append(f"진행 단계 기록 실패 {name} ({code}): {str(body)[:200]}")
+
     def finish(self, status: str, result: dict | None = None, error: str | None = None,
                model: str | None = None, usage: dict | None = None) -> Path:
         usage = usage or {}
