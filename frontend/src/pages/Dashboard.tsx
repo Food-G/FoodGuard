@@ -7,7 +7,8 @@ import { salesService } from '../services/salesService';
 import { storeService } from '../services/storeService';
 import { MOCK_RESERVATIONS } from './reservationsMock';
 import { employeeService, attendanceService, Employee, Attendance } from '../services/employeeService';
-import { hhmm, localDate, minutesBetween, minutesLabel } from '../helpers/date';
+import { addDays, hhmm, localDate, minutesBetween, minutesLabel } from '../helpers/date';
+import { predictionService, PredictionResult } from '../services/predictionService';
 
 /* ───────── 공통 ───────── */
 // 키보드 포커스가 보이도록 (마우스 클릭에는 표시하지 않음)
@@ -23,7 +24,7 @@ const CARD_SX = {
   p: { xs: 2, md: 2.5 },
 };
 
-// 예약·매출 등 아직 API 가 없는 값 표시
+// 아직 API 가 없어 예시 데이터를 쓰는 값 표시 (개발 모드에서만)
 const MockChip = () => (
   <Chip label="예시" size="small" sx={{ height: 20, fontSize: 11, fontWeight: 700, bgcolor: '#F1F3F7', color: '#44474E' }} />
 );
@@ -114,43 +115,82 @@ const ADMIN_TILES: TileProps[] = [
 ];
 
 /* ───────── 오늘 요약 KPI ───────── */
+// 예약처럼 아직 API 가 없는 값은 개발 모드에서만 예시 데이터로 보여주고, 배포 화면에서는 '데이터 없음'
+const IS_DEV = import.meta.env.DEV;
+
 interface KpiProps {
   label: string;
-  value: string;
-  unit: string;
   icon: string;
   color: string;
   path: string;
+  // null: 불러오는 중, undefined: 데이터 없음(조회 실패·API 없음)
+  value: number | null | undefined;
+  unit: string;
+  format?: (n: number) => string;
+  // 값이 0 일 때 숫자 대신 보여줄 문구와 바로가기
+  empty: { text: string; action?: string; path?: string; good?: boolean };
+  prev?: number | null;  // 어제 값 (있을 때만 증감 표시)
   mock?: boolean;
 }
 
-const KpiCard = ({ label, value, unit, icon, color, path, mock }: KpiProps) => (
-  <ButtonBase
-    component={RouterLink}
-    to={path}
-    sx={{
-      ...CARD_SX,
-      ...FOCUS_SX,
-      flexDirection: 'column',
-      alignItems: 'flex-start',
-      justifyContent: 'flex-start',
-      gap: 1,
-      textAlign: 'left',
-      transition: 'box-shadow 0.15s ease',
-      '&:hover': { boxShadow: `0 8px 20px ${color}33` },
-    }}
-  >
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
-      <IconifyIcon icon={icon} width={20} height={20} color={color} />
-      <Typography fontSize={14} fontWeight={600} color="#44474E">{label}</Typography>
-      {mock && <Box sx={{ ml: 'auto' }}><MockChip /></Box>}
-    </Box>
-    <Typography fontSize={{ xs: 26, md: 30 }} fontWeight={800} color="#1A1C1E" lineHeight={1.1}>
-      {value}
-      <Typography component="span" fontSize={15} fontWeight={600} color="#44474E" sx={{ ml: 0.5 }}>{unit}</Typography>
+// 어제가 0 이거나 없으면 % 를 낼 수 없으니 표시하지 않는다
+const Delta = ({ value, prev }: { value: number; prev?: number | null }) => {
+  if (prev == null || prev <= 0 || value <= 0) return null;
+  const pct = Math.round(((value - prev) / prev) * 100);
+  const up = pct >= 0;
+  return (
+    <Typography fontSize={12} fontWeight={700} color={up ? '#1B5E20' : '#B71C1C'}>
+      {pct === 0 ? '어제와 같음' : `${up ? '▲' : '▼'} ${Math.abs(pct)}% 어제 대비`}
     </Typography>
-  </ButtonBase>
-);
+  );
+};
+
+const KpiCard = ({ label, icon, color, path, value, unit, format, empty, prev, mock }: KpiProps) => {
+  const isEmpty = value === 0;
+  return (
+    <ButtonBase
+      component={RouterLink}
+      to={isEmpty && empty.path ? empty.path : path}
+      sx={{
+        ...CARD_SX,
+        ...FOCUS_SX,
+        flexDirection: 'column',
+        alignItems: 'flex-start',
+        justifyContent: 'flex-start',
+        gap: 0.8,
+        textAlign: 'left',
+        cursor: 'pointer',
+        transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+        '&:hover': { transform: 'translateY(-3px)', boxShadow: `0 10px 22px ${color}33` },
+      }}
+    >
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
+        <IconifyIcon icon={icon} width={20} height={20} color={color} />
+        <Typography fontSize={14} fontWeight={600} color="#44474E">{label}</Typography>
+        {mock && IS_DEV && <Box sx={{ ml: 'auto' }}><MockChip /></Box>}
+      </Box>
+      {value === null ? (
+        <Typography fontSize={15} color="#44474E">불러오는 중…</Typography>
+      ) : value === undefined ? (
+        <Typography fontSize={15} fontWeight={600} color="#5F6368">데이터 없음</Typography>
+      ) : isEmpty ? (
+        // 한글이 글자 단위로 끊기지 않게 keep-all, 바로가기는 다음 줄
+        <Typography fontSize={14} fontWeight={600} color={empty.good ? '#1B5E20' : '#44474E'} lineHeight={1.45} sx={{ wordBreak: 'keep-all' }}>
+          {empty.good && '✓ '}{empty.text}
+          {empty.action && <Box component="span" sx={{ display: 'block', color: '#1565C0', whiteSpace: 'nowrap' }}>{empty.action} →</Box>}
+        </Typography>
+      ) : (
+        <>
+          <Typography fontSize={{ xs: 26, md: 30 }} fontWeight={800} color="#1A1C1E" lineHeight={1.1}>
+            {(format ?? ((n: number) => n.toLocaleString()))(value)}
+            <Typography component="span" fontSize={15} fontWeight={600} color="#44474E" sx={{ ml: 0.5 }}>{unit}</Typography>
+          </Typography>
+          <Delta value={value} prev={prev} />
+        </>
+      )}
+    </ButtonBase>
+  );
+};
 
 /* ───────── 재고 경고 ───────── */
 const WEEKDAY = ['일', '월', '화', '수', '목', '금', '토'];
@@ -274,8 +314,11 @@ type EmpStatus = 'working' | 'off' | 'absent';
 const STATUS_CHIP: Record<EmpStatus, { label: string; bg: string; color: string; border: string }> = {
   working: { label: '근무중', bg: '#E8F5E9', color: '#1B5E20', border: '#A5D6A7' },
   off:     { label: '퇴근',   bg: '#EEF4FF', color: '#0D47A1', border: '#BBCFFF' },
-  absent:  { label: '미출근', bg: '#FFEBEE', color: '#B71C1C', border: '#FFCDD2' },
+  absent:  { label: '미출근', bg: '#F1F3F5', color: '#5F6368', border: '#DADCE0' },
 };
+
+// 근무중 직원이 먼저 보이게
+const STATUS_ORDER: Record<EmpStatus, number> = { working: 0, off: 1, absent: 2 };
 
 const StatusChip = ({ status }: { status: EmpStatus }) => {
   const s = STATUS_CHIP[status];
@@ -305,7 +348,7 @@ const EmployeeWidget = ({ storeId }: { storeId: number | null }) => {
     const status: EmpStatus = mine.length === 0 ? 'absent' : mine.some((r) => !r.clockOut) ? 'working' : 'off';
     const minutes = mine.reduce((s, r) => s + minutesBetween(r.clockIn, r.clockOut ?? now), 0);
     return { e, status, in: mine[0]?.clockIn, out: status === 'off' ? mine[mine.length - 1].clockOut : null, minutes };
-  });
+  }).sort((a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status]);
   const onCount = rows.filter((r) => r.status === 'working').length;
 
   return (
@@ -344,39 +387,144 @@ const EmployeeWidget = ({ storeId }: { storeId: number | null }) => {
   );
 };
 
+/* ───────── 오른쪽 요약 카드 (오늘 예약 · AI 예측 · 폐기 임박) ───────── */
+const SideCard = ({ icon, color, title, more, mock, children }: { icon: string; color: string; title: string; more: { label: string; path: string }; mock?: boolean; children: React.ReactNode }) => (
+  <Box sx={{ ...CARD_SX, borderTop: `3px solid ${color}` }}>
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.2 }}>
+      <IconifyIcon icon={icon} width={22} height={22} color={color} />
+      <Typography fontWeight={700} fontSize={16} color="#1A1C1E">{title}</Typography>
+      {mock && IS_DEV && <MockChip />}
+      <Button component={RouterLink} to={more.path} variant="text" size="small" sx={{ ...FOCUS_SX, ml: 'auto', fontWeight: 700 }}>
+        {more.label}
+      </Button>
+    </Box>
+    {children}
+  </Box>
+);
+
+const EmptyLine = ({ text }: { text: string }) => (
+  <Typography fontSize={14} color="#5F6368" sx={{ py: 0.5 }}>{text}</Typography>
+);
+
+const ListRow = ({ left, main, right }: { left: React.ReactNode; main: React.ReactNode; right?: React.ReactNode }) => (
+  <Box component="li" sx={{ display: 'flex', alignItems: 'center', gap: 1.5, py: 0.9, borderTop: '1px solid #F0F1F4', '&:first-of-type': { borderTop: 0 } }}>
+    <Typography fontSize={14} fontWeight={800} color="#1A1C1E" sx={{ minWidth: 44 }}>{left}</Typography>
+    <Box sx={{ flex: 1, minWidth: 0 }}>{main}</Box>
+    {right && <Typography fontSize={13} fontWeight={700} color="#44474E" sx={{ whiteSpace: 'nowrap' }}>{right}</Typography>}
+  </Box>
+);
+
+const LIST_SX = { listStyle: 'none', m: 0, p: 0 };
+
+// 예약 API 가 없어 개발 모드에서만 예시 데이터를 보여준다
+const ReservationWidget = () => {
+  const today = localDate(new Date());
+  const list = IS_DEV
+    ? MOCK_RESERVATIONS.filter((r) => r.date === today && r.status !== '취소').sort((a, b) => a.time.localeCompare(b.time))
+    : null;
+  return (
+    <SideCard icon="mingcute:calendar-2-line" color="#1976D2" title="오늘 예약" more={{ label: '전체 보기', path: '/reservations' }} mock>
+      {list == null ? <EmptyLine text="데이터 없음 (예약 기능 준비 중)" />
+        : list.length === 0 ? <EmptyLine text="오늘 예약이 없어요" />
+        : (
+          <Box component="ul" sx={LIST_SX}>
+            {list.slice(0, 5).map((r) => (
+              <ListRow key={r.id} left={r.time} right={`${r.guests}명`}
+                main={<Typography fontSize={14} fontWeight={600} noWrap>{r.name}{r.note && <Typography component="span" fontSize={12} color="#5F6368"> · {r.note}</Typography>}</Typography>} />
+            ))}
+          </Box>
+        )}
+    </SideCard>
+  );
+};
+
+// 내일 예측 판매량이 많은 메뉴 TOP 3 (PREDICTION_RESULT)
+const ForecastWidget = ({ storeId }: { storeId: number | null }) => {
+  const [rows, setRows] = useState<PredictionResult[] | null | undefined>(null);
+  const tomorrow = localDate(addDays(new Date(), 1));
+
+  useEffect(() => {
+    if (!storeId) return;
+    predictionService.getByStore(storeId)
+      .then((all) => setRows((all ?? []).filter((p) => p.predictionDate === tomorrow).sort((a, b) => b.predictedQty - a.predictedQty).slice(0, 3)))
+      .catch(() => setRows(undefined));
+  }, [storeId, tomorrow]);
+
+  return (
+    <SideCard icon="mingcute:brain-fill" color="#7B1FA2" title="내일 판매 예측 TOP 3" more={{ label: '예측 보기', path: '/predictions' }}>
+      {rows === null ? <EmptyLine text={storeId ? '불러오는 중…' : '데이터 없음'} />
+        : rows === undefined ? <EmptyLine text="데이터 없음" />
+        : rows.length === 0 ? <EmptyLine text="내일 예측이 아직 없어요 · AI 수요 예측에서 실행하세요" />
+        : (
+          <Box component="ul" sx={LIST_SX}>
+            {rows.map((p, i) => (
+              <ListRow key={p.id} left={`${i + 1}위`} right={`${Math.round(p.predictedQty)}개 예상`}
+                main={<Typography fontSize={14} fontWeight={600} noWrap>{p.menuName}</Typography>} />
+            ))}
+          </Box>
+        )}
+    </SideCard>
+  );
+};
+
+// 유통기한이 가까운 재고 TOP 3 (재고 경고 카드와 같은 기준: 3일 이내·기한 지남)
+const ExpiringWidget = ({ items, state }: { items: any[]; state: 'loading' | 'error' | 'ok' }) => {
+  const now = new Date();
+  const top = items.filter(isExpiringSoon)
+    .sort((a, b) => expiryEnd(a.expiryDate).getTime() - expiryEnd(b.expiryDate).getTime())
+    .slice(0, 3);
+  return (
+    <SideCard icon="mingcute:time-line" color="#B53D00" title="폐기 임박 TOP 3" more={{ label: '폐기예측 & 기부', path: '/waste-prediction' }}>
+      {state === 'loading' ? <EmptyLine text="불러오는 중…" />
+        : state === 'error' ? <EmptyLine text="데이터 없음" />
+        : top.length === 0 ? <EmptyLine text="✓ 폐기 임박 품목이 없어요" />
+        : (
+          <Box component="ul" sx={LIST_SX}>
+            {top.map((item, i) => (
+              <ListRow key={item.id ?? i} left={`${i + 1}`} right={remainingLabel(item.expiryDate, now)}
+                main={<Typography fontSize={14} fontWeight={600} noWrap>{item.ingredient?.name ?? '식자재'} <Typography component="span" fontSize={12} color="#5F6368">{qtyOf(item)}{item.unit}</Typography></Typography>} />
+            ))}
+          </Box>
+        )}
+    </SideCard>
+  );
+};
+
 /* ───────── Dashboard ───────── */
-// 매장 매출 API 가 없어(판매 기록에 메뉴 가격이 내려오지 않음) 오늘 매출은 예시 값
-const MOCK_TODAY_REVENUE = 1_284_000;
+// 1024px 이하(태블릿)는 오른쪽 열을 아래로, KPI 는 2~3열로 (테마 lg 가 1024 라 직접 지정)
+const WIDE = '@media (min-width: 1025px)';
+
+interface TodaySummary { quantity: number; revenue: number; prevQuantity: number; prevRevenue: number }
 
 const Dashboard = ({ user }: any) => {
   const role = user?.role || 'OWNER';
   const [storeId, setStoreId] = useState<number | null>(null);
   const [inventory, setInventory] = useState<any[]>([]);
-  const [invLoading, setInvLoading] = useState(true);
-  const [todaySalesQty, setTodaySalesQty] = useState<number | null>(null);
+  const [invState, setInvState] = useState<'loading' | 'error' | 'ok'>('loading');
+  // null: 불러오는 중, undefined: 조회 실패
+  const [summary, setSummary] = useState<TodaySummary | null | undefined>(null);
 
   useEffect(() => {
     if (user?.id && role === 'OWNER') {
       storeService.getMyStores(user.id)
         .then((stores: any[]) => {
           if (stores.length > 0) setStoreId(stores[0].id);
-          else setInvLoading(false);
+          else { setInvState('error'); setSummary(undefined); }
         })
-        .catch(() => setInvLoading(false));
+        .catch(() => { setInvState('error'); setSummary(undefined); });
     }
   }, [user?.id, role]);
 
   useEffect(() => {
     if (!storeId) return;
     const load = () => {
+      // 갱신 실패 시 직전 값 유지, 처음부터 실패면 '데이터 없음'
       inventoryService.getByStore(storeId)
-        .then((items: any[]) => setInventory(items ?? []))
-        .catch(() => {})  // 갱신 실패 시 직전 목록 유지
-        .finally(() => setInvLoading(false));
-      const today = localDate(new Date());
-      salesService.getByDateRange(storeId, today, today)
-        .then((rows: any[]) => setTodaySalesQty((rows ?? []).reduce((s, r) => s + Number(r.quantity ?? 0), 0)))
-        .catch(() => {});
+        .then((items: any[]) => { setInventory(items ?? []); setInvState('ok'); })
+        .catch(() => setInvState((s) => (s === 'ok' ? s : 'error')));
+      salesService.getTodaySummary(storeId)
+        .then((s: TodaySummary) => setSummary(s))
+        .catch(() => setSummary((s) => (s ? s : undefined)));
     };
     load();
     const timer = setInterval(load, 30_000);
@@ -392,17 +540,21 @@ const Dashboard = ({ user }: any) => {
   }
 
   const today = localDate(new Date());
-  const todayReservations = MOCK_RESERVATIONS.filter((r) => r.date === today && r.status === '예약중').length;
-  const lowStockCount = inventory.filter(isLowStock).length;
-  const expiringCount = inventory.filter(isExpiringSoon).length;
-  const pending = invLoading || !storeId ? '-' : undefined;
+  const invValue = (n: number) => (invState === 'loading' ? null : invState === 'error' ? undefined : n);
+  const noSales = { text: '아직 판매 기록이 없어요', action: '판매 입력하기', path: '/sales' };
 
   const kpis: KpiProps[] = [
-    { label: '오늘 매출', value: MOCK_TODAY_REVENUE.toLocaleString(), unit: '원', icon: 'mingcute:coin-line', color: '#E65100', path: '/sales-stats', mock: true },
-    { label: '오늘 판매 건수', value: todaySalesQty == null ? '-' : todaySalesQty.toLocaleString(), unit: '건', icon: 'mingcute:shopping-bag-1-line', color: '#00796B', path: '/sales' },
-    { label: '오늘 예약', value: String(todayReservations), unit: '건', icon: 'mingcute:calendar-2-line', color: '#1976D2', path: '/reservations', mock: true },
-    { label: '재고 부족 품목', value: pending ?? String(lowStockCount), unit: '개', icon: 'mingcute:inventory-line', color: '#C62828', path: '/inventory' },
-    { label: '폐기 임박 품목', value: pending ?? String(expiringCount), unit: '개', icon: 'mingcute:time-line', color: '#B53D00', path: '/waste-prediction' },
+    { label: '오늘 매출', icon: 'mingcute:coin-line', color: '#E65100', path: '/sales-stats', unit: '원',
+      value: summary === null ? null : summary?.revenue, prev: summary?.prevRevenue, empty: noSales },
+    { label: '오늘 판매 건수', icon: 'mingcute:shopping-bag-1-line', color: '#00796B', path: '/sales', unit: '건',
+      value: summary === null ? null : summary?.quantity, prev: summary?.prevQuantity, empty: noSales },
+    { label: '오늘 예약', icon: 'mingcute:calendar-2-line', color: '#1976D2', path: '/reservations', unit: '건', mock: true,
+      value: IS_DEV ? MOCK_RESERVATIONS.filter((r) => r.date === today && r.status === '예약중').length : undefined,
+      empty: { text: '오늘 예약이 없어요' } },
+    { label: '재고 부족 품목', icon: 'mingcute:inventory-line', color: '#C62828', path: '/inventory', unit: '개',
+      value: invValue(inventory.filter(isLowStock).length), empty: { text: '부족한 재고가 없어요', good: true } },
+    { label: '폐기 임박 품목', icon: 'mingcute:time-line', color: '#B53D00', path: '/waste-prediction', unit: '개',
+      value: invValue(inventory.filter(isExpiringSoon).length), empty: { text: '폐기 임박 품목이 없어요', good: true } },
   ];
 
   return (
@@ -419,13 +571,13 @@ const Dashboard = ({ user }: any) => {
             식자재 발주
           </Button>
         </Box>
-        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)', lg: 'repeat(5, 1fr)' }, gap: 1.5 }}>
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' }, [WIDE]: { gridTemplateColumns: 'repeat(5, 1fr)' }, gap: 1.5 }}>
           {kpis.map((k) => <KpiCard key={k.label} {...k} />)}
         </Box>
       </Box>
 
-      {/* 좌: 기능 타일 그룹 / 우: 위젯 (lg 미만은 한 열) */}
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: 'minmax(0, 3fr) minmax(340px, 2fr)' }, gap: 3, alignItems: 'start' }}>
+      {/* 좌: 기능 타일 그룹 / 우: 위젯 (1024px 이하는 한 열) */}
+      <Box sx={{ display: 'grid', gridTemplateColumns: '1fr', [WIDE]: { gridTemplateColumns: 'minmax(0, 3fr) minmax(340px, 2fr)' }, gap: 3, alignItems: 'start' }}>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
           {OWNER_GROUPS.map((group) => (
             <Box component="section" key={group.title} aria-label={group.title}>
@@ -438,8 +590,11 @@ const Dashboard = ({ user }: any) => {
         </Box>
 
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <InventoryAlertWidget items={inventory} loading={invLoading} />
+          <InventoryAlertWidget items={inventory} loading={invState === 'loading'} />
           <EmployeeWidget storeId={storeId} />
+          <ReservationWidget />
+          <ForecastWidget storeId={storeId} />
+          <ExpiringWidget items={inventory} state={invState} />
         </Box>
       </Box>
     </Box>

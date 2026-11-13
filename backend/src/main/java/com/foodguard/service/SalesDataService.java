@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -51,6 +52,24 @@ public class SalesDataService {
     }
 
     // 전 가맹점 최근 7일 매출 {storeId: 매출액} (본사 대시보드)
+    // 대시보드 KPI: 오늘·어제 판매 수량과 매출(정가 기준, 본사 통계와 같은 계산). 판매가 없는 날은 0
+    public Map<String, Object> getTodaySummary(Long storeId) {
+        LocalDate today = LocalDate.now();
+        Map<LocalDate, long[]> byDay = new HashMap<>();
+        for (Object[] row : salesDataRepository.sumDailyByStoreBetween(storeId, today.minusDays(1), today)) {
+            byDay.put((LocalDate) row[0], new long[]{((Number) row[1]).longValue(), ((Number) row[2]).longValue()});
+        }
+        long[] t = byDay.getOrDefault(today, new long[2]);
+        long[] y = byDay.getOrDefault(today.minusDays(1), new long[2]);
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("date", today.toString());
+        result.put("quantity", t[0]);
+        result.put("revenue", t[1]);
+        result.put("prevQuantity", y[0]);
+        result.put("prevRevenue", y[1]);
+        return result;
+    }
+
     public Map<Long, Long> getAllStoreWeeklySummary() {
         LocalDate today = LocalDate.now();
         Map<Long, Long> result = new LinkedHashMap<>();
