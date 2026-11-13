@@ -39,6 +39,9 @@ CREATE TABLE IF NOT EXISTS AGENT_PROPOSAL (
   INDEX idx_prop_store_status (store_id, status)
 );
 
+-- USER.role enum 에 AGENT 추가 (아래 2) 의 UPDATE 가 'Data truncated' 로 실패하지 않도록)
+ALTER TABLE USER MODIFY role ENUM('OWNER','HQ_ADMIN','AGENT') NOT NULL DEFAULT 'OWNER';
+
 -- ── 에이전트 서비스 계정 (사람이 1회 실행) ─────────────────────────────
 -- 회원가입 API 는 AGENT 역할을 받지 않으므로, 일반 계정으로 가입한 뒤 역할만 바꾼다.
 --   1) POST /api/auth/signup  {"email":"agent@foodguard.local","password":"<랜덤>","userName":"FoodGuard Agent","role":"OWNER"}
