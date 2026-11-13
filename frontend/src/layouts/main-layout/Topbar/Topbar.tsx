@@ -101,7 +101,7 @@ const Topbar = ({ onLogout }: TopbarProps): ReactElement => {
           .map(n => ({ ...n, _localRead: false }));
         return [...prev, ...newOnes];
       });
-    } catch {} finally {
+    } catch { /* 갱신 실패 시 직전 목록 유지 */ } finally {
       if (initial) setNotiLoading(false);
     }
   }, [storeId]);
@@ -123,7 +123,7 @@ const Topbar = ({ onLogout }: TopbarProps): ReactElement => {
     setNotifications(prev =>
       prev.map(n => n.id === id && !n._localRead ? { ...n, _localRead: true } : n)
     );
-    try { await notificationService.markAsRead(id); } catch {}
+    try { await notificationService.markAsRead(id); } catch { /* 실패해도 화면 표시는 유지 */ }
   };
 
   // X 버튼 — 목록에서 직접 제거
@@ -134,7 +134,7 @@ const Topbar = ({ onLogout }: TopbarProps): ReactElement => {
   const handleMarkAllRead = async () => {
     setNotifications(prev => prev.map(n => ({ ...n, _localRead: true })));
     for (const n of notifications) {
-      try { await notificationService.markAsRead(n.id); } catch {}
+      try { await notificationService.markAsRead(n.id); } catch { /* 실패해도 화면 표시는 유지 */ }
     }
   };
 
@@ -157,7 +157,13 @@ const Topbar = ({ onLogout }: TopbarProps): ReactElement => {
         paddingRight: '0 !important',
         bgcolor: 'background.default',
         backgroundImage: 'none',
-        boxShadow: 'none',      }}
+        boxShadow: 'none',
+        // 테마 Paper 의 네 변 테두리·둥근 모서리 때문에 아래 구분선이 왼쪽 모서리에서 휘어 보여 직선 하단선만 남긴다
+        borderRadius: 0,
+        border: 0,
+        borderBottom: '1px solid',
+        borderColor: 'divider',
+      }}
     >
       <Toolbar
         component={Stack}
@@ -200,7 +206,12 @@ const Topbar = ({ onLogout }: TopbarProps): ReactElement => {
             max={9}
             sx={{ '& .MuiBadge-badge': { top: 6, right: 6, fontSize: 10, minWidth: 18, height: 18 } }}
           >
-            <IconButton sx={{ padding: 1 }} onClick={handleBellClick}>
+            <IconButton
+              sx={{ padding: 1 }}
+              onClick={handleBellClick}
+              aria-label={`알림 ${notifications.filter(n => !n._localRead).length}개 읽지 않음`}
+              aria-haspopup="true"
+            >
               <IconifyIcon icon="ph:bell-bold" width={29} height={32} color="#111111" />
             </IconButton>
           </Badge>
