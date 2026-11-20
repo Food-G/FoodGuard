@@ -32,6 +32,12 @@ public class SalesDataController {
         return ResponseEntity.ok(salesDataService.getByStore(storeId));
     }
 
+    // 대시보드 KPI: {date, quantity, revenue, prevQuantity, prevRevenue} (prev = 어제)
+    @GetMapping("/{storeId}/today-summary")
+    public ResponseEntity<Map<String, Object>> getTodaySummary(@PathVariable Long storeId) {
+        return ResponseEntity.ok(salesDataService.getTodaySummary(storeId));
+    }
+
     @GetMapping("/all-stores/weekly-summary")
     public ResponseEntity<Map<Long, Long>> getAllStoreWeeklySummary() {
         return ResponseEntity.ok(salesDataService.getAllStoreWeeklySummary());

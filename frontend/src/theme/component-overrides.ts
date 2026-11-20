@@ -29,6 +29,7 @@ import Button from './components/Button';
 import Drawer from './components/Drawer';
 import Grid2 from './components/Grid2';
 import Paper from './components/Paper';
+import Alert from './components/Alert';
 import Stack from './components/Stack';
 import Card from './components/Card';
 import Chip from './components/Chip';
@@ -67,6 +68,7 @@ const components: Components<Omit<Theme, 'components'>> = {
   MuiDrawer: Drawer,
   MuiGrid2: Grid2,
   MuiPaper: Paper,
+  MuiAlert: Alert,
   MuiStack: Stack,
   MuiCard: Card,
   MuiChip: Chip,

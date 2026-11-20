@@ -32,7 +32,10 @@ public class StoreAccess {
             entry("SalesDayFlag", "select x.storeId from SalesDayFlag x where x.id = :id"),
             entry("StoreEventNote", "select x.storeId from StoreEventNote x where x.id = :id"),
             entry("DonationRecord", "select x.storeId from DonationRecord x where x.id = :id"),
-            entry("MenuDiscount", "select x.storeId from MenuDiscount x where x.id = :id")
+            entry("MenuDiscount", "select x.storeId from MenuDiscount x where x.id = :id"),
+            entry("Employee", "select x.storeId from Employee x where x.id = :id"),
+            entry("EmployeeSchedule", "select x.storeId from EmployeeSchedule x where x.id = :id"),
+            entry("Attendance", "select x.storeId from Attendance x where x.id = :id")
     );
 
     private final EntityManager entityManager;

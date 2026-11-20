@@ -4,7 +4,7 @@ import { Components } from '@mui/material/styles/components';
 const Pagination: Components<Omit<Theme, 'components'>>['MuiPagination'] = {
   defaultProps: {},
   styleOverrides: {
-    ul: ({}) => ({
+    ul: () => ({
       flexWrap: 'nowrap',
     }),
   },
