@@ -35,7 +35,8 @@ public class StoreAccess {
             entry("MenuDiscount", "select x.storeId from MenuDiscount x where x.id = :id"),
             entry("Employee", "select x.storeId from Employee x where x.id = :id"),
             entry("EmployeeSchedule", "select x.storeId from EmployeeSchedule x where x.id = :id"),
-            entry("Attendance", "select x.storeId from Attendance x where x.id = :id")
+            entry("Attendance", "select x.storeId from Attendance x where x.id = :id"),
+            entry("Reservation", "select x.storeId from Reservation x where x.id = :id")
     );
 
     private final EntityManager entityManager;

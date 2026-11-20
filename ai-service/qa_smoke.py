@@ -73,7 +73,7 @@ def cleanup():
     ul = ','.join(map(str, users))
     with engine.begin() as c:
         c.execute(text(f"DELETE FROM MENU_INGREDIENT WHERE menu_id IN (SELECT menu_id FROM MENU WHERE store_id IN ({sl}))"))
-        for t in ('EMPLOYEE_SCHEDULE', 'ATTENDANCE', 'EMPLOYEE', 'POS_TABLE', 'menu_discount', 'STORE_EVENT_NOTE', 'SALES_DAY_FLAG', 'WASTE_RECORD', 'DONATION_RECORD', 'NOTIFICATION', 'PREDICTION_RESULT', 'SALES_DATA', 'ORDER_REQUEST', 'INVENTORY', 'INGREDIENT', 'MENU'):
+        for t in ('RESERVATION', 'EMPLOYEE_SCHEDULE', 'ATTENDANCE', 'EMPLOYEE', 'POS_TABLE','menu_discount', 'STORE_EVENT_NOTE', 'SALES_DAY_FLAG', 'WASTE_RECORD', 'DONATION_RECORD', 'NOTIFICATION', 'PREDICTION_RESULT', 'SALES_DATA', 'ORDER_REQUEST', 'INVENTORY', 'INGREDIENT', 'MENU'):
             n = c.execute(text(f"DELETE FROM {t} WHERE store_id IN ({sl})")).rowcount
             print(' ', t, n)
         c.execute(text(f"DELETE FROM STORE WHERE store_id IN ({sl})"))
@@ -308,6 +308,17 @@ check('POS 좌석 배치 다시 저장하면 교체', [t['seats'] for t in api('
 check('POS 좌석 배치 조회', [(t['name'], t['seats']) for t in api('GET', f'/pos-tables/{S}', t=T)[1]], [('T1', 4)])
 check('POS 좌석 0 거부', api('PUT', f'/pos-tables/{S}', [{'name': 'T', 'x': 0, 'y': 0, 'w': 1, 'h': 1, 'seats': 0}], T)[0], 400)
 
+# ── 예약 ──
+c, rs = api('POST', '/reservations', {'storeId': S, 'customerName': 'QA손님', 'phone': '010', 'reservationDate': today.isoformat(), 'reservationTime': '18:30', 'guests': 4, 'note': '창가'}, T)
+check('예약 등록', rs.get('status') if c == 200 else c, 'RESERVED', None if c == 200 else rs)
+check('예약: 인원 0 거부', api('POST', '/reservations', {'storeId': S, 'customerName': 'x', 'reservationDate': today.isoformat(), 'reservationTime': '18:00', 'guests': 0}, T)[0], 400)
+check('예약: 이름 없음 거부', api('POST', '/reservations', {'storeId': S, 'customerName': ' ', 'reservationDate': today.isoformat(), 'reservationTime': '18:00', 'guests': 2}, T)[0], 400)
+check('예약: 다른 매장 등록 403', api('POST', '/reservations', {'storeId': 60004, 'customerName': 'x', 'reservationDate': today.isoformat(), 'reservationTime': '18:00', 'guests': 2}, T)[0], 403)
+check('예약 조회', [r['customerName'] for r in api('GET', f'/reservations/{S}', t=T)[1]], [['QA손님']])
+if c == 200:
+    check('예약 방문완료', api('PUT', f"/reservations/{rs['id']}/status", {'status': 'VISITED'}, T)[1].get('status'), 'VISITED')
+    check('예약: 잘못된 상태 거부', api('PUT', f"/reservations/{rs['id']}/status", {'status': 'DONE'}, T)[0], 400)
+
 # ── 알림·AI 입력·본사 ──
 c, n = api('POST', '/notifications', {'storeId': S, 'message': 'qa', 'type': 'STOCK'}, T)
 check('알림 생성', c, 200)
@@ -331,7 +342,7 @@ check('점주 통계 403', api('GET', '/stats/hq', t=T)[0], 403)
 
 # ── 권한 교차 ──
 for path, m in [(f'/sales/60004', 'GET'), ('/inventory/60004', 'GET'), ('/orders/60004', 'GET'), ('/predictions/60004', 'GET'), ('/watchdog/60004', 'GET'), ('/donations/store/60004', 'GET'), ('/waste-prediction/60004', 'GET'), ('/event-notes/60004', 'GET'), ('/notifications/60004/unread', 'GET'), ('/ingredients?storeId=60004', 'GET'),
-                ('/sales/60004/today-summary', 'GET'), ('/employees/60004', 'GET'), ('/employee-schedules/60004', 'GET'), (f'/attendance/60004?start={today}&end={today}', 'GET'), (f'/attendance/60004/weekly-pay?weekStart={today}', 'GET'), ('/pos-tables/60004', 'GET')]:
+                ('/sales/60004/today-summary', 'GET'), ('/employees/60004', 'GET'), ('/employee-schedules/60004', 'GET'), (f'/attendance/60004?start={today}&end={today}', 'GET'), (f'/attendance/60004/weekly-pay?weekStart={today}', 'GET'), ('/pos-tables/60004', 'GET'), ('/reservations/60004', 'GET')]:
     check(f'다른 매장 {path} 403', api(m, path, t=T)[0], 403)
 check('다른 매장 전체 재고 삭제 403', api('DELETE', '/inventory/store/60004', t=T)[0], 403)
 c = api('GET', '/stores/my/' + str(uid))[0]

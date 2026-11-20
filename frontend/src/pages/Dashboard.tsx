@@ -5,7 +5,7 @@ import IconifyIcon from '../components/base/IconifyIcon';
 import { inventoryService } from '../services/inventoryService';
 import { salesService } from '../services/salesService';
 import { storeService } from '../services/storeService';
-import { MOCK_RESERVATIONS } from './reservationsMock';
+import { reservationService, Reservation } from '../services/reservationService';
 import { employeeService, attendanceService, Employee, Attendance } from '../services/employeeService';
 import { addDays, hhmm, localDate, minutesBetween, minutesLabel } from '../helpers/date';
 import { predictionService, PredictionResult } from '../services/predictionService';
@@ -23,11 +23,6 @@ const CARD_SX = {
   boxShadow: '0 2px 12px rgba(0,0,0,0.07)',
   p: { xs: 2, md: 2.5 },
 };
-
-// 아직 API 가 없어 예시 데이터를 쓰는 값 표시 (개발 모드에서만)
-const MockChip = () => (
-  <Chip label="예시" size="small" sx={{ height: 20, fontSize: 11, fontWeight: 700, bgcolor: '#F1F3F7', color: '#44474E' }} />
-);
 
 /* ───────── 기능 타일 ───────── */
 interface TileProps {
@@ -115,9 +110,6 @@ const ADMIN_TILES: TileProps[] = [
 ];
 
 /* ───────── 오늘 요약 KPI ───────── */
-// 예약처럼 아직 API 가 없는 값은 개발 모드에서만 예시 데이터로 보여주고, 배포 화면에서는 '데이터 없음'
-const IS_DEV = import.meta.env.DEV;
-
 interface KpiProps {
   label: string;
   icon: string;
@@ -130,7 +122,6 @@ interface KpiProps {
   // 값이 0 일 때 숫자 대신 보여줄 문구와 바로가기
   empty: { text: string; action?: string; path?: string; good?: boolean };
   prev?: number | null;  // 어제 값 (있을 때만 증감 표시)
-  mock?: boolean;
 }
 
 // 어제가 0 이거나 없으면 % 를 낼 수 없으니 표시하지 않는다
@@ -145,7 +136,7 @@ const Delta = ({ value, prev }: { value: number; prev?: number | null }) => {
   );
 };
 
-const KpiCard = ({ label, icon, color, path, value, unit, format, empty, prev, mock }: KpiProps) => {
+const KpiCard = ({ label, icon, color, path, value, unit, format, empty, prev }: KpiProps) => {
   const isEmpty = value === 0;
   return (
     <ButtonBase
@@ -167,7 +158,6 @@ const KpiCard = ({ label, icon, color, path, value, unit, format, empty, prev, m
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
         <IconifyIcon icon={icon} width={20} height={20} color={color} />
         <Typography fontSize={14} fontWeight={600} color="#44474E">{label}</Typography>
-        {mock && IS_DEV && <Box sx={{ ml: 'auto' }}><MockChip /></Box>}
       </Box>
       {value === null ? (
         <Typography fontSize={15} color="#44474E">불러오는 중…</Typography>
@@ -388,12 +378,11 @@ const EmployeeWidget = ({ storeId }: { storeId: number | null }) => {
 };
 
 /* ───────── 오른쪽 요약 카드 (오늘 예약 · AI 예측 · 폐기 임박) ───────── */
-const SideCard = ({ icon, color, title, more, mock, children }: { icon: string; color: string; title: string; more: { label: string; path: string }; mock?: boolean; children: React.ReactNode }) => (
+const SideCard = ({ icon, color, title, more, children }: { icon: string; color: string; title: string; more: { label: string; path: string }; children: React.ReactNode }) => (
   <Box sx={{ ...CARD_SX, borderTop: `3px solid ${color}` }}>
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.2 }}>
       <IconifyIcon icon={icon} width={22} height={22} color={color} />
       <Typography fontWeight={700} fontSize={16} color="#1A1C1E">{title}</Typography>
-      {mock && IS_DEV && <MockChip />}
       <Button component={RouterLink} to={more.path} variant="text" size="small" sx={{ ...FOCUS_SX, ml: 'auto', fontWeight: 700 }}>
         {more.label}
       </Button>
@@ -416,27 +405,22 @@ const ListRow = ({ left, main, right }: { left: React.ReactNode; main: React.Rea
 
 const LIST_SX = { listStyle: 'none', m: 0, p: 0 };
 
-// 예약 API 가 없어 개발 모드에서만 예시 데이터를 보여준다
-const ReservationWidget = () => {
-  const today = localDate(new Date());
-  const list = IS_DEV
-    ? MOCK_RESERVATIONS.filter((r) => r.date === today && r.status !== '취소').sort((a, b) => a.time.localeCompare(b.time))
-    : null;
-  return (
-    <SideCard icon="mingcute:calendar-2-line" color="#1976D2" title="오늘 예약" more={{ label: '전체 보기', path: '/reservations' }} mock>
-      {list == null ? <EmptyLine text="데이터 없음 (예약 기능 준비 중)" />
-        : list.length === 0 ? <EmptyLine text="오늘 예약이 없어요" />
-        : (
-          <Box component="ul" sx={LIST_SX}>
-            {list.slice(0, 5).map((r) => (
-              <ListRow key={r.id} left={r.time} right={`${r.guests}명`}
-                main={<Typography fontSize={14} fontWeight={600} noWrap>{r.name}{r.note && <Typography component="span" fontSize={12} color="#5F6368"> · {r.note}</Typography>}</Typography>} />
-            ))}
-          </Box>
-        )}
-    </SideCard>
-  );
-};
+// 오늘 예약중인 예약 (방문완료·취소 제외). list 는 null: 불러오는 중, undefined: 조회 실패
+const ReservationWidget = ({ list }: { list: Reservation[] | null | undefined }) => (
+  <SideCard icon="mingcute:calendar-2-line" color="#1976D2" title="오늘 예약" more={{ label: '전체 보기', path: '/reservations' }}>
+    {list === null ? <EmptyLine text="불러오는 중…" />
+      : list === undefined ? <EmptyLine text="데이터 없음" />
+      : list.length === 0 ? <EmptyLine text="오늘 예약이 없어요" />
+      : (
+        <Box component="ul" sx={LIST_SX}>
+          {list.slice(0, 5).map((r) => (
+            <ListRow key={r.id} left={hhmm(r.reservationTime)} right={`${r.guests}명`}
+              main={<Typography fontSize={14} fontWeight={600} noWrap>{r.customerName}{r.note && <Typography component="span" fontSize={12} color="#5F6368"> · {r.note}</Typography>}</Typography>} />
+          ))}
+        </Box>
+      )}
+  </SideCard>
+);
 
 // 내일 예측 판매량이 많은 메뉴 TOP 3 (PREDICTION_RESULT)
 const ForecastWidget = ({ storeId }: { storeId: number | null }) => {
@@ -503,15 +487,17 @@ const Dashboard = ({ user }: any) => {
   const [invState, setInvState] = useState<'loading' | 'error' | 'ok'>('loading');
   // null: 불러오는 중, undefined: 조회 실패
   const [summary, setSummary] = useState<TodaySummary | null | undefined>(null);
+  // 오늘 예약중인 예약 (null: 불러오는 중, undefined: 조회 실패)
+  const [todayReservations, setTodayReservations] = useState<Reservation[] | null | undefined>(null);
 
   useEffect(() => {
     if (user?.id && role === 'OWNER') {
       storeService.getMyStores(user.id)
         .then((stores: any[]) => {
           if (stores.length > 0) setStoreId(stores[0].id);
-          else { setInvState('error'); setSummary(undefined); }
+          else { setInvState('error'); setSummary(undefined); setTodayReservations(undefined); }
         })
-        .catch(() => { setInvState('error'); setSummary(undefined); });
+        .catch(() => { setInvState('error'); setSummary(undefined); setTodayReservations(undefined); });
     }
   }, [user?.id, role]);
 
@@ -525,6 +511,10 @@ const Dashboard = ({ user }: any) => {
       salesService.getTodaySummary(storeId)
         .then((s: TodaySummary) => setSummary(s))
         .catch(() => setSummary((s) => (s ? s : undefined)));
+      const today = localDate(new Date());
+      reservationService.getByStore(storeId)
+        .then((all) => setTodayReservations((all ?? []).filter((r) => r.reservationDate === today && r.status === 'RESERVED')))
+        .catch(() => setTodayReservations((r) => (r ? r : undefined)));
     };
     load();
     const timer = setInterval(load, 30_000);
@@ -539,8 +529,7 @@ const Dashboard = ({ user }: any) => {
     );
   }
 
-  const today = localDate(new Date());
-  const invValue = (n: number) => (invState === 'loading' ? null : invState === 'error' ? undefined : n);
+  const invValue =(n: number) => (invState === 'loading' ? null : invState === 'error' ? undefined : n);
   const noSales = { text: '아직 판매 기록이 없어요', action: '판매 입력하기', path: '/sales' };
 
   const kpis: KpiProps[] = [
@@ -548,9 +537,8 @@ const Dashboard = ({ user }: any) => {
       value: summary === null ? null : summary?.revenue, prev: summary?.prevRevenue, empty: noSales },
     { label: '오늘 판매 건수', icon: 'mingcute:shopping-bag-1-line', color: '#00796B', path: '/sales', unit: '건',
       value: summary === null ? null : summary?.quantity, prev: summary?.prevQuantity, empty: noSales },
-    { label: '오늘 예약', icon: 'mingcute:calendar-2-line', color: '#1976D2', path: '/reservations', unit: '건', mock: true,
-      value: IS_DEV ? MOCK_RESERVATIONS.filter((r) => r.date === today && r.status === '예약중').length : undefined,
-      empty: { text: '오늘 예약이 없어요' } },
+    { label: '오늘 예약', icon: 'mingcute:calendar-2-line', color: '#1976D2', path: '/reservations', unit: '건',
+      value: todayReservations === null ? null : todayReservations?.length, empty: { text: '오늘 예약이 없어요' } },
     { label: '재고 부족 품목', icon: 'mingcute:inventory-line', color: '#C62828', path: '/inventory', unit: '개',
       value: invValue(inventory.filter(isLowStock).length), empty: { text: '부족한 재고가 없어요', good: true } },
     { label: '폐기 임박 품목', icon: 'mingcute:time-line', color: '#B53D00', path: '/waste-prediction', unit: '개',
@@ -592,7 +580,7 @@ const Dashboard = ({ user }: any) => {
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           <InventoryAlertWidget items={inventory} loading={invState === 'loading'} />
           <EmployeeWidget storeId={storeId} />
-          <ReservationWidget />
+          <ReservationWidget list={todayReservations} />
           <ForecastWidget storeId={storeId} />
           <ExpiringWidget items={inventory} state={invState} />
         </Box>

@@ -38,7 +38,8 @@ public class StoreAccessInterceptor implements HandlerInterceptor {
             entry("/api/donations/{id}/cancel", "DonationRecord"),
             entry("/api/employees/{id}", "Employee"),
             entry("/api/employee-schedules/{id}", "EmployeeSchedule"),
-            entry("/api/attendance/{id}", "Attendance")
+            entry("/api/attendance/{id}", "Attendance"),
+            entry("/api/reservations/{id}/status", "Reservation")
     );
 
     private final StoreAccess storeAccess;
