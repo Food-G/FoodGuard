@@ -11,7 +11,7 @@ const CssBaseline: Components<Omit<Theme, 'components'>>['MuiCssBaseline'] = {
       scrollBehavior: 'smooth',
       WebkitOverflowScrolling: 'touch',
       boxSizing: 'border-box',
-      scrollbarColor: '#21222D #171821',
+      scrollbarColor: `${theme.palette.text.disabled} transparent`,
     },
     '*, *::before, *::after': {
       margin: 0,

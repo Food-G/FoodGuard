@@ -34,6 +34,10 @@ export const orderService = {
   getAll: async () => {
     return api.get('/orders/admin/all');
   },
+  // 식자재별 추천 발주량 (orderQty, unit, coverageDays, currentStock ...)
+  getRecommend: async (storeId: number) => {
+    return api.get(`/orders/recommend/${storeId}`);
+  },
   // 추천 발주량 + AI(claude CLI) 근거 설명 (10~20초)
   explainRecommend: async (storeId: number) => {
     return api.post(`/orders/recommend/${storeId}/explain`, {});

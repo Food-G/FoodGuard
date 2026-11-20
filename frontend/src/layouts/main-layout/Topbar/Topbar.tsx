@@ -155,7 +155,7 @@ const Topbar = ({ onLogout }: TopbarProps): ReactElement => {
         left: 0,
         width: '100%',
         paddingRight: '0 !important',
-        bgcolor: 'background.default',
+        bgcolor: 'background.paper',
         backgroundImage: 'none',
         boxShadow: 'none',      }}
     >
@@ -165,7 +165,7 @@ const Topbar = ({ onLogout }: TopbarProps): ReactElement => {
         alignItems="center"
         justifyContent="space-between"
         sx={{
-          bgcolor: 'background.default',
+          bgcolor: 'background.paper',
           height: 116,
           '& *:focus': { outline: 'none' },
         }}
