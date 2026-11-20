@@ -1,6 +1,6 @@
 plugins {
 	id 'java'
-	id 'org.springframework.boot' version '3.5.13'
+	id 'org.springframework.boot' version '3.5.16'
 	id 'io.spring.dependency-management' version '1.1.7'
 }
 
@@ -12,6 +12,10 @@ java {
 		languageVersion = JavaLanguageVersion.of(17)
 	}
 }
+
+// Boot 3.5.16 관리 버전에 남은 취약점 패치 (OSV 2026-11-20)
+ext['tomcat.version'] = '10.1.62'
+ext['jackson-bom.version'] = '2.21.8'
 
 repositories {
 	mavenCentral()
