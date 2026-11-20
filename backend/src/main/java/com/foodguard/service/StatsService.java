@@ -101,7 +101,7 @@ public class StatsService {
         }
         Map<Long, Double> wasted = new HashMap<>();
         for (WasteRecord w : wastes) {
-            wasted.merge(w.getIngredientId(), w.getQuantity().doubleValue(), Double::sum);
+            wasted.merge(w.getIngredientId(), w.getQty().doubleValue(), Double::sum);
         }
         double[] rates = wasted.entrySet().stream()
                 .filter(e -> received.getOrDefault(e.getKey(), 0.0) > 0)

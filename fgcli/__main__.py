@@ -103,6 +103,13 @@ def trim_prediction(p: dict) -> dict:
                  "confidence", "modelVersion")
 
 
+def _txn_query(a: argparse.Namespace) -> str:
+    params = {"from": getattr(a, "from_date", None), "to": getattr(a, "to_date", None),
+              "ingredientId": getattr(a, "ingredient", None)}
+    q = "&".join(f"{k}={v}" for k, v in params.items() if v)
+    return f"?{q}" if q else ""
+
+
 def trim_ingredient(i: dict) -> dict:
     return _pick(i, "id", "name", "unit", "category")
 
@@ -129,15 +136,27 @@ COMMANDS: dict[str, tuple[Callable[[argparse.Namespace], str], Trimmer, str]] = 
     "orders-all":  (lambda a: "/api/orders/admin/all", trim_order, "전 매장 발주 내역 (HQ 전용)"),
     "sales":       (lambda a: f"/api/sales/{a.store_id}/range?start={a.start}&end={a.end}",
                     trim_sales, "기간별 판매 실적"),
+    "today":       (lambda a: f"/api/sales/{a.store_id}/today-summary", None, "오늘 매출 요약"),
+    "weekly":      (lambda a: f"/api/sales/{a.store_id}/weekly-summary", None,
+                    "최근 7일 vs 직전 7일 매출"),
     "weekly-all":  (lambda a: "/api/sales/all-stores/weekly-summary", None,
                     "전 매장 주간 매출 (HQ 전용)"),
+    "txns":        (lambda a: f"/api/inventory/{a.store_id}/txns" + _txn_query(a), None,
+                    "재고 원장: 재고가 왜 늘고 줄었나 (SALE·ORDER_DONE·ADJUST·INIT…, 기본 최근 30일, 최신순)"),
+    "lots":        (lambda a: f"/api/inventory/{a.store_id}/lots", None,
+                    "남은 입고 로트와 유통기한 (식자재별 FIFO 순, daysUntilExpiry 음수 = 이미 지남)"),
+    "waste":       (lambda a: f"/api/waste-prediction/{a.store_id}", None,
+                    "폐기 위험: 7일 내 다 못 쓰고 버려질 양 (위험 높은 순, wasteRate 는 퍼센트, 유통기한 있는 재고만)"),
     "ai-health":   (lambda a: "/health", None, "AI 예측 서비스 가동 확인"),
+    "accuracy":    (lambda a: "/api/predictions/accuracy?source=" + a.source
+                    + (f"&storeId={a.store}" if a.store else ""), None,
+                    "예측 정확도 (예측 이력 × 실제 판매, WAPE·MAPE·편향·기준선 대비)"),
     "plan":        (lambda a: "", None,
                     "발주 참모 발주안: 관찰→판단→발주안 + 서버 추천과 대조 (읽기 전용, 발주하지 않음)"),
 }
 
 NEEDS_STORE_ID = {"menus", "inventory", "predictions", "recommend", "orders",
-                  "sales", "plan"}
+                  "sales", "today", "weekly", "plan", "txns", "lots", "waste"}
 NEEDS_MENU_ID = {"recipe"}
 
 
@@ -148,7 +167,7 @@ def _common_options(parser: argparse.ArgumentParser, *, suppress: bool) -> None:
     덮어쓰지 않게 한다.
     """
     d: dict = {"default": argparse.SUPPRESS} if suppress else {}
-    parser.add_argument("--as", dest="role", choices=["owner", "hq"],
+    parser.add_argument("--as", dest="role", choices=["owner", "hq", "agent"],
                         help="어느 계정 권한으로 조회할지 (기본 owner)",
                         **({} if suppress else {"default": "owner"}), **d)
     parser.add_argument("--full", action="store_true",
@@ -174,6 +193,13 @@ def build_parser() -> argparse.ArgumentParser:
             sp.add_argument("store_id", type=int, help="매장 ID")
         if name in NEEDS_MENU_ID:
             sp.add_argument("menu_id", type=int, help="메뉴 ID")
+        if name == "accuracy":
+            sp.add_argument("--source", choices=["backtest", "live"], default="backtest")
+            sp.add_argument("--store", type=int, help="매장 ID (생략 시 전체)")
+        if name == "txns":
+            sp.add_argument("--from", dest="from_date", help="시작일 YYYY-MM-DD (기본: to 기준 30일 전)")
+            sp.add_argument("--to", dest="to_date", help="종료일 YYYY-MM-DD, 그날 포함 (기본: 오늘)")
+            sp.add_argument("--ingredient", type=int, help="식자재 ID")
         if name == "sales":
             sp.add_argument("--start", required=True, help="시작일 YYYY-MM-DD")
             sp.add_argument("--end", required=True, help="종료일 YYYY-MM-DD")
@@ -232,6 +258,7 @@ def main(argv: list[str] | None = None) -> int:
     else:
         path = path_fn(args)
 
+    # accuracy 는 Spring 프록시를 거친다 (권한 검사 + 내부 토큰을 에이전트가 갖지 않게)
     base = AI_BASE if args.command == "ai-health" else None
     result = client.get(path, base=base) if base else client.get(path)
 

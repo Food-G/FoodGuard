@@ -1,5 +1,33 @@
 # 자산화 과정에서 발견한 결함 — 수정 내역
 
+**2026-11-06** — DEV_ROADMAP C-1 진행 중 발견
+
+### 스크립트에 계정 비밀번호 하드코딩
+`ai-service/seed_ingredients.py`, `update_ingredient_units.py`에 점주 계정의 이메일과 비밀번호가 평문으로 있었습니다 (R8 위반).
+→ `.env`의 `FOODGUARD_OWNER_EMAIL` / `FOODGUARD_OWNER_PASSWORD`를 읽습니다. **값은 git 히스토리에 남아 있으므로 그 계정의 비밀번호를 바꿔야 합니다.**
+
+**2026-11-06** — DEV_ROADMAP AG-7 진행 중 발견
+
+### 에이전트 알림 24시간 중복 금지가 동작하지 않던 문제
+`NOTIFICATION.created_at`은 DB 기본값이 없는데(`DEFAULT NULL`, `SHOW CREATE TABLE` 확인) 엔티티가 `insertable = false`라 항상 NULL로 저장됐습니다.
+중복 검사는 `created_at > 24시간 전`을 찾으므로 항상 "없음"이 되어, 같은 알림이 실행할 때마다 새로 만들어졌을 것입니다. 알림 화면의 시각도 비어 있었을 것입니다.
+→ 앱이 생성 시각을 넣습니다. 기존 행은 NULL로 남습니다. 코드와 스키마로 찾은 결함이고 DB 접속 거부로 실제 행은 확인하지 못했습니다.
+`entity/Notification.java`, `service/NotificationService.java`, 테스트 `NotificationServiceTest`
+
+**2026-10-30** — DEV_ROADMAP P0/B/D-1 진행 중 발견
+
+### 매장별 정확도 조회가 "이력 없음"으로 나오던 문제
+`accuracy_service.latest_run_id()`가 매장 조건 없이 전체 최신 실행을 고른 뒤 매장으로 필터링해서,
+최신 실행에 그 매장이 없으면 `no_log`를 돌려줬습니다. 또 백테스트의 `predicted_at`은 실행 시각이 아니라 기준일이라,
+판매 데이터가 늦게 끝나는 매장의 옛 실행이 항상 "최신"으로 뽑혔습니다(TiDB `log_id`도 단조 증가가 아님).
+→ 매장을 지정하면 그 매장이 포함된 실행 중에서 고릅니다. 같은 매장 실행 간 순서는 여전히 부정확할 수 있어 docstring에 한계를 남겼습니다
+(근본 해결은 `PREDICTION_LOG`에 실행 시각 컬럼 추가 — 마이그레이션 필요).
+`ai-service/services/accuracy_service.py`
+
+### `ai-service/.env.example`에 실제 기상청 API 키
+예시 파일에 실제 `KMA_API_KEY` 값이 커밋돼 있었습니다. → 빈 값으로 교체. **키 재발급 필요**(히스토리에 남아 있음).
+
+
 **2026-10-16** — 단위 정리 및 ai-service 기동 오류
 
 ### 단위 규칙 강제 (g/kg 1000배 오차 재발 방지)

@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import {
   Box,
   Link,
-  Paper,
   Stack,
   Button,
   TextField,
@@ -11,12 +10,27 @@ import {
   InputAdornment,
   Alert,
   alpha,
-  Divider
+  Divider,
 } from '@mui/material';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import IconifyIcon from '../../components/base/IconifyIcon';
+import AuthVisual, { enter } from '../../components/AuthVisual';
 
 import { authService } from '../../services/authService';
+
+const FEATURES = [
+  { icon: 'mingcute:brain-fill', text: 'AI 수요 예측으로 필요한 만큼만 발주' },
+  { icon: 'mingcute:robot-line', text: '에이전트가 먼저 찾고, 결정은 사장님이' },
+  { icon: 'mingcute:heart-line', text: '남는 식자재는 이웃에게 기부로' },
+];
+
+const fieldSx = {
+  '& .MuiFilledInput-root': {
+    bgcolor: 'grey.50',
+    borderRadius: 3,
+    '&:before, &:after': { display: 'none' },
+  },
+};
 
 const Login = ({ onLogin }: { onLogin: (token: string) => void }) => {
   const [email, setEmail] = useState('');
@@ -32,50 +46,41 @@ const Login = ({ onLogin }: { onLogin: (token: string) => void }) => {
       onLogin(token);
       navigate('/');
     } catch (err: any) {
-      // 서버 안내 문구 (틀린 정보, 반복 실패 차단)
-      setError(err.message || '로그인에 실패했습니다.');
+      setError('로그인 실패: 정보를 다시 확인해 주세요.');
     }
   };
 
   return (
-    <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', bgcolor: 'background.default' }}>
-      <Stack sx={{ flexGrow: 1, py: 10, px: 2 }} alignItems="center" justifyContent="center">
-        <Box sx={{ mb: 6, textAlign: 'center' }}>
-          <Stack direction="row" alignItems="center" gap={1.5} justifyContent="center" mb={2}>
-            <IconifyIcon icon="mingcute:leaf-fill" color="primary.main" width={48} height={48} />
-            <Typography variant="h2" fontWeight={900} color="primary.main" sx={{ letterSpacing: '-0.05em' }}>
-              FoodGuard
+    <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: { xs: 'column', md: 'row' } }}>
+      <AuthVisual
+        eyebrow="AI FOOD MANAGEMENT"
+        title={<>버려지는 식자재 없이,<br />똑똑한 매장 운영</>}
+        features={FEATURES}
+      />
+
+      {/* ── 로그인 폼 ── */}
+      <Stack
+        alignItems="center"
+        justifyContent="center"
+        sx={{
+          flex: { md: '1 1 45%' }, bgcolor: 'background.paper', position: 'relative',
+          px: { xs: 3, sm: 5 }, py: { xs: 4, md: 6 },
+          mt: { xs: -4, md: 0 }, borderRadius: { xs: '28px 28px 0 0', md: 0 }, // 모바일: 배너 위로 살짝 겹치는 시트
+        }}
+      >
+        <Stack component="form" onSubmit={handleSubmit} gap={3} sx={{ width: 1, maxWidth: 420 }}>
+          <Box sx={enter(2)}>
+            <Typography variant="h4" fontWeight={800} color="text.primary" gutterBottom>
+              반갑습니다!
             </Typography>
-          </Stack>
-          <Typography variant="h6" color="text.secondary" fontWeight={500}>
-            지구를 위한 스마트한 식자재 관리
-          </Typography>
-        </Box>
+            <Typography variant="body1" color="text.secondary">
+              서비스 이용을 위해 로그인이 필요합니다.
+            </Typography>
+          </Box>
 
-        <Paper
-          elevation={0}
-          sx={{
-            py: 8,
-            px: { xs: 4, sm: 6 },
-            width: '100%',
-            maxWidth: 480,
-            borderRadius: 6,
-            border: (theme) => `1px solid ${theme.palette.divider}`,
-            bgcolor: 'background.paper',
-          }}
-        >
-          <Stack component="form" onSubmit={handleSubmit} gap={4}>
-            <Box textAlign="center" mb={2}>
-              <Typography variant="h4" fontWeight={800} color="text.primary" gutterBottom>
-                반갑습니다!
-              </Typography>
-              <Typography variant="body1" color="text.secondary">
-                서비스 이용을 위해 로그인이 필요합니다.
-              </Typography>
-            </Box>
+          {error && <Alert severity="error" sx={{ borderRadius: 3 }}>{error}</Alert>}
 
-            {error && <Alert severity="error" sx={{ borderRadius: 3 }}>{error}</Alert>}
-
+          <Box sx={enter(3)}>
             <TextField
               fullWidth
               variant="filled"
@@ -84,15 +89,11 @@ const Login = ({ onLogin }: { onLogin: (token: string) => void }) => {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              sx={{
-                '& .MuiFilledInput-root': {
-                  bgcolor: 'grey.50',
-                  borderRadius: 3,
-                  '&:before, &:after': { display: 'none' }
-                }
-              }}
+              sx={fieldSx}
             />
+          </Box>
 
+          <Box sx={enter(4)}>
             <TextField
               fullWidth
               variant="filled"
@@ -101,13 +102,7 @@ const Login = ({ onLogin }: { onLogin: (token: string) => void }) => {
               type={showPassword ? 'text' : 'password'}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              sx={{
-                '& .MuiFilledInput-root': {
-                  bgcolor: 'grey.50',
-                  borderRadius: 3,
-                  '&:before, &:after': { display: 'none' }
-                }
-              }}
+              sx={fieldSx}
               InputProps={{
                 endAdornment: (
                   <InputAdornment position="end">
@@ -118,53 +113,54 @@ const Login = ({ onLogin }: { onLogin: (token: string) => void }) => {
                 ),
               }}
             />
+          </Box>
 
-            <Button
-              type="submit"
-              variant="contained"
-              size="large"
-              sx={{
-                py: 2,
-                borderRadius: 3,
-                fontSize: '1.1rem',
-                fontWeight: 700,
-                boxShadow: (theme) => `0 8px 16px ${alpha(theme.palette.primary.main, 0.24)}`
-              }}
-            >
-              로그인하기
-            </Button>
+          <Button
+            type="submit"
+            variant="contained"
+            size="large"
+            endIcon={<IconifyIcon icon="mingcute:arrow-right-line" />}
+            sx={{
+              py: 1.8,
+              borderRadius: 3,
+              fontSize: '1.05rem',
+              fontWeight: 700,
+              boxShadow: (theme) => `0 8px 16px ${alpha(theme.palette.primary.main, 0.24)}`,
+              transition: 'transform .2s, box-shadow .2s',
+              '&:hover': { transform: 'translateY(-2px)', boxShadow: (theme) => `0 12px 24px ${alpha(theme.palette.primary.main, 0.32)}` },
+              ...enter(5),
+            }}
+          >
+            로그인하기
+          </Button>
 
+          <Box sx={enter(6)}>
             <Divider>
               <Typography variant="body2" color="text.disabled">또는</Typography>
             </Divider>
+          </Box>
 
-            <Stack direction="row" gap={2}>
-              <Button fullWidth variant="outlined" sx={{ borderRadius: 3, py: 1.5, borderColor: 'divider', color: 'text.primary' }}>
-                <IconifyIcon icon="flat-color-icons:google" width={24} sx={{ mr: 1 }} /> Google
-              </Button>
-              <Button fullWidth variant="outlined" sx={{ borderRadius: 3, py: 1.5, borderColor: 'divider', color: 'text.primary' }}>
-                <IconifyIcon icon="logos:facebook" width={24} sx={{ mr: 1 }} /> Facebook
-              </Button>
-            </Stack>
-
-            <Box textAlign="center" mt={2}>
-              <Typography variant="body2" color="text.secondary">
-                계정이 없으신가요?{' '}
-                <Link component={RouterLink} to="/signup" fontWeight={700} underline="none">
-                  회원가입 하기
-                </Link>
-              </Typography>
-            </Box>
+          <Stack direction="row" gap={2} sx={enter(7)}>
+            <Button fullWidth variant="outlined" sx={{ borderRadius: 3, py: 1.4, borderColor: 'divider', color: 'text.primary' }}>
+              <IconifyIcon icon="flat-color-icons:google" width={22} sx={{ mr: 1 }} /> Google
+            </Button>
+            <Button fullWidth variant="outlined" sx={{ borderRadius: 3, py: 1.4, borderColor: 'divider', color: 'text.primary' }}>
+              <IconifyIcon icon="logos:facebook" width={22} sx={{ mr: 1 }} /> Facebook
+            </Button>
           </Stack>
-        </Paper>
+
+          <Box textAlign="center" sx={enter(8)}>
+            <Typography variant="body2" color="text.secondary">
+              계정이 없으신가요?{' '}
+              <Link component={RouterLink} to="/signup" fontWeight={700} underline="none">
+                회원가입 하기
+              </Link>
+            </Typography>
+          </Box>
+        </Stack>
       </Stack>
-      
-      <Box sx={{ py: 4, textAlign: 'center', opacity: 0.5 }}>
-        <Typography variant="caption" color="text.secondary">
-          © 2026 FoodGuard Team. All rights reserved.
-        </Typography>
-      </Box>
     </Box>
-  );};
+  );
+};
 
 export default Login;

@@ -1,18 +1,5 @@
 # FoodGuard 자산 팩 (Agent Assets)
 
-> **2026-10-30, jhy 브랜치로 옮기며 덧붙임 — 이 자산 팩은 `junho` 브랜치(서준호) 백엔드 기준으로 쓰였습니다.**
-> jhy(= jihwan 인계본 기준) 코드와 다른 점이 있으니, 아래 표가 우선합니다. `04-business-rules.md` §1 발주 산식과 `.claude/agents/`, `fgagent/order_advisor.md`, `fgcli/planner.py`는 jihwan 기준으로 고쳤습니다. 나머지 문서 전면 갱신은 남은 작업입니다.
->
-> | 항목 | 이 문서들(junho 기준) | jhy 코드(jihwan 기준) |
-> |---|---|---|
-> | 발주 추천 산식 | 7일 예측 합계 × 레시피 × (1+tolerance) | 식자재별 책임 기간(리드타임 − 1 + min(주기, 보관기한)) 안의 추천 발주량(안전재고 포함) × 레시피 |
-> | 판매 시 재고 차감 | 있음 (`POST /api/sales`가 재고를 줄임) | **없음.** 재고는 발주 완료(DONE) 때 늘고 폐기 기록 때 줄어듦 |
-> | 단위 변환 | `util/UnitConverter` (저장 시 조합 검사) | `util/UnitUtils.convertToBaseUnit` (저장 시 검사 없음) |
-> | 스키마 정책 | `ddl-auto=none` + `migrations/*.sql` | `ddl-auto=update` |
-> | 예측 모델 | 메뉴별 XGBoost | 전체 매장×메뉴 글로벌 XGBoost + 식자재 단위 conformal 안전재고 |
-> | 없는 API | — | `/api/sales/{id}/today-summary`, `/weekly-summary`, AI `/api/accuracy`(PREDICTION_LOG) |
-> | 있는 테이블(추가) | — | `WASTE_RECORD`, `SALES_DAY_FLAG`, `STORE_EVENT_NOTE`, `INGREDIENT.shelf_life_days·lead_time_days·order_cycle_days` |
-
 캡스톤 FoodGuard 프로젝트에서 **지금까지 개발한 것을 AI 에이전트가 쓸 수 있는 형태로 정리한 자산**입니다.
 모든 내용은 **실제 소스 코드를 직접 읽어 검증**했습니다 (2026-09-11 기준).
 자산화 과정에서 발견한 결함 8건은 같은 날 코드에 수정 반영했고, `uml/` 문서도 코드에 맞게 정정했습니다 — 상세는 [CHANGELOG.md](CHANGELOG.md).

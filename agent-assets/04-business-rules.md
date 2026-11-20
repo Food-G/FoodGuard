@@ -33,8 +33,6 @@ order_qty = max(0, round1(required) - round1(current_stock) - round1(pending))
 
 ## 2. 재고 자동 차감 (매출 등록 시, `POST /api/sales`)
 
-> ⚠️ **jhy(jihwan 기준) 코드에는 이 기능이 없습니다.** 매출 등록은 재고를 바꾸지 않습니다. 아래는 junho 브랜치의 동작이며, 도입 여부는 팀 결정 사항입니다(`agent/outputs/branch_merge_plan.md` 2절).
-
 ```
 for mi in recipe(menu_id):
     consume_recipe = qty_per_unit × sale_qty × (1 + tolerance/100)

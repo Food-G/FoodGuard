@@ -34,6 +34,10 @@ public class Inventory {
     @Transient
     private Double quantity;
 
+    // 최소 보유량 (재고 부족 판단·판매 후 자동 보충 기준). 공유 DB 의 NOT NULL 컬럼
+    @Column(name = "min_threshold", nullable = false, precision = 10, scale = 2)
+    private BigDecimal minThreshold = BigDecimal.ZERO;
+
     @Column(nullable = false, length = 20)
     private String unit;
 

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import {
   Typography, Paper, Grid, Stack, useTheme,
   Button, CircularProgress, Alert, Chip,
@@ -83,8 +83,11 @@ const Predictions = ({ user }: any) => {
       const res = await predictionService.trigger(storeId);
       setSuccessMsg(res.status === 'success' ? 'AI 예측이 완료되었습니다.' : res.message);
       await loadData(storeId);
-    } catch {
-      setError('AI 예측 실행 중 오류가 발생했습니다. AI 서비스가 실행 중인지 확인하세요.');
+    } catch (e) {
+      // 실패 시 서버는 502 + {"status":"error","message":...} 를 돌려준다
+      let detail = '';
+      try { detail = JSON.parse((e as Error).message)?.message ?? ''; } catch { /* 본문이 JSON 이 아님 */ }
+      setError(`AI 예측 실행 중 오류가 발생했습니다. AI 서비스가 실행 중인지 확인하세요.${detail ? ` (${detail})` : ''}`);
     } finally {
       setTriggering(false);
     }
@@ -114,13 +117,33 @@ const Predictions = ({ user }: any) => {
       color: menuColorMap[name],
       data: (summary?.byMenu[name] ?? []).map((p) => p.predictedQty),
       emphasis: { focus: 'series' },
+      triggerLineEvent: true, // 점뿐 아니라 선 위에서도 강조·툴팁 대상이 되게
       z: isSelected ? 10 : 1,
     };
   });
 
+  // 선에 마우스를 올리면 그 메뉴만 강조되므로, 툴팁도 그 메뉴 한 줄만 보여준다
+  const hoveredMenu = useRef<string | null>(null);
+  const chartEvents = useMemo(() => ({
+    mouseover: (e: any) => { if (e.componentType === 'series') hoveredMenu.current = e.seriesName; },
+    mouseout: () => { hoveredMenu.current = null; },
+    globalout: () => { hoveredMenu.current = null; },
+  }), []);
+
   const chartOption = {
     color: CHART_COLORS,
-    tooltip: { trigger: 'axis', axisPointer: { type: 'cross', crossStyle: { color: theme.palette.divider } } },
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'cross', crossStyle: { color: theme.palette.divider } },
+      formatter: (params: any[]) => {
+        const focus = hoveredMenu.current ?? chartMenu;
+        const rows = focus ? params.filter((p) => p.seriesName === focus) : params;
+        const head = params[0]?.axisValueLabel ?? '';
+        return [`<div style="font-weight:700;margin-bottom:4px">${head}</div>`,
+          ...rows.map((p) => `<div style="display:flex;align-items:center;gap:6px">${p.marker}<span style="flex:1">${p.seriesName}</span><b style="margin-left:12px">${p.value ?? '-'}</b></div>`),
+        ].join('');
+      },
+    },
     legend: { data: menuNames, textStyle: { color: theme.palette.text.secondary }, bottom: 0, type: 'scroll' },
     grid: { top: '8%', left: '3%', right: '4%', bottom: '18%', containLabel: true },
     xAxis: {
@@ -188,7 +211,11 @@ const Predictions = ({ user }: any) => {
         <Grid item xs={12}>
           <Paper sx={{ p: 4, bgcolor: 'background.paper', border: `1px solid ${theme.palette.divider}` }}>
             <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2.5}>
-              <Typography variant="h6" fontWeight={700}>향후 7일 수요 예측</Typography>
+              <Stack direction="row" alignItems="center" gap={1}>
+                <Typography variant="h6" fontWeight={700}>향후 7일 수요 예측</Typography>
+                {/* 학습 판매 데이터는 요일 효과 + ±10% 노이즈로 만든 합성 데이터 (agent-assets/05-data-inventory.md §3) */}
+                <Chip label="시범 데이터(합성) 기준" size="small" color="warning" variant="outlined" />
+              </Stack>
               <Chip
                 label={predictions.length > 0 ? `${predictions.length}건 예측` : '예측 데이터 없음'}
                 color={predictions.length > 0 ? 'primary' : 'default'}
@@ -245,7 +272,7 @@ const Predictions = ({ user }: any) => {
             })()}
 
             {predictions.length > 0 ? (
-              <ReactEChart option={chartOption} echarts={echarts} sx={{ height: 380 }} />
+              <ReactEChart option={chartOption} echarts={echarts} onEvents={chartEvents} sx={{ height: 380 }} />
             ) : (
               <Stack alignItems="center" justifyContent="center" height={300} gap={2}>
                 <Typography color="text.secondary" variant="body1">예측 데이터가 없습니다.</Typography>
@@ -338,7 +365,6 @@ const Predictions = ({ user }: any) => {
                     <TableRow>
                       {tableMenu ? <TableCell>날짜</TableCell> : <TableCell>메뉴</TableCell>}
                       <TableCell align="center">예측 판매량</TableCell>
-                      <TableCell align="center">추천 발주량</TableCell>
                       <TableCell align="center">모델 신뢰도</TableCell>
                     </TableRow>
                   </TableHead>
@@ -353,17 +379,14 @@ const Predictions = ({ user }: any) => {
                           <Typography fontWeight={700} color="primary.main">{p.predictedQty}개</Typography>
                         </TableCell>
                         <TableCell align="center">
-                          <Typography fontWeight={700} color="secondary.main">{p.recommendedOrderQty}개</Typography>
-                        </TableCell>
-                        <TableCell align="center">
                           <Stack direction="row" alignItems="center" spacing={1} justifyContent="center">
                             <LinearProgress
                               variant="determinate"
                               value={p.confidence}
                               sx={{
-                                width: 80, height: 6, borderRadius: 3,
+                                width: 80, height: 6, borderRadius: '10px',
                                 bgcolor: theme.palette.action.hover,
-                                '& .MuiLinearProgress-bar': { bgcolor: confColor(p.confidence), borderRadius: 3 },
+                                '& .MuiLinearProgress-bar': { bgcolor: confColor(p.confidence), borderRadius: '10px' },
                               }}
                             />
                             <Typography variant="caption" fontWeight={700} sx={{ color: confColor(p.confidence), minWidth: 40 }}>
@@ -392,11 +415,9 @@ const Predictions = ({ user }: any) => {
                 const top = [...chartFiltered].sort((a, b) => b.predictedQty - a.predictedQty)[0];
                 const avgConf = chartFiltered.reduce((s, p) => s + p.confidence, 0) / chartFiltered.length;
                 const total = chartFiltered.reduce((s, p) => s + p.predictedQty, 0);
-                const totalRecommended = chartFiltered.reduce((s, p) => s + p.recommendedOrderQty, 0);
                 return (
                   <Typography variant="body1" sx={{ color: 'text.primary', mt: 2, lineHeight: 1.9 }}>
                     • 예측 기간 총 판매량: <b>{total}개</b><br />
-                    • 안전재고 반영 추천 발주량 합계: <b>{totalRecommended}개</b><br />
                     {!chartMenu && <>• 가장 많이 팔릴 메뉴: <b>{top.menuName}</b><br /></>}
                     • 예측 모델 평균 신뢰도: <b>{avgConf.toFixed(1)}%</b><br />
                     • 판매 데이터가 많을수록 예측 정확도가 향상됩니다.

@@ -12,6 +12,7 @@ import com.foodguard.repository.MenuIngredientRepository;
 import com.foodguard.repository.OrderRequestRepository;
 import com.foodguard.repository.PredictionResultRepository;
 import com.foodguard.repository.StoreRepository;
+import com.foodguard.util.UnitConverter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,6 +26,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -44,6 +46,8 @@ public class OrderRequestService {
     private final InventoryRepository inventoryRepository;
     private final ObjectMapper objectMapper;
     private final NotificationService notificationService;
+    private final PredictionService predictionService;
+    private final InventoryLedger ledger;
 
     static final Set<String> ORDER_STATUSES = Set.of("REQUESTED", "APPROVED", "REJECTED", "HQ_SENT", "DRIVER_RECEIVED", "IN_DELIVERY", "DELIVERED", "DONE", "CANCELLED");
     private static final Set<String> FINAL_STATUSES = Set.of("DONE", "CANCELLED", "REJECTED");
@@ -110,7 +114,7 @@ public class OrderRequestService {
     // 발주 상태 변경 — DONE 전환 시 재고 자동 반영
     @Transactional
     public OrderRequest updateStatus(Long id, String status) {
-        if (!ORDER_STATUSES.contains(status)) throw new RuntimeException("알 수 없는 발주 상태입니다: " + status);
+        if (!ORDER_STATUSES.contains(status)) throw new IllegalStateException("알 수 없는 발주 상태입니다: " + status);
         OrderRequest order = getById(id);
         String prev = order.getStatus();
         if (FINAL_STATUSES.contains(prev) && !prev.equals(status)) {
@@ -139,7 +143,7 @@ public class OrderRequestService {
     public String cancel(Long id) {
         OrderRequest order = getById(id);
         if (!"REQUESTED".equals(order.getStatus())) {
-            throw new RuntimeException("승인/처리된 발주는 취소할 수 없습니다. 현재 상태: " + order.getStatus());
+            throw new IllegalStateException("승인/처리된 발주는 취소할 수 없습니다. 현재 상태: " + order.getStatus());
         }
         order.setStatus("CANCELLED");
         orderRequestRepository.save(order);
@@ -148,17 +152,9 @@ public class OrderRequestService {
 
     // 발주 완료 시 재고 자동 반영 (유통기한도 전파)
     private void applyInventory(OrderRequest order) {
-        Long storeId = order.getStore().getId();
-        Long ingId = order.getIngredient().getId();
-        double qty = order.getOrderedQty().doubleValue();
-
-        Optional<Inventory> existing = inventoryRepository.findByStoreIdAndIngredientId(storeId, ingId);
-        Inventory inv = existing.orElse(new Inventory());
-        double current = existing.map(i -> i.getCurrentQty().doubleValue()).orElse(0.0);
-        inv.setStore(order.getStore());
-        inv.setIngredient(order.getIngredient());
-        inv.setCurrentQty(BigDecimal.valueOf(round1(current + qty)));
-        inv.setUnit(order.getIngredient().getUnit());
+        // 재고 원장(입고 로트 포함)을 거쳐 늘린다
+        Inventory inv = ledger.apply(order.getStore(), order.getIngredient(), order.getOrderedQty().doubleValue(),
+                "ORDER_DONE", "ORDER_REQUEST", order.getId());
         if (order.getExpiryDate() != null) {
             if (inv.getExpiryDate() == null || order.getExpiryDate().isBefore(inv.getExpiryDate())) {
                 inv.setExpiryDate(order.getExpiryDate());
@@ -538,20 +534,48 @@ public class OrderRequestService {
             Ingredient ingredient = ingredientMap.get(ingId);
             double qty = round1(entry.getValue());
 
-            Optional<Inventory> existing = inventoryRepository.findByStoreIdAndIngredientId(storeId, ingId);
-            Inventory inv = existing.orElse(new Inventory());
-            double currentQty = existing.map(i -> i.getCurrentQty().doubleValue()).orElse(0.0);
-            inv.setStore(store);
-            inv.setIngredient(ingredient);
-            inv.setCurrentQty(BigDecimal.valueOf(round1(currentQty + qty)));
-            inv.setUnit(ingredient.getUnit());
-            result.add(inventoryRepository.save(inv));
+            // 발주 합계를 그대로 '설정' 한다 (가산하면 반복 호출 시 재고가 배로 늘어남)
+            result.add(ledger.set(store, ingredient, qty, "INIT", null, null));
         }
         return result;
     }
 
     private double convertToBaseUnit(double qty, String recipeUnit, String baseUnit) {
         return UnitUtils.convertToBaseUnit(qty, recipeUnit, baseUnit);
+    }
+
+    // ── 매출 후 자동 발주 (부족분을 AI 예측 기반으로 발주에 추가) ───────────────
+    // 1) AI 예측 갱신 → 2) AI 수요 기반 자동 발주 → 3) 예측이 없어 누락된 임계치 미만 식자재는 par까지 보충
+    @Transactional
+    public List<OrderRequest> reorderAfterSale(Long storeId) {
+        // 1) AI 서비스로 수요 예측 갱신 (best-effort: 실패해도 진행)
+        try {
+            predictionService.triggerPrediction(storeId);
+        } catch (Exception ignored) {
+        }
+
+        // 2) AI 예측 기반 자동 발주
+        List<OrderRequest> created = new ArrayList<>(orderRequestRepository.findAllById(autoOrder(storeId)));
+
+        // 3) 폴백: 예측이 없어 커버되지 않은 '임계치 미만' 식자재는 목표 보유량(par)까지 발주
+        Set<Long> covered = new HashSet<>();
+        for (OrderRequest o : orderRequestRepository.findByStoreIdAndStatusIn(storeId, List.of("REQUESTED", "APPROVED"))) {
+            covered.add(o.getIngredient().getId());
+        }
+
+        for (Inventory inv : inventoryRepository.findByStoreId(storeId)) {
+            double cur = inv.getCurrentQty().doubleValue();
+            double min = inv.getMinThreshold() != null ? inv.getMinThreshold().doubleValue() : 0.0;
+            if (cur >= min) continue;                                  // 충분
+            if (covered.contains(inv.getIngredient().getId())) continue; // 이미 발주됨
+            double par = Math.max(min * 2, 1.0);                       // 목표 보유량
+            double qty = round1(par - cur);                            // 부족분(음수 재고면 그만큼 더)
+            if (qty <= 0) continue;
+            orderRequestRepository.deleteByStoreIdAndIngredientIdAndStatus(storeId, inv.getIngredient().getId(), "CANCELLED");
+            created.add(create(storeId, inv.getIngredient().getId(), qty));
+            covered.add(inv.getIngredient().getId());
+        }
+        return created;
     }
 
     private double round1(double v) {

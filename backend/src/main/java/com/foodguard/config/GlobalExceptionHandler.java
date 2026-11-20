@@ -55,6 +55,12 @@ public class GlobalExceptionHandler {
         return error(HttpStatus.valueOf(e.getStatusCode().value()), String.valueOf(e.getBody().getDetail()));
     }
 
+    // 업무 규칙 위반 ("승인된 발주는 취소할 수 없습니다" 등). 서비스가 직접 쓴 안내 문구다
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<Map<String, String>> handleIllegalState(IllegalStateException e) {
+        return error(HttpStatus.BAD_REQUEST, e.getMessage());
+    }
+
     @ExceptionHandler(DataAccessException.class)
     public ResponseEntity<Map<String, String>> handleDatabase(DataAccessException e) {
         log.error("DB 오류", e);

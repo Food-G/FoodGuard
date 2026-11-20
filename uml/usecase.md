@@ -17,7 +17,7 @@ graph LR
         UC7["식재료 재고 관리<br/>(재고량 · 임계치 설정)"]
         UC8["발주 추천 조회<br/>(예측 기반 AI 추천)"]
         UC9["발주 요청 생성"]
-        UC10["발주 상태 변경<br/>(PENDING→APPROVED→RECEIVED)"]
+        UC10["발주 상태 변경<br/>(REQUESTED→APPROVED→<br/>HQ_SENT→DRIVER_RECEIVED→DONE)"]
         UC11["알림 수신 확인<br/>(재고부족 · 주문)"]
     end
 

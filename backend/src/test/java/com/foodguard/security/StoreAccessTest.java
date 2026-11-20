@@ -33,7 +33,7 @@ class StoreAccessTest {
 
     private void login(long userId, String role) {
         var auth = new UsernamePasswordAuthenticationToken("u@test", null, List.of());
-        auth.setDetails(new AuthUser(userId, role));
+        auth.setDetails(new AuthUser(userId, "u@example.com", role));
         SecurityContextHolder.getContext().setAuthentication(auth);
     }
 

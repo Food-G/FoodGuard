@@ -32,7 +32,7 @@ python -m fgcli orders-all --as hq
 
 ### 1. 식자재 단위 규칙 혼재 — 가장 위험
 `ingredients`의 `unit`이 `kg/L/개`여야 하는데 `g/ml`로 등록된 것이 섞여 있을 수 있습니다.
-변환 로직(`backend/.../util/UnitUtils.java`)은 `g→kg`, `ml→L`만 1000으로 나눕니다. 저장 시점에 단위 조합을 검사하지 않으므로 잘못된 조합도 그대로 저장됩니다.
+변환 로직(`backend/.../util/UnitConverter.java`)은 `g→kg`, `ml→L`만 1000으로 나눕니다.
 `INGREDIENT.unit`이 이미 `g`이면 변환이 일어나지 않아 **발주량이 1000배 어긋납니다.**
 `recipe <menuId>`의 `recipeUnit` / `baseUnit` 조합으로 실제 영향을 확인하세요.
 관련 시딩 스크립트: `ai-service/seed_ingredients.py` (g/ml로 등록함)
@@ -63,9 +63,9 @@ python -m fgcli orders-all --as hq
 
 | 증상 | 볼 곳 |
 |---|---|
-| 재고 증감 | 입고: `OrderRequestService.applyInventory` (발주 DONE 시), 폐기: `WasteRecordService` (판매 시 자동 차감은 없음) |
+| 재고 증감 | 모든 변경은 `InventoryLedger` (원장 INVENTORY_TXN·입고 로트). 판매 `SalesDataService`·POS 할인 결제 `DiscountService`, 입고 `OrderRequestService.applyInventory`, 폐기 `WasteService`, 기부 `DonationService` |
 | 발주 추천 계산 | `backend/.../service/OrderRequestService.java` `recommend()`, `coverageDays()` |
-| 단위 변환 | `backend/.../util/UnitUtils.java` |
+| 단위 변환 | `backend/.../util/UnitConverter.java` (저장 시 검사), `util/UnitUtils.java` (계산) |
 | 예측·피처 | `ai-service/ml/`, `ai-service/services/prediction_service.py` |
 | 날씨 좌표 | `ai-service/services/weather_service.py` |
 | 스키마 정본 | `agent-assets/01-domain-model.md` |

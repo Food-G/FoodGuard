@@ -41,13 +41,14 @@ public class JwtFilter extends OncePerRequestFilter {
             if (jwtUtil.validateToken(token)) {
 
                 // 4. 토큰에서 이메일·역할·사용자 id 꺼내서 인증 처리
-                //    principal 은 기존처럼 이메일, 역할은 권한(ROLE_OWNER/ROLE_HQ_ADMIN), id·역할은 details(AuthUser)
+                //    역할은 권한(ROLE_OWNER/ROLE_HQ_ADMIN/ROLE_AGENT), principal·details 는 AuthUser (getName() = 이메일)
                 Claims claims = jwtUtil.getClaims(token);
                 String role = claims.get("role", String.class);
+                AuthUser user = new AuthUser(claims.get("id", Long.class), claims.getSubject(), role);
                 UsernamePasswordAuthenticationToken authentication =
                         new UsernamePasswordAuthenticationToken(
-                                claims.getSubject(), null, List.of(new SimpleGrantedAuthority("ROLE_" + role)));
-                authentication.setDetails(new AuthUser(claims.get("id", Long.class), role));
+                                user, null, List.of(new SimpleGrantedAuthority("ROLE_" + role)));
+                authentication.setDetails(user);
 
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             }

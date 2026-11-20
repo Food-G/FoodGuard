@@ -58,4 +58,9 @@ public class StoreService {
         if (region != null) store.setRegion(region);
         return storeRepository.save(store);
     }
+
+    public String delete(Long storeId) {
+        storeRepository.deleteById(storeId);
+        return "가맹점 삭제 완료";
+    }
 }

@@ -35,7 +35,7 @@ class OrderRequestServiceRecommendTest {
     private final OrderRequestService service = new OrderRequestService(
             orderRequestRepository, mock(StoreRepository.class), mock(IngredientRepository.class),
             predictionResultRepository, menuIngredientRepository, inventoryRepository,
-            new ObjectMapper(), mock(NotificationService.class));
+            new ObjectMapper(), mock(NotificationService.class), mock(PredictionService.class), mock(InventoryLedger.class));
 
     @Test
     void 식자재마다_보관기한과_발주주기_안의_수요만_발주한다() {

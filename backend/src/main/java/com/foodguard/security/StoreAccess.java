@@ -49,7 +49,7 @@ public class StoreAccess {
 
     public void checkStore(Long storeId) {
         AuthUser user = currentUser();
-        if (user == null || user.isHqAdmin() || storeId == null) return;
+        if (user == null || user.isHqAdmin() || isAgentRead(user) || storeId == null) return;
         List<Long> owners = entityManager
                 .createQuery("select s.user.id from Store s where s.id = :id", Long.class)
                 .setParameter("id", storeId)
@@ -62,10 +62,15 @@ public class StoreAccess {
 
     public void checkUser(Long userId) {
         AuthUser user = currentUser();
-        if (user == null || user.isHqAdmin() || userId == null) return;
+        if (user == null || user.isHqAdmin() || isAgentRead(user) || userId == null) return;
         if (!user.id().equals(userId)) {
             throw new AccessDeniedException("다른 사용자의 데이터에는 접근할 수 없습니다.");
         }
+    }
+
+    // 에이전트 계정은 전 매장을 다룬다. 쓸 수 있는 경로는 SecurityConfig.isAllowed 가 조회·제안·실행기록·알림·재예측으로 제한한다
+    private static boolean isAgentRead(AuthUser user) {
+        return user.isAgent();
     }
 
     // entity 의 id 로 소속 매장을 찾아 검사. 매장이 없는 공용 데이터(store_id 가 빈 기존 식자재)는 통과

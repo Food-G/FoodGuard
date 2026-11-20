@@ -27,7 +27,7 @@ tools: Read, Grep, Glob, Bash
 - `storeId`를 받는 엔드포인트뿐 아니라 **엔티티 id를 받는 PUT/DELETE**도 가드가 필요합니다(id를 바꿔가며 남의 데이터를 수정하는 경로).
 
 ### 4. 단위 변환은 한 곳에서만
-`util/UnitUtils.convertToBaseUnit()` (g→kg, ml→L, 그 외 그대로). 발주 추천(`OrderRequestService`)과 폐기 예측(`WastePredictionService`)이 이 함수를 같이 씁니다.
+`util/UnitConverter.toBaseUnit()`·`util/UnitUtils.convertToBaseUnit()` (g→kg, ml→L, 그 외 그대로). 저장할 때는 `UnitConverter.validateRecipeUnit` 으로 조합을 검사합니다.
 - ❌ 발주 추천과 재고 차감에 각각 복붙하면 한쪽만 고쳤을 때 수량이 어긋납니다. 예전에 실제로 중복돼 있었습니다.
 
 ### 5. `MENU.price` 변경은 과거 매출에 소급 적용된다

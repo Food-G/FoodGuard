@@ -9,7 +9,7 @@ export const decodeToken = (token: string) => {
         .join('')
     );
     return JSON.parse(jsonPayload);
-  } catch {
+  } catch (error) {
     return null;
   }
 };

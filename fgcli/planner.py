@@ -123,8 +123,10 @@ def observe(client: FoodGuardClient, store_id: int) -> dict:
 # ── 판단 + 발주안 ──────────────────────────────────────────────────────
 
 
-def build_plan(obs: dict, today: date | None = None) -> dict:
+def build_plan(obs: dict, today: date | None = None, waste_hints: dict[int, float] | None = None) -> dict:
+    """waste_hints: 점주가 승인한 폐기 위험 감축 힌트 {ingredientId: 줄일 양} (AG-2)."""
     today = today or date.today()
+    waste_hints = waste_hints or {}
     warnings: list[dict] = []
     stock = {i["ingredientId"]: i for i in obs["inventory"]}
     pending: dict[int, float] = {}
@@ -162,10 +164,13 @@ def build_plan(obs: dict, today: date | None = None) -> dict:
              if o.get("orderedAt") and (today - date.fromisoformat(o["orderedAt"])).days > STALE_PENDING_DAYS]
     if stale:
         oldest = min(o["orderedAt"] for o in stale)
+        # 어떤 식자재인지 적는다. 빠지면 LLM 이 엉뚱한 식자재에 연결해 설명한다 (2026-11-13 평가에서 확인)
+        which = ", ".join(f"#{o['id']} {o.get('ingredientName') or o['ingredientId']}" for o in stale)
         warnings.append({
             "type": "pending_stale", "orderIds": [o["id"] for o in stale],
-            "message": f"진행 중 발주 {len(stale)}건이 {STALE_PENDING_DAYS}일 넘게 처리되지 않았습니다 (가장 오래된 것 {oldest}). "
-                       "발주안은 이 수량이 들어온다고 보고 뺐으므로, 본사에 상태를 확인하거나 취소 후 다시 계획하세요.",
+            "ingredientIds": sorted({o["ingredientId"] for o in stale}),
+            "message": f"진행 중 발주 {len(stale)}건이 {STALE_PENDING_DAYS}일 넘게 처리되지 않았습니다 ({which}, 가장 오래된 것 {oldest}). "
+                       "발주안은 이 식자재의 대기발주 수량이 들어온다고 보고 뺐으므로, 본사에 상태를 확인하거나 취소 후 다시 계획하세요.",
         })
 
     if obs.get("recentSalesDays") == 0:
@@ -219,7 +224,7 @@ def build_plan(obs: dict, today: date | None = None) -> dict:
                              "message": f"{i['ingredientName']} 재고가 음수({i['currentQty']}{i['unit']})입니다. 실재고 확인이 필요합니다."})
 
     # 식자재별 판단
-    items, risks = [], []
+    items, risks, before_hints = [], [], []
     for iid in sorted(set(required) | set(stock)):
         inv = stock.get(iid)
         req = round1(required.get(iid, 0.0))
@@ -228,6 +233,16 @@ def build_plan(obs: dict, today: date | None = None) -> dict:
         name = names.get(iid) or (inv or {}).get("ingredientName")
         unit = units.get(iid) or (inv or {}).get("unit")
         order_qty = round1(max(0.0, req - cur - pend))
+        reason = f"{coverage.get(iid)}일 소요(안전재고 포함) {req}{unit} − 재고 {cur} − 대기발주 {pend} = {order_qty}{unit}"
+        if order_qty > 0:
+            before_hints.append({"ingredientId": iid, "orderQty": order_qty})
+            cut = min(order_qty, round1(waste_hints.get(iid, 0.0)))
+            if cut > 0:
+                order_qty = round1(order_qty - cut)
+                reason += f" − 폐기 위험 감축 {cut} = {order_qty}{unit}"
+                warnings.append({"type": "waste_hint_applied", "ingredientId": iid,
+                                 "message": f"{name}: 승인된 폐기 위험 힌트로 {cut}{unit} 줄였습니다. "
+                                            "남은 재고의 유통기한이 지난 뒤 부족할 수 있으니 확인하세요."})
         need = point_need.get(iid, 0.0)
         daily = need / horizon if horizon else 0.0
         cover = (cur + pend) / daily if daily > 0 else None
@@ -256,11 +271,12 @@ def build_plan(obs: dict, today: date | None = None) -> dict:
                 "orderQty": order_qty, "requiredQty": req, "currentStock": cur,
                 "pendingQty": pend,
                 "coverageDays": coverage.get(iid),
-                "reason": f"{coverage.get(iid)}일 소요(안전재고 포함) {req}{unit} − 재고 {cur} − 대기발주 {pend} = {order_qty}{unit}",
+                "reason": reason,
                 "drivers": drivers.get(iid, []),
             })
 
-    crosscheck = _crosscheck(items, obs.get("serverRecommend") or [])
+    # 서버 /recommend 는 힌트를 모르므로 힌트 적용 전 수량으로 대조한다
+    crosscheck = _crosscheck(before_hints, obs.get("serverRecommend") or [])
     if not crosscheck["match"]:
         warnings.append({"type": "crosscheck_mismatch",
                          "message": "독립 재계산과 서버 /recommend 결과가 다릅니다. 발주 전 원인을 확인하세요.",
@@ -276,6 +292,8 @@ def build_plan(obs: dict, today: date | None = None) -> dict:
         "warnings": warnings,
         "crosscheck": crosscheck,
         "pendingOrderCount": len(obs["pendingOrders"]),
+        # 본사 심사(hq_review)가 예측 기간 하루 소요량을 계산할 때 쓴다 (점예측 기준)
+        "requiredByIngredient": {iid: round1(q) for iid, q in point_need.items()},
     }
     plan["planId"] = plan_fingerprint(plan)
     return plan

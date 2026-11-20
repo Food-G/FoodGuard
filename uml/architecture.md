@@ -59,4 +59,7 @@ graph TB
 - **Role-Based Access**: JWT claim의 `role` 필드로 OWNER/HQ_ADMIN 분기
 - **AI 트리거 방식**: Backend가 storeId만 담아 Python을 동기 HTTP 호출 → AI 서비스가 DB를 직접 읽어 글로벌 모델 학습·예측 후 `PREDICTION_RESULT`에 직접 저장. Backend는 결과를 DB에서 다시 읽음
 - **주문 추천**: PredictionResult → MenuIngredient → (예측 필요량 - 현재재고 - 발주중) = 권장 발주량
-- **주문 수령 자동화**: OrderRequest status = RECEIVED → Inventory.currentQty 자동 증가
+- **권한 검사**: `@EnableMethodSecurity` + `@PreAuthorize("hasRole('HQ_ADMIN')")` 로 본사 전용 API 보호
+- **주문 수령 자동화**: OrderRequest status = **DONE** → Inventory.currentQty 자동 증가
+- **판매 시 재고 차감**: SalesData 등록 → 레시피(MenuIngredient) × 판매량 × (1+tolerance%) 만큼 Inventory 차감
+- **모델 캐시**: 저장된 모델의 학습 이력이 현재 판매 데이터와 동일하면 재학습을 건너뛴다

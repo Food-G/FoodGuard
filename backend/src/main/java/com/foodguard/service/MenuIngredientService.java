@@ -6,6 +6,7 @@ import com.foodguard.entity.MenuIngredient;
 import com.foodguard.repository.IngredientRepository;
 import com.foodguard.repository.MenuIngredientRepository;
 import com.foodguard.repository.MenuRepository;
+import com.foodguard.util.UnitConverter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
@@ -22,8 +23,13 @@ public class MenuIngredientService {
     private final IngredientRepository ingredientRepository;
 
     public MenuIngredient add(Long menuId, Long ingredientId, Double qtyPerUnit, String unit) {
+        return add(menuId, ingredientId, qtyPerUnit, unit, null);
+    }
+
+    public MenuIngredient add(Long menuId, Long ingredientId, Double qtyPerUnit, String unit, Double tolerance) {
         if (qtyPerUnit == null || qtyPerUnit <= 0) throw new RuntimeException("사용량은 0보다 커야 합니다.");
-        Menu menu = menuRepository.findById(menuId)                .orElseThrow(() -> new RuntimeException("메뉴를 찾을 수 없습니다."));
+        Menu menu = menuRepository.findById(menuId)
+                .orElseThrow(() -> new RuntimeException("메뉴를 찾을 수 없습니다."));
         Ingredient ingredient = ingredientRepository.findById(ingredientId)
                 .orElseThrow(() -> new RuntimeException("식자재를 찾을 수 없습니다."));
 
@@ -41,7 +47,8 @@ public class MenuIngredientService {
         mi.setMenu(menu);
         mi.setIngredient(ingredient);
         mi.setQtyPerUnit(BigDecimal.valueOf(qtyPerUnit));
-        mi.setUnit(unit);
+        mi.setUnit(UnitConverter.validateRecipeUnit(unit, ingredient.getUnit()));
+        mi.setTolerance(BigDecimal.valueOf(tolerance == null ? 0.0 : tolerance));
         return menuIngredientRepository.save(mi);
     }
 

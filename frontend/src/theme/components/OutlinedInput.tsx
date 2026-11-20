@@ -6,14 +6,14 @@ const OutlinedInput: Components<Omit<Theme, 'components'>>['MuiOutlinedInput'] =
   styleOverrides: {
     root: ({ theme }) => ({
       paddingLeft: 0,
-      borderRadius: theme.shape.borderRadius * 2.5,
+      borderRadius: theme.shape.borderRadius,
       '&:hover .MuiOutlinedInput-notchedOutline': {
         borderColor: theme.palette.text.secondary,
         borderWidth: 1,
       },
       '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-        borderColor: theme.palette.text.secondary,
-        borderWidth: 1,
+        borderColor: theme.palette.primary.main,
+        borderWidth: 1.5,
       },
       '&.MuiOutlinedInput-root .MuiOutlinedInput-notchedOutline > legend': {
         width: 0,
@@ -28,7 +28,7 @@ const OutlinedInput: Components<Omit<Theme, 'components'>>['MuiOutlinedInput'] =
       },
     }),
     notchedOutline: ({ theme }) => ({
-      borderColor: theme.palette.text.primary,
+      borderColor: '#D5D9E2',
       '&:hover': {
         borderColor: theme.palette.text.secondary,
       },

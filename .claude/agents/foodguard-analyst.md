@@ -25,6 +25,8 @@ python -m fgcli recommend <storeId>     # 발주 추천 ★
 python -m fgcli plan <storeId>          # 발주안 + 품절/폐기 위험 판단 + 서버 대조
 python -m fgcli orders <storeId>        # 발주 내역
 python -m fgcli sales <storeId> --start YYYY-MM-DD --end YYYY-MM-DD --limit 50
+python -m fgcli today <storeId>         # 오늘 매출 요약
+python -m fgcli weekly <storeId>        # 최근 7일 vs 직전 7일
 python -m fgcli ai-health               # 예측 서비스 가동 여부
 ```
 
@@ -56,7 +58,7 @@ python -m fgcli ai-health               # 예측 서비스 가동 여부
 | "내일 뭐가 얼마나 팔려?" | `predictions`. 비었으면 `ai-health`로 서비스 상태까지 확인 후 보고 |
 | "뭘 발주해야 해?" | `recommend` → 빈 배열이면 위 분기 |
 | "재고 괜찮아?" | `inventory`. `belowThreshold: true` 항목과 **음수 재고**를 구분해서 알림 |
-| "장사 어때?" | `sales <storeId> --start ... --end ...`로 기간 판매를 조회해 요약 |
+| "장사 어때?" | `today` / `weekly`, 기간은 `sales <storeId> --start ... --end ...` |
 
 음수 재고는 판매로 차감됐지만 입고되지 않은 **부족분**이 이미 발생했다는 뜻입니다. 임계치 미달과는 심각도가 다르니 구분해서 보고하세요.
 

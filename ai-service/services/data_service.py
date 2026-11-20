@@ -1,6 +1,7 @@
 """DB 데이터 접근 레이어 (순수 SQL로 Spring Boot의 기존 스키마 읽기/쓰기)."""
 
-from datetime import date
+import uuid
+from datetime import date, datetime
 from sqlalchemy import text
 from sqlalchemy.exc import OperationalError, ProgrammingError
 from sqlalchemy.orm import Session
@@ -221,6 +222,9 @@ def save_predictions_bulk(
         {"sid": store_id, "mid": menu_id},
     )
 
+    insert_prediction_log(db, store_id, menu_id, predictions, model_version,
+                          source="live", predicted_at=datetime.now())
+
     for p in predictions:
         db.execute(
             text(
@@ -240,6 +244,51 @@ def save_predictions_bulk(
         )
 
     db.commit()
+
+
+def insert_prediction_log(
+    db: Session,
+    store_id: int,
+    menu_id: int,
+    predictions: list[dict],
+    model_version: str,
+    source: str,
+    predicted_at: datetime,
+    run_id: str | None = None,
+) -> str:
+    """PREDICTION_LOG 에 예측을 쌓는다 (지우지 않음). 커밋은 호출자가 한다.
+
+    PREDICTION_RESULT 는 재예측 때 미래분이 지워지므로, 정확도 측정은 이 테이블로 한다.
+    """
+    run_id = run_id or str(uuid.uuid4())
+    base = predicted_at.date()
+    for p in predictions:
+        db.execute(
+            text(
+                "INSERT INTO PREDICTION_LOG "
+                "(run_id, source, store_id, menu_id, predicted_at, target_date, horizon_days, "
+                " predicted_qty, confidence, model_version) "
+                "VALUES (:run, :src, :sid, :mid, :at, :tdate, :h, :qty, :conf, :ver)"
+            ),
+            {
+                "run": run_id, "src": source, "sid": store_id, "mid": menu_id,
+                "at": predicted_at, "tdate": p["date"], "h": (p["date"] - base).days,
+                "qty": p["predicted_qty"], "conf": p["confidence"], "ver": model_version,
+            },
+        )
+    return run_id
+
+
+def get_store_sales_start_date(db: Session, store_id: int):
+    """매장 전체(모든 메뉴)의 가장 이른 판매일. 날씨를 매장당 1회만 조회하기 위해 사용."""
+    row = db.execute(
+        text(
+            "SELECT MIN(sales_date) FROM SALES_DATA "
+            "WHERE store_id = :sid AND is_deleted = 0"
+        ),
+        {"sid": store_id},
+    ).fetchone()
+    return row[0] if row and row[0] else None
 
 
 def get_store_region(db: Session, store_id: int) -> str | None:

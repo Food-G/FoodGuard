@@ -116,7 +116,7 @@ class StatsServiceTest {
     private static WasteRecord waste(Long ingredientId, String qty) {
         WasteRecord w = new WasteRecord();
         w.setIngredientId(ingredientId);
-        w.setQuantity(new BigDecimal(qty));
+        w.setQty(new BigDecimal(qty));
         return w;
     }
 }

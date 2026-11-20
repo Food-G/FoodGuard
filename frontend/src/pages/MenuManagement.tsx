@@ -1,47 +1,100 @@
-import { Fragment, useCallback, useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import {
-  Alert, Button, Chip, CircularProgress, Collapse, FormControlLabel, Paper, Stack, Switch, Table, TableBody, TableCell, TableContainer,
-  TableHead, TableRow, TextField, Typography, useTheme,
+  Typography, Paper, Stack, Button, TextField,
+  Alert, CircularProgress, Box,
+  Table, TableBody, TableCell, TableContainer,
+  TableHead, TableRow, IconButton, MenuItem, Chip, Tooltip,
+  Dialog, DialogTitle, DialogContent, DialogActions,
 } from '@mui/material';
 import { storeService } from '../services/storeService';
 import { menuService } from '../services/menuService';
-import { MenuAgentChange, MenuAgentProposal, menuIngredientService, StoreRecipeItem } from '../services/menuIngredientService';
-import { errorText } from '../services/agentService';
-import { api } from '../services/api';
-import RecipeManualEditor from '../components/agent/RecipeManualEditor';
+import { ingredientService, Ingredient } from '../services/ingredientService';
+import { menuIngredientService, MenuIngredient } from '../services/menuIngredientService';
 import IconifyIcon from '../components/base/IconifyIcon';
+import { useConfirm } from '../hooks/useConfirm';
+import { fileToDataUrl } from '../utils/image';
 
-const EXAMPLES = ['불고기버거 메뉴를 4000원에 추가해줘', '불고기버거 구성 식자재는 소고기 패티 150g, 양상추 20g, 버거빵 1개야', '치즈버거 가격을 8000원으로 바꿔줘'];
+interface RecipeRow {
+  ingredientId: string;
+  qtyPerUnit: string;
+  unit: string;
+  tolerance: string;
+}
 
-const describe = (c: MenuAgentChange) => {
-  switch (c.op) {
-    case 'ADD_MENU': return `메뉴 추가: ${c.menuName} ₩${c.price?.toLocaleString()}`;
-    case 'UPDATE_MENU': return `메뉴 수정: ${c.currentName} ₩${c.currentPrice?.toLocaleString()} → ${c.menuName} ₩${c.price?.toLocaleString()}`;
-    case 'DELETE_MENU': return `메뉴 삭제: ${c.menuName} (판매 기록은 유지)`;
-    case 'ADD_INGREDIENTS': return `${c.menuName}에 식자재 추가·수정`;
-    case 'REMOVE_INGREDIENTS': return `${c.menuName}에서 식자재 빼기: ${c.removeIngredients?.map((r) => r.name).join(', ')}`;
-    case 'DELETE_INGREDIENT': return `식자재 삭제: ${c.ingredientName}${c.usedBy?.length ? ` (${c.usedBy.join(', ')} 레시피에서도 빠짐)` : ''}`;
-    default: return c.op;
-  }
-};
+// 식자재 기준 단위(kg/L/개) → 레시피 입력 단위(g/ml/개)
+const recipeUnitFor = (baseUnit?: string) =>
+  baseUnit === 'kg' ? 'g' : baseUnit === 'L' ? 'ml' : '개';
 
-// 메뉴 관리: 문자로 메뉴·레시피·식자재를 요청 → AI 해석 → 미리보기 확인(사용량 수정 가능) → 반영. 메뉴를 누르면 구성 식자재를 보여 준다
+const emptyRow = (): RecipeRow => ({ ingredientId: '', qtyPerUnit: '', unit: 'g', tolerance: '5' });
+
 const MenuManagement = ({ user }: any) => {
-  const theme = useTheme();
+  const confirm = useConfirm();
   const [storeId, setStoreId] = useState<number | null>(null);
   const [menus, setMenus] = useState<any[]>([]);
-  const [recipes, setRecipes] = useState<StoreRecipeItem[]>([]);
-  const [openMenuId, setOpenMenuId] = useState<number | null>(null);
+  const [ingredients, setIngredients] = useState<Ingredient[]>([]);
+  const [recipes, setRecipes] = useState<Record<number, MenuIngredient[]>>({});
   const [loading, setLoading] = useState(true);
-  const [message, setMessage] = useState('');
-  const [proposal, setProposal] = useState<MenuAgentProposal | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  // 비상용 수동 입력 (Claude 를 쓸 수 없을 때)
-  const [manual, setManual] = useState(false);
-  const [ingredients, setIngredients] = useState<any[]>([]);
-  const [newMenu, setNewMenu] = useState({ menuName: '', price: '' });
+  const [form, setForm] = useState({ menuName: '', price: '' });
+  const [recipe, setRecipe] = useState<RecipeRow[]>([emptyRow()]);
+  const [photoBusyId, setPhotoBusyId] = useState<number | null>(null);
+
+  // 새 식자재 즉시 등록 (식자재 관리 페이지 기능 통합)
+  const [newIngOpen, setNewIngOpen] = useState(false);
+  const [newIngRow, setNewIngRow] = useState<number | null>(null);
+  const [newIng, setNewIng] = useState({ name: '', unit: 'kg' });
+  const [creatingIng, setCreatingIng] = useState(false);
+
+  const openNewIngredient = (rowIdx: number) => {
+    setNewIngRow(rowIdx);
+    setNewIng({ name: '', unit: 'kg' });
+    setNewIngOpen(true);
+  };
+
+  const handleCreateIngredient = async () => {
+    if (!newIng.name.trim()) return;
+    setCreatingIng(true);
+    setError('');
+    try {
+      const created = await ingredientService.create({ name: newIng.name.trim(), unit: newIng.unit });
+      const list = await ingredientService.getAll();
+      setIngredients(list);
+      // 방금 만든 식자재를 호출한 레시피 행에 자동 선택
+      if (newIngRow != null && created?.id) {
+        setRow(newIngRow, { ingredientId: String(created.id), unit: recipeUnitFor(created.unit) });
+      }
+      setSuccess(`"${created?.name ?? newIng.name}" 식자재가 등록되었습니다.`);
+      setNewIngOpen(false);
+    } catch {
+      setError('식자재 등록에 실패했습니다. (이미 존재하는 이름일 수 있습니다)');
+    } finally {
+      setCreatingIng(false);
+    }
+  };
+
+  // 메뉴 사진 추가/변경 → POS 메뉴판에 표시됨
+  const handlePhoto = async (menu: any, file?: File) => {
+    if (!file || !storeId) return;
+    setPhotoBusyId(menu.id);
+    setError('');
+    try {
+      const imageUrl = await fileToDataUrl(file);
+      await menuService.update(menu.id, {
+        menuName: menu.menuName,
+        price: menu.price,
+        category: menu.category ?? null,
+        imageUrl,
+      });
+      setSuccess(`"${menu.menuName}" 사진이 등록되었습니다.`);
+      await loadMenus(storeId);
+    } catch {
+      setError('사진 등록에 실패했습니다.');
+    } finally {
+      setPhotoBusyId(null);
+    }
+  };
 
   useEffect(() => {
     if (!user?.id) return;
@@ -49,221 +102,314 @@ const MenuManagement = ({ user }: any) => {
       if (stores?.length > 0) setStoreId(stores[0].id);
       else setLoading(false);
     }).catch(() => setLoading(false));
+    ingredientService.getAll().then(setIngredients).catch(() => {});
   }, [user]);
 
-  const load = useCallback(async (sid: number) => {
+  const loadMenus = useCallback(async (sid: number) => {
+    setLoading(true);
     try {
-      const [m, r, i] = await Promise.all([menuService.getByStore(sid), menuIngredientService.getByStore(sid), api.get(`/ingredients?storeId=${sid}`)]);
-      setMenus(m ?? []);
-      setRecipes(r ?? []);
-      setIngredients(i ?? []);
-    } catch (e) {
-      setError(errorText(e, '메뉴를 불러오지 못했습니다.'));
+      const data = await menuService.getByStore(sid);
+      const list = data ?? [];
+      setMenus(list);
+      // 각 메뉴의 레시피 로드
+      const entries = await Promise.all(
+        list.map((m: any) =>
+          menuIngredientService.getByMenu(m.id)
+            .then((r) => [m.id, r] as [number, MenuIngredient[]])
+            .catch(() => [m.id, []] as [number, MenuIngredient[]]),
+        ),
+      );
+      setRecipes(Object.fromEntries(entries));
+    } catch {
+      setError('메뉴 목록을 불러오지 못했습니다.');
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { if (storeId) load(storeId); }, [storeId, load]);
+  useEffect(() => {
+    if (storeId) loadMenus(storeId);
+  }, [storeId, loadMenus]);
 
-  const ask = async (text: string) => {
-    if (!storeId || !text.trim()) return;
-    setBusy(true);
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  // ── 레시피 행 조작 ───────────────────────────────────────────────
+  const setRow = (idx: number, patch: Partial<RecipeRow>) =>
+    setRecipe((rows) => rows.map((r, i) => (i === idx ? { ...r, ...patch } : r)));
+
+  const onPickIngredient = (idx: number, ingredientId: string) => {
+    const ing = ingredients.find((i) => String(i.id) === ingredientId);
+    setRow(idx, { ingredientId, unit: recipeUnitFor(ing?.unit) });
+  };
+
+  const addRow = () => setRecipe((rows) => [...rows, emptyRow()]);
+  const removeRow = (idx: number) => setRecipe((rows) => rows.filter((_, i) => i !== idx));
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.menuName || !form.price || !storeId) {
+      setError('메뉴 이름과 가격을 입력해주세요.');
+      return;
+    }
+    setSubmitting(true);
     setError('');
     setSuccess('');
-    setProposal(null);
     try {
-      setProposal(await menuIngredientService.propose(storeId, text.trim()));
-    } catch (e) {
-      setError(errorText(e, '요청을 처리하지 못했습니다. 다시 적어 주세요.'));
+      const created: any = await menuService.create({
+        storeId,
+        menuName: form.menuName,
+        price: parseInt(form.price),
+      });
+      const newMenuId = created?.id;
+      // 레시피 등록 (식자재 + 수량 입력된 행만)
+      const rows = recipe.filter((r) => r.ingredientId && r.qtyPerUnit);
+      if (newMenuId && rows.length) {
+        for (const r of rows) {
+          await menuIngredientService.add({
+            menuId: newMenuId,
+            ingredientId: parseInt(r.ingredientId),
+            qtyPerUnit: parseFloat(r.qtyPerUnit),
+            unit: r.unit,
+            tolerance: parseFloat(r.tolerance || '0'),
+          });
+        }
+      }
+      setSuccess(`"${form.menuName}" 메뉴가 등록되었습니다.${rows.length ? ` (레시피 ${rows.length}개)` : ''}`);
+      setForm({ menuName: '', price: '' });
+      setRecipe([emptyRow()]);
+      await loadMenus(storeId);
+    } catch {
+      setError('메뉴 등록에 실패했습니다.');
     } finally {
-      setBusy(false);
+      setSubmitting(false);
     }
   };
 
-  const updateQty = (changeIndex: number, itemIndex: number, qty: number) => {
-    setProposal((p) => p && ({
-      ...p,
-      changes: p.changes.map((c, i) => (i !== changeIndex ? c : {
-        ...c,
-        ingredients: c.ingredients?.map((item, j) => (j === itemIndex ? { ...item, qtyPerUnit: qty, estimated: false } : item)),
-      })),
-    }));
-  };
-
-  const apply = async () => {
-    if (!storeId || !proposal) return;
-    setBusy(true);
-    setError('');
+  const handleDeactivate = async (menuId: number, menuName: string) => {
+    if (!await confirm(`"${menuName}" 메뉴를 비활성화하시겠습니까?`)) return;
     try {
-      await menuIngredientService.apply(storeId, proposal.changes);
-      setSuccess('반영했습니다.');
-      setProposal(null);
-      setMessage('');
-      await load(storeId);
-    } catch (e) {
-      setError(errorText(e, '반영하지 못했습니다.'));
-    } finally {
-      setBusy(false);
+      await menuService.deactivate(menuId);
+      setSuccess(`"${menuName}" 메뉴가 비활성화되었습니다.`);
+      if (storeId) await loadMenus(storeId);
+    } catch {
+      setError('메뉴 비활성화에 실패했습니다.');
     }
   };
-
-  const addMenuManually = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!storeId) return;
-    setError('');
-    try {
-      await menuService.create({ storeId, menuName: newMenu.menuName.trim(), price: Number(newMenu.price) });
-      setNewMenu({ menuName: '', price: '' });
-      setSuccess('메뉴를 추가했습니다.');
-      await load(storeId);
-    } catch (err) {
-      setError(errorText(err, '메뉴를 추가하지 못했습니다.'));
-    }
-  };
-
-  const recipeOf = (menuId: number) => recipes.filter((r) => r.menuId === menuId);
-  const hasEstimate = proposal?.changes.some((c) => c.ingredients?.some((i) => i.estimated));
 
   return (
-    <Stack gap={3} sx={{ bgcolor: 'background.default' }}>
-      <Paper sx={{ p: 3, border: `1px solid ${theme.palette.divider}`, borderRadius: 3 }}>
-        <Typography variant="h6" fontWeight={700} mb={0.5}>메뉴·식자재 요청</Typography>
-        <Typography variant="body2" color="text.secondary" mb={2}>
-          메뉴 추가·수정·삭제, 구성 식자재 지정, 식자재 삭제를 문자로 요청하세요. 내용을 확인한 뒤에 반영합니다.
-        </Typography>
-        <Stack component="form" direction="row" gap={1} onSubmit={(e) => { e.preventDefault(); ask(message); }}>
-          <TextField fullWidth size="small" value={message} inputProps={{ maxLength: 500 }}
-            placeholder={EXAMPLES[0]} onChange={(e) => setMessage(e.target.value)} />
-          <Button type="submit" variant="contained" disabled={busy || !storeId || !message.trim()} sx={{ whiteSpace: 'nowrap', px: 3 }}
-            startIcon={busy && !proposal ? <CircularProgress size={14} color="inherit" /> : null}>
-            {busy && !proposal ? '확인 중' : '요청'}
-          </Button>
-        </Stack>
-        <Stack direction="row" gap={1} mt={1.5} flexWrap="wrap">
-          {EXAMPLES.map((e) => <Chip key={e} size="small" variant="outlined" label={e} onClick={() => setMessage(e)} />)}
-        </Stack>
+    <Stack gap={4} maxWidth={820}>
+      {!storeId && !loading && (
+        <Alert severity="warning">등록된 가게가 없습니다. 먼저 가게를 등록해주세요.</Alert>
+      )}
+      {error && <Alert severity="error" onClose={() => setError('')}>{error}</Alert>}
+      {success && <Alert severity="success" onClose={() => setSuccess('')}>{success}</Alert>}
 
-        {error && <Alert severity="error" sx={{ mt: 2 }} onClose={() => setError('')}>{error}</Alert>}
-        {success && <Alert severity="success" sx={{ mt: 2 }} onClose={() => setSuccess('')}>{success}</Alert>}
-        {proposal?.clarification && <Alert severity="info" sx={{ mt: 2 }}>{proposal.clarification}</Alert>}
-
-        {proposal && proposal.changes.length > 0 && (
-          <Paper variant="outlined" sx={{ p: 2, mt: 2, borderRadius: 2 }}>
-            <Typography variant="body2" fontWeight={700} mb={1}>이렇게 바꿀까요?</Typography>
-            {hasEstimate && (
-              <Alert severity="warning" sx={{ mb: 1.5, py: 0 }}>
-                "추정" 사용량은 AI가 넣은 값입니다. 재고 차감과 발주량에 쓰이니 실제 레시피에 맞게 고쳐 주세요.
-              </Alert>
-            )}
-            <Stack gap={2}>
-              {proposal.changes.map((c, i) => (
-                <Stack key={i} gap={1}>
-                  <Typography variant="body2" fontWeight={600}>{describe(c)}</Typography>
-                  {c.ingredients?.map((item, j) => (
-                    <Stack key={item.name} direction="row" alignItems="center" gap={1} flexWrap="wrap" sx={{ pl: 1 }}>
-                      <Typography variant="body2" sx={{ minWidth: 120 }}>{item.name}</Typography>
-                      <TextField size="small" type="number" value={item.qtyPerUnit} sx={{ width: 100 }} inputProps={{ min: 0, step: 'any' }}
-                        onChange={(e) => updateQty(i, j, Number(e.target.value))} />
-                      <Typography variant="body2">{item.unit}</Typography>
-                      {item.estimated && <Chip size="small" color="warning" label="추정" />}
-                      {item.isNew && <Chip size="small" color="primary" variant="outlined" label="새 식자재" />}
-                      {item.previousQty && <Typography variant="caption" color="text.secondary">기존 {item.previousQty}</Typography>}
-                    </Stack>
-                  ))}
-                  {c.op === 'ADD_MENU' && !c.ingredients?.length && (
-                    <Typography variant="caption" color="text.secondary" sx={{ pl: 1 }}>구성 식자재는 나중에 요청할 수 있습니다. 없으면 재고 차감과 발주 계산에서 빠집니다.</Typography>
-                  )}
-                </Stack>
-              ))}
-            </Stack>
-            <Stack direction="row" gap={1} mt={2}>
-              <Button variant="contained" size="small" disabled={busy} onClick={apply}>확인하고 반영</Button>
-              <Button size="small" disabled={busy} onClick={() => setProposal(null)}>취소</Button>
-            </Stack>
-          </Paper>
-        )}
-      </Paper>
-
-      <Paper sx={{ p: 3, border: `1px solid ${theme.palette.divider}`, borderRadius: 3 }}>
-        <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
-          <Typography variant="h6" fontWeight={700}>메뉴</Typography>
-          <Stack direction="row" alignItems="center" gap={1.5}>
-            <FormControlLabel label={<Typography variant="body2">수동 입력</Typography>} sx={{ mr: 0 }}
-              control={<Switch size="small" checked={manual} onChange={(e) => setManual(e.target.checked)} />} />
-            <Chip size="small" variant="outlined" color="primary" label={`총 ${menus.length}개`} />
+      {/* 메뉴 등록 폼 */}
+      {storeId && (
+        <Paper sx={{ p: 3 }}>
+          <Stack direction="row" alignItems="center" gap={1} mb={2.5}>
+            <IconifyIcon icon="mingcute:add-circle-fill" color="primary.main" />
+            <Typography variant="h6" fontWeight={700}>새 메뉴 등록</Typography>
           </Stack>
-        </Stack>
-        {manual && (
-          <Stack component="form" direction="row" gap={1} alignItems="center" flexWrap="wrap" mb={2} onSubmit={addMenuManually}>
-            <TextField size="small" label="메뉴 이름" required value={newMenu.menuName} onChange={(e) => setNewMenu({ ...newMenu, menuName: e.target.value })} />
-            <TextField size="small" label="가격" type="number" required value={newMenu.price} sx={{ width: 120 }} inputProps={{ min: 0 }}
-              onChange={(e) => setNewMenu({ ...newMenu, price: e.target.value })} />
-            <Button type="submit" size="small" variant="outlined" disabled={!newMenu.menuName.trim() || newMenu.price === ''}>메뉴 추가</Button>
-            <Typography variant="caption" color="text.secondary">AI 요청을 쓸 수 없을 때 사용합니다. 메뉴를 눌러 가격과 구성 식자재를 고칠 수 있습니다.</Typography>
+          <Stack component="form" onSubmit={handleSubmit} gap={2.5}>
+            <Stack direction={{ xs: 'column', sm: 'row' }} gap={2} alignItems="flex-start">
+              <TextField label="메뉴 이름" name="menuName" value={form.menuName} onChange={handleChange} size="small" required sx={{ flex: 2 }} />
+              <TextField label="가격 (원)" name="price" type="number" value={form.price} onChange={handleChange} size="small" required sx={{ flex: 1 }} />
+            </Stack>
+
+            {/* 레시피 입력 */}
+            <Box>
+              <Stack direction="row" alignItems="center" gap={1} mb={1}>
+                <IconifyIcon icon="mingcute:bowl-line" width={18} color="text.secondary" />
+                <Typography variant="subtitle2" fontWeight={700}>레시피 (식자재 · 사용량 · 오차범위)</Typography>
+              </Stack>
+              <Stack gap={1}>
+                {recipe.map((row, idx) => (
+                  <Stack key={idx} direction="row" gap={1} alignItems="center">
+                    <TextField
+                      select size="small" label="식자재" value={row.ingredientId}
+                      onChange={(e) => onPickIngredient(idx, e.target.value)}
+                      sx={{ flex: 2, minWidth: 130 }}
+                    >
+                      <MenuItem value=""><em>선택</em></MenuItem>
+                      {ingredients.map((i) => (
+                        <MenuItem key={i.id} value={String(i.id)}>{i.name}</MenuItem>
+                      ))}
+                    </TextField>
+                    <Tooltip title="새 식자재 등록">
+                      <IconButton size="small" color="primary" onClick={() => openNewIngredient(idx)}
+                        sx={{ border: `1px solid ${'rgba(0,0,0,0.12)'}`, borderRadius: 1.5 }}>
+                        <IconifyIcon icon="mingcute:add-line" width={18} />
+                      </IconButton>
+                    </Tooltip>
+                    <TextField
+                      size="small" label="사용량" type="number" value={row.qtyPerUnit}
+                      onChange={(e) => setRow(idx, { qtyPerUnit: e.target.value })}
+                      sx={{ width: 96 }}
+                    />
+                    <TextField
+                      select size="small" label="단위" value={row.unit}
+                      onChange={(e) => setRow(idx, { unit: e.target.value })}
+                      sx={{ width: 80 }}
+                    >
+                      {/* 식자재 기준 단위와 호환되는 단위만 고를 수 있게 한다 (서버도 같은 규칙으로 거부) */}
+                      {(row.ingredientId
+                        ? [recipeUnitFor(ingredients.find((i) => String(i.id) === row.ingredientId)?.unit)]
+                        : ['g', 'ml', '개']
+                      ).map((u) => <MenuItem key={u} value={u}>{u}</MenuItem>)}
+                    </TextField>
+                    <TextField
+                      size="small" label="오차%" type="number" value={row.tolerance}
+                      onChange={(e) => setRow(idx, { tolerance: e.target.value })}
+                      sx={{ width: 80 }}
+                    />
+                    <IconButton size="small" color="error" onClick={() => removeRow(idx)} disabled={recipe.length === 1}>
+                      <IconifyIcon icon="mingcute:close-line" width={18} />
+                    </IconButton>
+                  </Stack>
+                ))}
+              </Stack>
+              <Button size="small" startIcon={<IconifyIcon icon="mingcute:add-line" />} onClick={addRow} sx={{ mt: 1 }}>
+                식자재 추가
+              </Button>
+              <Typography variant="caption" color="text.secondary" display="block" mt={0.5}>
+                오차범위(%)는 조리 손실·편차를 반영합니다. 매출 발생 시 사용량 × (1 + 오차%) 만큼 재고에서 자동 차감됩니다.
+              </Typography>
+            </Box>
+
+            <Box>
+              <Button type="submit" variant="contained" disabled={submitting}
+                startIcon={submitting ? <CircularProgress size={16} color="inherit" /> : null}>
+                메뉴 등록
+              </Button>
+            </Box>
           </Stack>
-        )}
-        {loading ? (
-          <Stack alignItems="center" py={4}><CircularProgress /></Stack>
-        ) : menus.length === 0 ? (
-          <Typography variant="body2" color="text.secondary" textAlign="center" py={4}>등록된 메뉴가 없습니다. 위에서 요청해 보세요.</Typography>
-        ) : (
-          <TableContainer>
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell>메뉴</TableCell>
-                  <TableCell align="right">가격</TableCell>
-                  <TableCell align="right">구성 식자재</TableCell>
-                  <TableCell padding="checkbox" />
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {menus.map((menu) => {
-                  const recipe = recipeOf(menu.id);
-                  const open = openMenuId === menu.id;
-                  return (
-                    <Fragment key={menu.id}>
-                      <TableRow hover sx={{ cursor: 'pointer' }} onClick={() => setOpenMenuId(open ? null : menu.id)}>
-                        <TableCell><Typography variant="body2" fontWeight={600}>{menu.menuName}</Typography></TableCell>
-                        <TableCell align="right">₩{menu.price?.toLocaleString()}</TableCell>
-                        <TableCell align="right">
-                          {recipe.length > 0 ? `${recipe.length}개` : <Chip size="small" color="warning" variant="outlined" label="미등록" />}
-                        </TableCell>
-                        <TableCell padding="checkbox">
-                          <IconifyIcon icon={open ? 'mingcute:up-line' : 'mingcute:down-line'} width={18} />
-                        </TableCell>
-                      </TableRow>
-                      <TableRow>
-                        <TableCell colSpan={4} sx={{ py: 0, border: open ? undefined : 'none' }}>
-                          <Collapse in={open} unmountOnExit>
-                            <Stack sx={{ py: 1.5, pl: 1 }} gap={0.5}>
-                              {recipe.length === 0 ? (
-                                <Typography variant="body2" color="text.secondary">
-                                  구성 식자재가 없습니다. 재고 차감과 발주 계산에서 빠집니다. "{menu.menuName} 구성 식자재는 ..."처럼 요청해 주세요.
+        </Paper>
+      )}
+
+      {/* 메뉴 목록 */}
+      {storeId && (
+        <Paper sx={{ p: 3 }}>
+          <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
+            <Typography variant="h6" fontWeight={700}>등록된 메뉴 목록</Typography>
+            <Chip label={`총 ${menus.length}개`} size="small" color="primary" variant="outlined" />
+          </Stack>
+          {loading ? (
+            <CircularProgress size={24} />
+          ) : menus.length === 0 ? (
+            <Typography color="text.secondary" variant="body2">
+              등록된 메뉴가 없습니다. 위에서 메뉴를 추가하세요.
+            </Typography>
+          ) : (
+            <TableContainer>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>메뉴 / 레시피</TableCell>
+                    <TableCell align="right">가격</TableCell>
+                    <TableCell align="center">상태</TableCell>
+                    <TableCell align="center" sx={{ width: 110 }}>관리</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {menus.map((menu) => {
+                    const recipeRows = recipes[menu.id] ?? [];
+                    return (
+                      <TableRow key={menu.id} hover>
+                        <TableCell>
+                          <Stack direction="row" alignItems="center" gap={1.5}>
+                            {/* 썸네일 (POS 메뉴판에도 동일 사진 표시) */}
+                            <Box
+                              sx={{
+                                width: 52, height: 52, flexShrink: 0, borderRadius: 2, overflow: 'hidden',
+                                bgcolor: 'action.hover', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              }}
+                            >
+                              {menu.imageUrl
+                                ? <Box component="img" src={menu.imageUrl} alt={menu.menuName} sx={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                : <IconifyIcon icon="mingcute:bowl-line" width={24} color="text.disabled" />}
+                            </Box>
+                            <Box minWidth={0}>
+                              <Typography variant="body2" fontWeight={700}>{menu.menuName}</Typography>
+                              {recipeRows.length > 0 ? (
+                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1.5 }}>
+                                  {recipeRows.map((mi) => `${mi.ingredient.name} ${mi.qtyPerUnit}${mi.unit}`).join(' · ')}
                                 </Typography>
-                              ) : recipe.map((r) => (
-                                <Stack key={r.id} direction="row" justifyContent="space-between" sx={{ maxWidth: 360 }}>
-                                  <Typography variant="body2">{r.ingredientName}</Typography>
-                                  <Typography variant="body2" color="text.secondary">1개당 {r.qtyPerUnit} {r.unit}</Typography>
-                                </Stack>
-                              ))}
-                              {manual && storeId && (
-                                <RecipeManualEditor key={`${menu.id}-${menu.price}`} storeId={storeId} menu={menu} recipe={recipe} ingredients={ingredients}
-                                  onChanged={() => { setError(''); load(storeId); }} onError={setError} />
+                              ) : (
+                                <Typography variant="caption" color="text.disabled">레시피 없음</Typography>
                               )}
-                            </Stack>
-                          </Collapse>
+                            </Box>
+                          </Stack>
+                        </TableCell>
+                        <TableCell align="right">{menu.price?.toLocaleString()}원</TableCell>
+                        <TableCell align="center">
+                          <Chip
+                            label={menu.isActive !== false ? '활성' : '비활성'}
+                            color={menu.isActive !== false ? 'success' : 'default'}
+                            size="small"
+                          />
+                        </TableCell>
+                        <TableCell align="center">
+                          <Stack direction="row" gap={0.3} justifyContent="center">
+                            <Tooltip title="사진 추가/변경">
+                              <IconButton size="small" color="primary" component="label" disabled={photoBusyId === menu.id}>
+                                {photoBusyId === menu.id
+                                  ? <CircularProgress size={18} />
+                                  : <IconifyIcon icon="mingcute:pic-line" width={18} />}
+                                <input hidden type="file" accept="image/*"
+                                  onChange={(e) => handlePhoto(menu, e.target.files?.[0])} />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="메뉴 비활성화">
+                              <IconButton size="small" color="error" onClick={() => handleDeactivate(menu.id, menu.menuName)}>
+                                <IconifyIcon icon="mingcute:delete-2-line" width={18} />
+                              </IconButton>
+                            </Tooltip>
+                          </Stack>
                         </TableCell>
                       </TableRow>
-                    </Fragment>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        )}
-      </Paper>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+        </Paper>
+      )}
+
+      {/* 새 식자재 등록 다이얼로그 (식자재 관리 기능 통합) */}
+      <Dialog open={newIngOpen} onClose={() => setNewIngOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle fontWeight={800}>새 식자재 등록</DialogTitle>
+        <DialogContent>
+          <Stack gap={2} mt={0.5}>
+            <TextField
+              label="식자재명" size="small" autoFocus fullWidth required
+              value={newIng.name}
+              onChange={(e) => setNewIng((p) => ({ ...p, name: e.target.value }))}
+              placeholder="예: 치즈, 토마토"
+            />
+            <TextField
+              select label="기준 단위" size="small" fullWidth
+              value={newIng.unit}
+              onChange={(e) => setNewIng((p) => ({ ...p, unit: e.target.value }))}
+              helperText="무게=kg, 액체=L, 낱개=개 (재고·발주의 기준 단위)"
+            >
+              {['kg', 'L', '개'].map((u) => <MenuItem key={u} value={u}>{u}</MenuItem>)}
+            </TextField>
+            <Typography variant="caption" color="text.secondary">
+              여기서 등록한 식자재는 모든 메뉴의 레시피·재고·발주에서 사용할 수 있습니다.
+            </Typography>
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setNewIngOpen(false)}>취소</Button>
+          <Button variant="contained" onClick={handleCreateIngredient} disabled={creatingIng || !newIng.name.trim()} sx={{ fontWeight: 700 }}>
+            {creatingIng ? <CircularProgress size={18} color="inherit" /> : '등록'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Stack>
   );
 };

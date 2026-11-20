@@ -20,6 +20,8 @@ python -m fgcli stores --as hq              # 전 매장 목록
 python -m fgcli weekly-all --as hq          # 전 매장 주간 매출 {storeId: revenue}
 python -m fgcli orders-all --as hq          # 전 매장 발주 내역
 python -m fgcli sales <storeId> --start YYYY-MM-DD --end YYYY-MM-DD --as hq   # 특정 매장 기간 판매
+python -m fgcli weekly <storeId> --as hq    # 특정 매장 전주 대비
+python -m fgcli today <storeId> --as hq     # 특정 매장 오늘 매출
 python -m fgcli menus <storeId> --as hq     # 매장 메뉴·단가
 ```
 

@@ -25,6 +25,10 @@ public class OrderRequest {
     @JoinColumn(name = "ingredient_id", nullable = false)
     private Ingredient ingredient;
 
+    // 실제 order_request 테이블에 prediction_id 컬럼이 없어 @Transient 처리 (미사용 필드)
+    @Transient
+    private Long predictionId;
+
     @Column(nullable = false)
     private String status;
 

@@ -1,10 +1,13 @@
 package com.foodguard.controller;
 
+import com.foodguard.entity.Inventory;
 import com.foodguard.entity.OrderRequest;
 import com.foodguard.service.OrderExplainService;
 import com.foodguard.service.OrderRequestService;
+import com.foodguard.security.StoreAccessGuard;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -18,11 +21,14 @@ public class OrderRequestController {
 
     private final OrderRequestService orderRequestService;
     private final OrderExplainService orderExplainService;
+    private final StoreAccessGuard guard;
 
     @PostMapping
     public ResponseEntity<OrderRequest> create(@RequestBody Map<String, Object> body) {
+        Long storeId = Long.parseLong(body.get("storeId").toString());
+        guard.assertCanAccessStore(storeId);
         return ResponseEntity.ok(orderRequestService.create(
-                Long.parseLong(body.get("storeId").toString()),
+                storeId,
                 Long.parseLong(body.get("ingredientId").toString()),
                 Double.parseDouble(body.get("quantity").toString())
         ));
@@ -35,6 +41,7 @@ public class OrderRequestController {
 
     @GetMapping("/{storeId}")
     public ResponseEntity<List<OrderRequest>> getByStore(@PathVariable Long storeId) {
+        guard.assertCanAccessStore(storeId);
         return ResponseEntity.ok(orderRequestService.getByStore(storeId));
     }
 
@@ -80,6 +87,7 @@ public class OrderRequestController {
     @PutMapping("/{id}/status")
     public ResponseEntity<OrderRequest> updateStatus(@PathVariable Long id,
                                                      @RequestBody Map<String, Object> body) {
+        guard.assertCanAccessOrder(id);
         return ResponseEntity.ok(orderRequestService.updateStatus(
                 id, body.get("status").toString()
         ));
@@ -87,11 +95,19 @@ public class OrderRequestController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<String> cancel(@PathVariable Long id) {
+        guard.assertCanAccessOrder(id);
         return ResponseEntity.ok(orderRequestService.cancel(id));
+    }
+
+    @PostMapping("/init-inventory/{storeId}")
+    public ResponseEntity<List<Inventory>> initInventory(@PathVariable Long storeId) {
+        guard.assertCanAccessStore(storeId);
+        return ResponseEntity.ok(orderRequestService.initInventoryFromOrders(storeId));
     }
 
     @GetMapping("/recommend/{storeId}")
     public ResponseEntity<List<Map<String, Object>>> recommend(@PathVariable Long storeId) {
+        guard.assertCanAccessStore(storeId);
         return ResponseEntity.ok(orderRequestService.recommend(storeId));
     }
 
@@ -104,5 +120,12 @@ public class OrderRequestController {
     @PostMapping("/auto/{storeId}")
     public ResponseEntity<List<Long>> autoOrder(@PathVariable Long storeId) {
         return ResponseEntity.ok(orderRequestService.autoOrder(storeId));
+    }
+
+    // 결제 완료 후 호출 — 부족 식자재를 AI 예측 기반으로 발주에 자동 추가
+    @PostMapping("/reorder-after-sale/{storeId}")
+    public ResponseEntity<List<OrderRequest>> reorderAfterSale(@PathVariable Long storeId) {
+        guard.assertCanAccessStore(storeId);
+        return ResponseEntity.ok(orderRequestService.reorderAfterSale(storeId));
     }
 }

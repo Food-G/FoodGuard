@@ -2,6 +2,9 @@
 
     python -m fgagent order 60006            # 관찰 → 판단 → 발주안 → Claude 검토 → 승인 → 실행 → 검증
     python -m fgagent order 60006 --no-llm   # Claude 없이 결정적 코어만
+    python -m fgagent run echo 60006         # 공통 런타임으로 에이전트 1회 실행 (제안은 웹 승인함으로)
+    python -m fgagent serve                  # agent-service :8100 + 스케줄러
+    python -m fgagent report accuracy        # 매장·메뉴별 WAPE 표 (markdown)
 
 쓰기(재예측, 발주)는 반드시 이 터미널에서 사람이 입력한 답을 받은 뒤에만 일어난다.
 실행 직전에 발주안을 다시 계산해 planId 가 바뀌었으면(그 사이 재고·발주가 바뀌면) 멈춘다.
@@ -17,6 +20,7 @@ from datetime import datetime
 from pathlib import Path
 
 from fgagent import advisor, executor
+from fgagent.advisor import apply_review
 from fgcli.auth import get_token
 from fgcli.planner import ObserveError, build_plan, observe
 
@@ -63,19 +67,6 @@ def show_review(rev: dict) -> None:
             print(f"  - {it['ingredientId']}: {it['verdict']} → {it['suggestedQty']}  ({it['reason']})")
     for c in rev["concerns"]:
         print(f"  ⚠ {c}")
-
-
-def apply_review(items: list[dict], rev: dict) -> list[dict]:
-    """참모 조정안 적용. 줄이거나 빼는 것만 받아들인다 (늘리는 제안은 무시)."""
-    by_id = {r["ingredientId"]: r for r in rev["items"]}
-    out = []
-    for it in items:
-        r = by_id.get(it["ingredientId"])
-        if r is None or r["verdict"] == "approve":
-            out.append(it)
-        elif r["verdict"] == "reduce" and 0 < r["suggestedQty"] < it["orderQty"]:
-            out.append({**it, "orderQty": round(r["suggestedQty"], 1), "adjustedBy": "advisor"})
-    return out
 
 
 def save_run(record: dict) -> Path:
@@ -184,7 +175,35 @@ def main(argv: list[str] | None = None) -> int:
     o.add_argument("--as", dest="role", choices=["owner", "hq"], default="owner")
     o.add_argument("--no-llm", action="store_true", help="Claude 검토 없이 실행")
     o.add_argument("--model", help="Claude 모델 (기본: 계정 기본값)")
+    r = sub.add_parser("run", help="공통 런타임으로 에이전트 1회 실행 (AGENT 계정, 제안은 승인함으로)")
+    r.add_argument("agent")
+    r.add_argument("store_id", type=int)
+    r.add_argument("--no-llm", action="store_true", help="Claude 없이 결정적 코어만")
+    s = sub.add_parser("serve", help="agent-service (FastAPI) + 스케줄러")
+    s.add_argument("--port", type=int, default=8100)
+    rp = sub.add_parser("report", help="보고서용 표를 markdown 으로 출력")
+    rp.add_argument("kind", choices=["accuracy"])
+    rp.add_argument("--source", choices=["backtest", "live"], default="backtest")
+    rp.add_argument("--as", dest="role", choices=["hq", "agent"], default="hq")
     a = p.parse_args(argv)
+
+    if a.command == "report":
+        from fgagent.report import accuracy_report
+        print(accuracy_report(executor.WriteClient(get_token(a.role)), a.source))
+        return 0
+
+    if a.command == "run":
+        from fgagent.runtime import runner
+        rec = runner.run(a.agent, a.store_id, use_llm=not a.no_llm)
+        print(json.dumps(rec, ensure_ascii=False, indent=2, default=str))
+        return 0 if rec.get("status") == "OK" else 1
+    if a.command == "serve":
+        import uvicorn
+        from fgagent.runtime import scheduler
+        from fgagent.service import app
+        scheduler.start()
+        uvicorn.run(app, host="127.0.0.1", port=a.port)
+        return 0
     return run_order(a.store_id, a.role, not a.no_llm, a.model)
 
 

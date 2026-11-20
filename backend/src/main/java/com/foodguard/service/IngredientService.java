@@ -9,6 +9,7 @@ import com.foodguard.repository.InventoryRepository;
 import com.foodguard.repository.MenuIngredientRepository;
 import com.foodguard.repository.OrderRequestRepository;
 import com.foodguard.repository.StoreRepository;
+import com.foodguard.util.UnitConverter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,6 +26,7 @@ public class IngredientService {
     private final InventoryRepository inventoryRepository;
     private final OrderRequestRepository orderRequestRepository;
     private final StoreAccess storeAccess;
+    private final InventoryLedger ledger;
 
     // 식자재 등록
     @Transactional
@@ -35,7 +37,7 @@ public class IngredientService {
         ingredient.setStore(store);
         ingredient.setName(name);
         ingredient.setCategory(category);
-        ingredient.setUnit(unit);
+        ingredient.setUnit(UnitConverter.validateBaseUnit(unit));
         return ingredientRepository.save(ingredient);
     }
 
@@ -50,9 +52,17 @@ public class IngredientService {
                              Integer shelfLifeDays, Integer leadTimeDays, Integer orderCycleDays) {
         Ingredient ingredient = ingredientRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("식자재를 찾을 수 없습니다."));
+        String newUnit = UnitConverter.validateBaseUnit(unit);
+        // kg/L/개 사이 변경은 차원이 바뀌는 것이라, 이미 쌓인 재고 수량과 레시피 사용량이 전부 틀어진다
+        if (!newUnit.equals(ingredient.getUnit())
+                && (inventoryRepository.existsByIngredientId(id)
+                    || !menuIngredientRepository.findByIngredientId(id).isEmpty())) {
+            throw new IllegalStateException(
+                    "재고나 레시피에 쓰이는 식자재는 단위를 바꿀 수 없습니다 (" + ingredient.getUnit() + " → " + newUnit + ")");
+        }
         ingredient.setName(name);
         ingredient.setCategory(category);
-        ingredient.setUnit(unit);
+        ingredient.setUnit(newUnit);
         ingredient.setShelfLifeDays(shelfLifeDays);
         ingredient.setLeadTimeDays(leadTimeDays);
         ingredient.setOrderCycleDays(orderCycleDays);
@@ -70,7 +80,9 @@ public class IngredientService {
         }
         orderRequestRepository.deleteByIngredientId(id);
         menuIngredientRepository.deleteByIngredientId(id);
+        ledger.recordRemoval(inventoryRepository.findByIngredientId(id), "INGREDIENT", id);
         inventoryRepository.deleteByIngredientId(id);
-        ingredientRepository.deleteById(id);        return "식자재 삭제 완료";
+        ingredientRepository.deleteById(id);
+        return "식자재 삭제 완료";
     }
 }

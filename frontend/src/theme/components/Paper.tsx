@@ -8,7 +8,7 @@ const Paper: Components<Omit<Theme, 'components'>>['MuiPaper'] = {
       display: 'flex',
       flexDirection: 'column',
       backgroundColor: theme.palette.background.paper,
-      borderRadius: theme.shape.borderRadius * 2,
+      borderRadius: theme.shape.borderRadius * 1.25,
       border: `1px solid ${theme.palette.divider}`,
     }),
     elevation0: {

@@ -24,6 +24,7 @@ fgcli/__pycache__/
 fgagent/__pycache__/
 
 # ── 공통 ───────────────────────────────────
+/node_modules/
 .idea/
 *.iml
 .DS_Store
@@ -37,3 +38,5 @@ FoodGuard_env.txt
 
 # 배포 비밀값
 .env.prod
+**/__pycache__/
+agent-runs/

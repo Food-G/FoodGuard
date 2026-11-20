@@ -2,13 +2,13 @@ import { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
   Typography, Paper, Button, CircularProgress, Chip,
-  Stack, useTheme, Box, Tab, Tabs,
-  Dialog, DialogTitle, DialogContent, DialogActions, TextField,
+  Stack, useTheme, Box, Tab, Tabs, Tooltip,
+  Dialog, DialogTitle, DialogContent, DialogActions,
 } from '@mui/material';
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { orderService } from '../../services/orderService';
+import { agentService } from '../../services/agentService';
 import IconifyIcon from '../../components/base/IconifyIcon';
-import QrCodeDisplay from '../../components/QrCodeDisplay';
 import { useConfirm } from '../../hooks/useConfirm';
 import AlertMessages from '../../components/AlertMessages';
 
@@ -73,6 +73,12 @@ const StepProgress = ({ status }: { status: string }) => {
   );
 };
 
+const REVIEW_LABEL: Record<string, { label: string; color: any }> = {
+  reject: { label: '거절 검토', color: 'error' },
+  review: { label: '확인 필요', color: 'warning' },
+  approve: { label: '이상 없음', color: 'success' },
+};
+
 const ACTIVE_STATUSES = new Set(['REQUESTED', 'APPROVED', 'HQ_SENT', 'DRIVER_RECEIVED']);
 const DONE_STATUSES   = new Set(['CANCELLED', 'REJECTED']); // DONE은 표시 안 함 (자동 소멸)
 
@@ -95,8 +101,18 @@ const AdminOrders = () => {
   const [tab, setTab] = useState(0);
   const confirm = useConfirm();
   const [hqSendTarget, setHqSendTarget] = useState<number | null>(null);
-  const [expiryDate, setExpiryDate] = useState('');
-  const [qrData, setQrData] = useState<{ data: string; name: string } | null>(null);
+  const [flags, setFlags] = useState<Record<number, any>>({});
+
+  // 심사 결과를 못 불러와도(007 적용 전 등) 발주 처리는 그대로 할 수 있어야 한다
+  const loadFlags = async () => {
+    try {
+      const rows = await agentService.getOrderFlags();
+      // 최신순으로 오므로 같은 발주는 가장 최근 심사를 쓴다
+      const next: Record<number, any> = {};
+      rows.forEach((p) => { if (next[p.payload.orderId] === undefined) next[p.payload.orderId] = { ...p.payload, rationale: p.rationale }; });
+      setFlags(next);
+    } catch { /* 위험 점수만 표시되지 않는다 */ }
+  };
 
   const loadOrders = async () => {
     try {
@@ -110,7 +126,7 @@ const AdminOrders = () => {
         unit: item.ingredient?.unit ?? '',
         status: item.status,
         orderedAt: item.orderedAt ? new Date(item.orderedAt).toLocaleString() : '-',
-        deliveryGroupToken: item.deliveryGroupToken ?? null,
+        deliveryToken: item.deliveryToken ?? null,
       })));
     } catch {
       setError('발주 목록을 불러오지 못했습니다.');
@@ -121,12 +137,15 @@ const AdminOrders = () => {
 
   useEffect(() => {
     loadOrders();
+    loadFlags();
     const timer = setInterval(loadOrders, 5000); // 5초마다 자동 갱신
-    return () => clearInterval(timer);
+    const flagTimer = setInterval(loadFlags, 60000); // 심사는 5분 주기라 자주 볼 필요가 없다
+    return () => { clearInterval(timer); clearInterval(flagTimer); };
   }, []);
 
   const visibleRows = (filterStoreId ? allRows.filter(r => r.storeId === filterStoreId) : allRows)
-    .filter(r => !dismissedIds.has(r.id));
+    .filter(r => !dismissedIds.has(r.id))
+    .map(r => ({ ...r, riskScore: flags[r.id]?.score ?? null, flag: flags[r.id] ?? null }));
   const activeRows = visibleRows.filter(r => ACTIVE_STATUSES.has(r.status));
   const doneRows   = visibleRows.filter(r => DONE_STATUSES.has(r.status));
 
@@ -153,16 +172,11 @@ const AdminOrders = () => {
   const handleHqSendConfirm = async () => {
     if (hqSendTarget === null) return;
     try {
-      const row = allRows.find(r => r.id === hqSendTarget);
-      const result = await orderService.hqSend(hqSendTarget, expiryDate || undefined);
+      // 전용 hq-send API(유통기한·QR)가 아직 없어 상태 변경 API 로 처리한다 (유통기한 입력은 DEV_ROADMAP D-3)
+      await orderService.updateStatus(hqSendTarget, 'HQ_SENT');
       withStatus(hqSendTarget, 'HQ_SENT');
       setSuccess('발송 검수가 완료되었습니다.');
       setHqSendTarget(null);
-      setExpiryDate('');
-      if (result?.qrToken) {
-        const qrUrl = `${window.location.origin}/driver/scan?token=${result.qrToken}`;
-        setQrData({ data: qrUrl, name: row?.name ?? '식자재' });
-      }
     } catch {
       setError('발송 검수 처리에 실패했습니다.');
       setHqSendTarget(null);
@@ -186,6 +200,25 @@ const AdminOrders = () => {
           {p.value} <span style={{ color: '#999', fontWeight: 400 }}>{p.row.unit}</span>
         </Typography>
       ),
+    },
+    {
+      field: 'riskScore', headerName: 'AI 위험 점수', width: 130, align: 'center', headerAlign: 'center',
+      renderCell: (p) => {
+        const f = p.row.flag;
+        if (!f) return <Typography variant="caption" color="text.disabled">-</Typography>;
+        const review = REVIEW_LABEL[f.recommendation];
+        return (
+          <Tooltip arrow title={
+            <Box sx={{ whiteSpace: 'pre-wrap' }}>
+              {f.rationale}
+              {(f.flags ?? []).map((x: any) => `\n• ${x.detail} (+${x.points})`).join('')}
+              {'\n규칙 기반 점수이며 확률이 아닙니다. 판단은 관리자가 합니다.'}
+            </Box>
+          }>
+            <Chip label={`${f.score} ${review?.label ?? ''}`} color={review?.color ?? 'default'} size="small" sx={{ fontWeight: 700, fontSize: 11 }} />
+          </Tooltip>
+        );
+      },
     },
     {
       field: 'steps', headerName: '진행 단계', width: 160,
@@ -223,8 +256,8 @@ const AdminOrders = () => {
           </Button>
         );
         if (status === 'HQ_SENT') {
-          const driverUrl = p.row.deliveryGroupToken
-            ? `${window.location.origin}/driver/group/${p.row.deliveryGroupToken}`
+          const driverUrl = p.row.deliveryToken
+            ? `${window.location.origin}/driver/${p.row.deliveryToken}`
             : null;
           return driverUrl ? (
             <Button variant="contained" color="secondary" size="small"
@@ -295,7 +328,7 @@ const AdminOrders = () => {
         );
         if (pendingByStore.length === 0) return null;
         return (
-          <Paper sx={{ p: 2.5, border: `1px solid ${theme.palette.warning.light}`, borderRadius: 3, bgcolor: 'warning.50' }}>
+          <Paper sx={{ p: 2.5, border: `1px solid ${theme.palette.warning.light}`, borderRadius: '10px', bgcolor: 'warning.50' }}>
             <Stack direction="row" alignItems="center" gap={1} mb={1.5}>
               <IconifyIcon icon="mingcute:alert-fill" color={theme.palette.warning.main} width={18} />
               <Typography variant="subtitle2" fontWeight={700} color="warning.dark">
@@ -320,7 +353,7 @@ const AdminOrders = () => {
       })()}
 
       {/* 3단계 흐름 안내 */}
-      <Paper sx={{ p: 2.5, border: `1px solid ${theme.palette.divider}`, borderRadius: 3 }}>
+      <Paper sx={{ p: 2.5, border: `1px solid ${theme.palette.divider}`, borderRadius: '10px' }}>
         <Typography variant="subtitle2" color="text.secondary" mb={1.5} fontWeight={700}>
           검수 책임 흐름
         </Typography>
@@ -366,7 +399,7 @@ const AdminOrders = () => {
       </Paper>
 
       {/* 탭 */}
-      <Paper sx={{ border: `1px solid ${theme.palette.divider}`, borderRadius: 3, overflow: 'hidden' }}>
+      <Paper sx={{ border: `1px solid ${theme.palette.divider}`, borderRadius: '10px', overflow: 'hidden' }}>
         <Box sx={{ borderBottom: `1px solid ${theme.palette.divider}`, px: 2 }}>
           <Tabs value={tab} onChange={(_, v) => setTab(v)}>
             <Tab
@@ -421,7 +454,10 @@ const AdminOrders = () => {
                   rows={activeRows}
                   columns={activeColumns}
                   disableRowSelectionOnClick
-                  initialState={{ pagination: { paginationModel: { pageSize: 10 } } }}
+                  initialState={{
+                    pagination: { paginationModel: { pageSize: 10 } },
+                    sorting: { sortModel: [{ field: 'riskScore', sort: 'desc' }] },
+                  }}
                   pageSizeOptions={[10, 20]}
                   sx={{ border: 'none', '& .MuiDataGrid-cell': { alignItems: 'center' } }}
                 />
@@ -446,42 +482,20 @@ const AdminOrders = () => {
         </Box>
       </Paper>
 
-      {/* 유통기한 입력 다이얼로그 */}
-      <Dialog open={hqSendTarget !== null} onClose={() => { setHqSendTarget(null); setExpiryDate(''); }} maxWidth="xs" fullWidth>
+      <Dialog open={hqSendTarget !== null} onClose={() => setHqSendTarget(null)} maxWidth="xs" fullWidth>
         <DialogTitle>발송 검수 완료</DialogTitle>
         <DialogContent>
-          <Stack gap={2} pt={1}>
-            <Typography variant="body2" color="text.secondary">
-              해당 식자재의 유통기한을 입력하면 QR 코드가 생성됩니다. (선택 사항)
-            </Typography>
-            <TextField
-              label="유통기한"
-              type="date"
-              value={expiryDate}
-              onChange={(e) => setExpiryDate(e.target.value)}
-              InputLabelProps={{ shrink: true }}
-              fullWidth
-              size="small"
-            />
-          </Stack>
+          <Typography variant="body2" color="text.secondary" pt={1}>
+            발송 처리하면 배달기사 링크를 복사할 수 있습니다.
+          </Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => { setHqSendTarget(null); setExpiryDate(''); }}>취소</Button>
+          <Button onClick={() => setHqSendTarget(null)}>취소</Button>
           <Button variant="contained" color="success" onClick={handleHqSendConfirm}>
             발송 검수완료
           </Button>
         </DialogActions>
       </Dialog>
-
-      {/* QR 코드 표시 */}
-      {qrData && (
-        <QrCodeDisplay
-          data={qrData.data}
-          title={`${qrData.name} QR 코드`}
-          subtitle={`이 QR 코드를 패키지에 부착하세요`}
-          onClose={() => setQrData(null)}
-        />
-      )}
     </Stack>
   );
 };

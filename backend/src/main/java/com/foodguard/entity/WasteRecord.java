@@ -4,13 +4,12 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.hibernate.annotations.CreationTimestamp;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-// 실제 폐기량 기록 — 폐기율 절감 효과 측정의 기준 데이터
+/** 폐기 기록 (D-4). 공용 DB 에 이미 있는 waste_record 테이블에 맞춘다. 기록자는 원장(INVENTORY_TXN.created_by)에 남는다. */
 @Entity
 @Table(name = "WASTE_RECORD")
 @Getter @Setter
@@ -30,21 +29,18 @@ public class WasteRecord {
     @Column(name = "ingredient_name", length = 100)
     private String ingredientName;
 
-    // 예전 WasteRecord 엔티티가 만든 테이블이 DB에 남아 있어 그 컬럼명(waste_qty)을 그대로 쓴다
-    @Column(name = "waste_qty", nullable = false, precision = 10, scale = 2)
-    private BigDecimal quantity;
-
     @Column(length = 20)
     private String unit;
 
-    // EXPIRED(유통기한 경과) | SPOILED(변질·파손) | OTHER
+    @Column(name = "waste_qty", nullable = false, precision = 10, scale = 2)
+    private BigDecimal qty;
+
     @Column(nullable = false, length = 20)
     private String reason;
 
     @Column(name = "waste_date", nullable = false)
     private LocalDate wasteDate;
 
-    @CreationTimestamp
-    @Column(name = "created_at", updatable = false)
+    @Column(name = "created_at")
     private LocalDateTime createdAt;
 }

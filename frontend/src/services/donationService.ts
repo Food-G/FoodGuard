@@ -13,4 +13,8 @@ export const donationService = {
   getByStore: async (storeId: number) => {
     return api.get(`/donations/store/${storeId}`);
   },
+  getOrgs: async (storeId: number, category?: string | null) => {
+    const q = category ? `&category=${encodeURIComponent(category)}` : '';
+    return api.get(`/donation-orgs?storeId=${storeId}${q}`);
+  },
 };
