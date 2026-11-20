@@ -9,13 +9,14 @@ import { storeService } from '../services/storeService';
 import IconifyIcon from '../components/base/IconifyIcon';
 import EventNoteCard from '../components/EventNoteCard';
 import SalesImportDialog from '../components/agent/SalesImportDialog';
+import { localDate } from '../helpers/date';
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
 const dateLabel = (iso: string) => {
   const d = new Date(`${iso}T00:00:00`);
   return `${d.getMonth() + 1}월 ${d.getDate()}일 (${WEEKDAYS[d.getDay()]})`;
 };
-const todayIso = () => new Date().toISOString().split('T')[0];
+const todayIso = () => localDate(new Date());
 // 판매 내역은 날짜 묶음으로 조금씩 보여 준다 (전체 이력이 길다)
 const DAYS_PER_PAGE = 14;
 
