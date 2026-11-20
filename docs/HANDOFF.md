@@ -61,8 +61,8 @@
 - **미사용 코드**: `pages/admin/AdminDashboard.tsx` 는 10/30 정리에서 지웠다가 11/06 프론트 복원으로 되살아나 11/20 다시 삭제 (`59ad3a0`). 백엔드 `GET /api/sales/all-stores/weekly-summary` 는 이제 프론트 호출처가 없다 (`qa_smoke.py` 만 점검, 지울지 결정 필요)
 - **배포 전 필수**: 운영 DB(`ddl-auto=none`)에 `backend/src/main/resources/db/2026-11-20_staff_pos.sql`, `2026-11-20_reservation.sql` 실행 (`docs/DEPLOY.md` 스키마 절)
   - 공유 TiDB(`foodguard`): 2026-11-20 확인, 5개 테이블 모두 있음 (`EMPLOYEE`·`EMPLOYEE_SCHEDULE`·`ATTENDANCE`·`POS_TABLE` 은 11/13 개발 bootRun 으로 이미 생성, `RESERVATION` 은 11/20 SQL 로 생성). 컬럼은 SQL 과 일치
-  - EC2 운영 서버가 다른 DB 를 쓰면 그쪽은 따로 확인할 것. 예약 API 실제 동작(`qa_smoke.py`)은 아직 미확인
-- `qa_smoke.py` 에 직원·스케줄·출퇴근·주간 급여·좌석·예약·오늘 매출 항목 추가 (`ef4b8a6`, `9a149f9`). 추가 후 전체 실행은 아직 안 했다
+  - EC2 운영 서버가 다른 DB 를 쓰면 그쪽은 따로 확인할 것. 예약 API 실제 동작은 `qa_smoke.py` 로 확인함 (2026-11-20, 공유 DB)
+- `qa_smoke.py` 에 직원·스케줄·출퇴근·주간 급여·좌석·예약·오늘 매출 항목 추가 (`ef4b8a6`, `9a149f9`). 2026-11-20 전체 실행 174개 통과 (`check()` 묶음 기대값 비교 오류 수정 `c401f82`)
 
 ### 배포 전 남은 것 (2026-10-30 점검, PROJECT_STATUS 13절)
 
@@ -87,7 +87,7 @@
 
 ### 전 기능 점검·배포 준비 (2026-11-06, PROJECT_STATUS 20절)
 
-- `python qa_smoke.py run` (ai-service): 133개 항목 전 기능 점검, 끝나면 `python qa_smoke.py cleanup`
+- `python qa_smoke.py run` (ai-service): 174개 항목 전 기능 점검, 끝나면 `python qa_smoke.py cleanup`
 - 배포 절차는 `docs/DEPLOY.md`. Docker 구성은 2026-11-13 EC2 에서 실행 확인 (`e42d4ac`)
 - 다른 PC: `pip install -r requirements.txt`, `npm install --legacy-peer-deps` 다시 실행 (React Router 7, ECharts 6 등)
 
@@ -147,9 +147,9 @@
 
 | 확인 | 명령 (위치) | 기대값 |
 |---|---|---|
-| AI 단위 테스트 | `python -m pytest tests` (ai-service) | 64 passed |
-| 백엔드 단위 테스트 | `gradlew.bat test --tests "com.foodguard.service.*" --tests "com.foodguard.security.*"` (backend) | BUILD SUCCESSFUL (44개) |
-| 전 기능 점검 | `python qa_smoke.py run` (ai-service, 서버 3개 필요, 약 3분) | 182개 통과 |
+| AI 단위 테스트 | `python -m pytest tests` (ai-service) | 71 passed (2026-11-20, junho 병합 후) |
+| 백엔드 테스트 | `gradlew.bat test` (backend, 단위 + H2 통합 테스트) | BUILD SUCCESSFUL (169개, 2026-11-20, junho 병합 후) |
+| 전 기능 점검 | `python qa_smoke.py run` (ai-service, 서버 3개 필요, 약 2분) | 174개 통과 (2026-11-20, junho 병합 전). 병합 후 다시 재야 함 |
 | 프론트 타입체크 | `npx tsc --noEmit` (frontend) | 오류 0 |
 | 프론트 빌드·lint | `npm run build`, `npx eslint src` (frontend) | 빌드 통과, lint 오류 0·경고 11 (2026-11-20) |
 | DB 백테스트 | `python backtest.py --db --step 7` (ai-service) | 1,765 평가일, 글로벌 모델 wMAPE **9.2%** / MASE **0.900**, 요일 평균(4주) 9.9% / 0.952, 식자재 7일 커버리지 **56.2%** (평균 잉여율 4.4%, 부족률 3.0%) |

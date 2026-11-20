@@ -4,7 +4,7 @@ from fastapi import Depends, FastAPI
 
 from auth import verify_internal_key
 from config import settings
-from routers import accuracy, agents, events, explain, ingest, prediction, training
+from routers import accuracy, agents, events, explain, ingest, prediction, recipes, training
 from schemas.schemas import HealthResponse
 
 # 다른 컨테이너·서버에서 접근 가능하게 열면서 키가 없으면 누구나 예측·Claude 를 부를 수 있다
@@ -26,6 +26,7 @@ app.include_router(events.router, prefix="/api/events", tags=["Events"], depende
 app.include_router(ingest.router, prefix="/api/ingest", tags=["Ingest"], dependencies=_internal)
 app.include_router(agents.router, prefix="/api/agents", tags=["Agents"], dependencies=_internal)
 app.include_router(accuracy.router, prefix="/api/accuracy", tags=["Accuracy"], dependencies=_internal)
+app.include_router(recipes.router, prefix="/api/recipes", tags=["Recipes"], dependencies=_internal)
 
 
 @app.get("/health", response_model=HealthResponse, tags=["Health"])

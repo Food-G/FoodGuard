@@ -112,6 +112,15 @@ def fetch_historical_weather(
 
 _KMA_BASE = "http://apis.data.go.kr/1360000"
 
+
+def _redact(e: Exception, api_key: str) -> str:
+    """requests 오류 문구에는 요청 URL 이 통째로 들어가므로 serviceKey 를 가린다 (로그 유출 방지)."""
+    msg = str(e)
+    for k in {api_key, requests.utils.quote(api_key, safe="")}:
+        if k:
+            msg = msg.replace(k, "***")
+    return msg
+
 # 단기예보 격자 좌표 (nx, ny) — LCC 투영
 _KMA_GRID: dict[str, tuple[int, int]] = {
     "서울": (60, 127), "인천": (55, 124), "경기": (60, 121),
@@ -205,7 +214,7 @@ def _fetch_short_term(nx: int, ny: int, api_key: str) -> pd.DataFrame:
         items = resp.json()["response"]["body"]["items"]["item"]
     except Exception as e:
         # #9: 경고 로그 추가
-        logger.warning("기상청 단기예보 조회 실패 (nx=%d, ny=%d): %s", nx, ny, e)
+        logger.warning("기상청 단기예보 조회 실패 (nx=%d, ny=%d): %s", nx, ny, _redact(e, api_key))
         return pd.DataFrame()
 
     # 날짜별로 모아서 일 집계
@@ -263,7 +272,7 @@ def _fetch_mid_term(reg_land: str, reg_ta: str, api_key: str) -> pd.DataFrame:
         ta_item = ta.json()["response"]["body"]["items"]["item"][0]
     except Exception as e:
         # #9: 경고 로그 추가
-        logger.warning("기상청 중기예보 조회 실패 (regId=%s): %s", reg_land, e)
+        logger.warning("기상청 중기예보 조회 실패 (regId=%s): %s", reg_land, _redact(e, api_key))
         return pd.DataFrame()
 
     today = date.today()
