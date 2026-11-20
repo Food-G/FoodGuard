@@ -10,8 +10,10 @@ claude CLI 헤드리스 호출 (`claude -p`). 시제품 단계라 API 대신 로
 from __future__ import annotations
 
 import json
+import shutil
 import subprocess
 import tempfile
+from pathlib import Path
 
 from config import settings
 
@@ -22,9 +24,20 @@ class ClaudeCliError(RuntimeError):
     pass
 
 
+def _cli_path() -> str:
+    path = shutil.which(settings.CLAUDE_CLI) or settings.CLAUDE_CLI
+    # 윈도우 npm 설치본은 claude.cmd 라 이름만으로는 실행되지 않고, cmd.exe 를 거치면 여러 줄 인자가 깨진다.
+    # .cmd 가 부르는 claude.exe 를 직접 쓴다
+    if path.lower().endswith(".cmd"):
+        exe = Path(path).parent / "node_modules" / "@anthropic-ai" / "claude-code" / "bin" / "claude.exe"
+        if exe.exists():
+            return str(exe)
+    return path
+
+
 def _run(extra_args: list[str], system_prompt: str, stdin: str, schema: dict) -> subprocess.CompletedProcess:
     cmd = [
-        settings.CLAUDE_CLI, "-p",
+        _cli_path(), "-p",
         *extra_args,
         "--tools", "",
         "--system-prompt", system_prompt,
