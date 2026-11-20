@@ -41,6 +41,41 @@ public class IngredientService {
         return ingredientRepository.save(ingredient);
     }
 
+    // storeId 없이 부르는 화면용: 점주는 자기 매장(여러 개면 첫 매장), 본사는 매장 없는 공용 식자재로 등록
+    @Transactional
+    public Ingredient create(String name, String category, String unit) {
+        AuthUser user = storeAccess.currentUser();
+        if (user != null && !user.isHqAdmin()) {
+            List<Store> stores = storeRepository.findByUserId(user.id());
+            if (stores.isEmpty()) throw new RuntimeException("등록된 가맹점이 없습니다.");
+            return create(stores.get(0).getId(), name, category, unit);
+        }
+        Ingredient ingredient = new Ingredient();
+        ingredient.setName(name);
+        ingredient.setCategory(category);
+        ingredient.setUnit(UnitConverter.validateBaseUnit(unit));
+        return ingredientRepository.save(ingredient);
+    }
+
+    // storeId 없이 부르는 화면용: 점주는 자기 매장들 + 공용 식자재, 본사는 전체
+    @Transactional(readOnly = true)
+    public List<Ingredient> getVisible() {
+        AuthUser user = storeAccess.currentUser();
+        if (user == null || user.isHqAdmin()) return ingredientRepository.findAll();
+        java.util.Map<Long, Ingredient> byId = new java.util.LinkedHashMap<>();
+        for (Store store : storeRepository.findByUserId(user.id())) {
+            for (Ingredient i : ingredientRepository.findByStoreIdIncludingLegacy(store.getId())) byId.putIfAbsent(i.getId(), i);
+        }
+        if (byId.isEmpty()) {
+            for (Ingredient i : ingredientRepository.findAll()) if (i.getStore() == null) byId.put(i.getId(), i);
+        }
+        return new java.util.ArrayList<>(byId.values());
+    }
+
+    public Ingredient getById(Long id) {
+        return ingredientRepository.findById(id).orElseThrow(() -> new RuntimeException("식자재를 찾을 수 없습니다."));
+    }
+
     // 가맹점별 식자재 조회 (store_id 없는 기존 데이터 포함)
     public List<Ingredient> getByStore(Long storeId) {
         return ingredientRepository.findByStoreIdIncludingLegacy(storeId);

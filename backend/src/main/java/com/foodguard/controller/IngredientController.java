@@ -18,30 +18,34 @@ public class IngredientController {
 
     @PostMapping
     public ResponseEntity<Ingredient> create(@RequestBody Map<String, Object> body) {
-        return ResponseEntity.ok(ingredientService.create(
-                Long.parseLong(body.get("storeId").toString()),
-                body.get("name").toString(),
-                body.getOrDefault("category", "").toString(),
-                body.get("unit").toString()
-        ));
+        String name = body.get("name").toString();
+        String category = String.valueOf(body.getOrDefault("category", ""));
+        String unit = body.get("unit").toString();
+        // storeId 를 안 보내는 화면(메뉴 관리·식자재 목록)은 로그인한 점주의 매장으로 등록한다
+        if (body.get("storeId") == null) return ResponseEntity.ok(ingredientService.create(name, category, unit));
+        return ResponseEntity.ok(ingredientService.create(Long.parseLong(body.get("storeId").toString()), name, category, unit));
     }
 
     @GetMapping
-    public ResponseEntity<List<Ingredient>> getByStore(@RequestParam Long storeId) {
+    public ResponseEntity<List<Ingredient>> getByStore(@RequestParam(required = false) Long storeId) {
+        // storeId 없이 부르면 로그인한 사용자가 볼 수 있는 식자재 (점주: 자기 매장 + 공용, 본사: 전체)
+        if (storeId == null) return ResponseEntity.ok(ingredientService.getVisible());
         return ResponseEntity.ok(ingredientService.getByStore(storeId));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<Ingredient> update(@PathVariable Long id,
                                              @RequestBody Map<String, Object> body) {
+        // 보내지 않은 항목(이름·단위만 고치는 화면)은 기존 값을 유지한다
+        Ingredient current = ingredientService.getById(id);
         return ResponseEntity.ok(ingredientService.update(
                 id,
                 body.get("name").toString(),
-                body.getOrDefault("category", "").toString(),
+                body.containsKey("category") ? String.valueOf(body.get("category")) : current.getCategory(),
                 body.get("unit").toString(),
-                optionalDays(body, "shelfLifeDays", 1),
-                optionalDays(body, "leadTimeDays", 0),
-                optionalDays(body, "orderCycleDays", 1)
+                body.containsKey("shelfLifeDays") ? optionalDays(body, "shelfLifeDays", 1) : current.getShelfLifeDays(),
+                body.containsKey("leadTimeDays") ? optionalDays(body, "leadTimeDays", 0) : current.getLeadTimeDays(),
+                body.containsKey("orderCycleDays") ? optionalDays(body, "orderCycleDays", 1) : current.getOrderCycleDays()
         ));
     }
 
