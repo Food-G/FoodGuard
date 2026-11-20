@@ -76,7 +76,7 @@ const Sidebar = ({ open, role, setMobileOpen, onMouseEnter, onMouseLeave }: Side
     { title: 'AI 수요 예측', icon: 'mingcute:brain-fill', path: '/predictions', active: true },
     { title: 'AI 운영 비서', icon: 'mingcute:chat-3-line', path: '/assistant', active: true },
     { title: '식자재 발주', icon: 'mingcute:refresh-2-line', path: '/orders', active: true },
-    { title: '식자재 관리', icon: 'mingcute:vegetable-line', path: '/ingredients', active: true },
+    { title: '식자재 관리', icon: 'mingcute:leaf-line', path: '/ingredients', active: true },
     { title: '자원 현황', icon: 'mingcute:inventory-line', path: '/inventory', active: true },
     { title: '폐기예측 & 기부', icon: 'mingcute:heart-fill', path: '/waste-prediction', active: true },
     { title: '기부 이력', icon: 'mingcute:history-line', path: '/donations', active: true },

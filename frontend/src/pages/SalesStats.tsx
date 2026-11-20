@@ -152,7 +152,7 @@ const SalesStats = ({ user }: { user: any }) => {
       <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>
         {[
           { label: '총 매출', value: `${grandTotal.toLocaleString()}원`, icon: 'mingcute:currency-won-line', color: '#FF9800' },
-          { label: '총 판매 건수', value: `${grandCount}건`, icon: 'mingcute:shopping-bag-line', color: '#1976D2' },
+          { label: '총 판매 건수', value: `${grandCount}건`, icon: 'mingcute:shopping-bag-1-line', color: '#1976D2' },
           { label: '영업일', value: `${daySummaries.length}일`, icon: 'mingcute:calendar-2-line', color: '#1D9E75' },
         ].map(({ label, value, icon, color }) => (
           <Box key={label} sx={{ flex: 1, minWidth: 140, borderRadius: 3, bgcolor: '#fff', border: '1px solid #E8EAF0', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', p: 2.5, display: 'flex', alignItems: 'center', gap: 2 }}>

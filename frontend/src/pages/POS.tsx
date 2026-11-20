@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import {
-  Box, Paper, Typography, Button, Stack, Chip,
-  Dialog, DialogTitle, DialogContent, DialogActions,
+  Box, Paper, Typography, Button, Stack,
+  Dialog, DialogContent, DialogActions,
   IconButton, Divider, Alert, CircularProgress,
   useTheme, alpha,
 } from '@mui/material';
@@ -58,6 +58,7 @@ const POS = ({ user }: any) => {
   const [receiptOpen, setReceiptOpen] = useState(false);
   const [receipt, setReceipt] = useState<{ tableName: string; orders: OrderItem[]; total: number } | null>(null);
   const [successMsg, setSuccessMsg] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
   const [savingLayout, setSavingLayout] = useState(false);
 
   const dragRef = useRef<{ id: number; ox: number; oy: number; tx: number; ty: number } | null>(null);
@@ -168,8 +169,7 @@ const POS = ({ user }: any) => {
       });
       setReceiptOpen(true);
     } catch (e) {
-      setSuccessMsg(errorText(e, '결제 처리 중 오류가 발생했습니다.'));
-      setTimeout(() => setSuccessMsg(''), 3000);
+      setErrorMsg(errorText(e, '결제 처리 중 오류가 발생했습니다.'));
     } finally {
       setPaying(false);
     }
@@ -205,7 +205,7 @@ const POS = ({ user }: any) => {
       await posTableService.save(storeId, tables.map(({ name, x, y, w, h, seats }) => ({ name, x, y, w, h, seats })));
       setSuccessMsg('테이블 배치와 좌석 수를 저장했습니다.');
     } catch (e) {
-      setSuccessMsg(errorText(e, '테이블 배치를 저장하지 못했습니다.'));
+      setErrorMsg(errorText(e, '테이블 배치를 저장하지 못했습니다.'));
     } finally {
       setSavingLayout(false);
       setTimeout(() => setSuccessMsg(''), 3000);
@@ -220,57 +220,70 @@ const POS = ({ user }: any) => {
 
   if (loading) return <Box display="flex" justifyContent="center" mt={10}><CircularProgress /></Box>;
 
-  return (
-    <Box sx={{ height: 'calc(100vh - 120px)', display: 'flex', flexDirection: 'column', gap: 2 }}>
-      {successMsg && <Alert severity="success" onClose={() => setSuccessMsg('')}>{successMsg}</Alert>}
+  const occupiedCount = tables.filter(t => t.status === 'occupied').length;
+  const tableTotal = (t: Table) => t.orders.reduce((s, o) => s + o.price * o.qty, 0);
+  const sectionLabel = (text: string) => (
+    <Typography variant="body2" fontWeight={600} color="text.secondary" sx={{ mb: 1.5 }}>{text}</Typography>
+  );
 
-      <Stack direction="row" justifyContent="space-between" alignItems="center">
-        <Typography variant="h4" fontWeight={800}>
-          POS 시스템
-        </Typography>
-        <Stack direction="row" gap={1} alignItems="center">
-          <Stack direction="row" gap={1}>
-            <Chip size="small" sx={{ bgcolor: alpha(theme.palette.success.main, 0.15), color: 'success.main' }} label="빈 자리" />
-            <Chip size="small" sx={{ bgcolor: alpha(theme.palette.warning.main, 0.15), color: 'warning.main' }} label="사용 중" />
-          </Stack>
-          <Button variant="outlined" size="small" startIcon={<IconifyIcon icon="mingcute:add-line" />} onClick={addTable}>
+  return (
+    <Box sx={{ height: { md: 'calc(100vh - 120px)' }, display: 'flex', flexDirection: 'column', gap: 4 }}>
+      {successMsg && <Alert severity="success" onClose={() => setSuccessMsg('')}>{successMsg}</Alert>}
+      {errorMsg && <Alert severity="error" onClose={() => setErrorMsg('')}>{errorMsg}</Alert>}
+
+      {/* 큰 숫자 요약 + 테이블 관리 */}
+      <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'flex-end' }} gap={3}>
+        <Box>
+          <Typography color="text.secondary" fontSize={15} mb={1}>사용 중인 테이블</Typography>
+          <Typography fontSize={{ xs: 30, md: 36 }} fontWeight={700} lineHeight={1.2}>
+            {occupiedCount}<Box component="span" color="text.secondary" fontSize={{ xs: 22, md: 26 }} fontWeight={600}> / {tables.length}개</Box>
+          </Typography>
+        </Box>
+        <Stack direction="row" gap={1.5}>
+          <Button variant="outlined" startIcon={<IconifyIcon icon="mingcute:add-line" />} onClick={addTable}>
             테이블 추가
           </Button>
-          <Button variant="contained" size="small" startIcon={<IconifyIcon icon="mingcute:save-2-line" />} onClick={saveLayout} disabled={!storeId || savingLayout}>
+          <Button startIcon={<IconifyIcon icon="mingcute:save-2-line" />} onClick={saveLayout} disabled={!storeId || savingLayout}>
             {savingLayout ? '저장 중…' : '배치 저장'}
           </Button>
         </Stack>
       </Stack>
 
-      <Box sx={{ display: 'flex', gap: 2, flex: 1, minHeight: 0 }}>
-        {/* ── 플로어 플랜 ── */}
+      <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 4, flex: 1, minHeight: 0 }}>
+        {/* ── 매장 배치도 ── */}
         <Paper
           ref={canvasRef}
           onMouseMove={onCanvasMouseMove}
           onMouseUp={onCanvasMouseUp}
           onMouseLeave={onCanvasMouseUp}
-          elevation={0}
           sx={{
             flex: '1 1 0',
+            minHeight: { xs: 420, md: 0 },
             position: 'relative',
             overflow: 'hidden',
-            bgcolor: alpha(theme.palette.primary.main, 0.02),
-            border: `2px dashed ${theme.palette.divider}`,
-            borderRadius: 3,
             userSelect: 'none',
+            // 바닥 격자 점
+            backgroundImage: `radial-gradient(${theme.palette.divider} 1px, transparent 1px)`,
+            backgroundSize: '20px 20px',
           }}
         >
-          <Typography variant="caption" color="text.disabled" sx={{ position: 'absolute', top: 14, left: 16 }}>
-            드래그로 테이블 이동 · 우하단 핸들로 크기 조절
-          </Typography>
+          <Stack direction="row" gap={3} sx={{ position: 'absolute', top: 16, left: 20 }}>
+            {[
+              { label: '빈 자리', color: theme.palette.text.disabled },
+              { label: '사용 중', color: theme.palette.primary.main },
+            ].map(l => (
+              <Stack key={l.label} direction="row" alignItems="center" gap={1}>
+                <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: l.color }} />
+                <Typography variant="body2" color="text.secondary">{l.label}</Typography>
+              </Stack>
+            ))}
+            <Typography variant="body2" color="text.disabled">끌어서 옮기기 · 오른쪽 아래 모서리로 크기 조절</Typography>
+          </Stack>
 
           {tables.map(table => {
             const isSelected = selected === table.id;
-            const color = isSelected
-              ? theme.palette.primary.main
-              : table.status === 'occupied'
-                ? theme.palette.warning.main
-                : theme.palette.success.main;
+            const occupied = table.status === 'occupied';
+            const total = tableTotal(table);
 
             return (
               <Box
@@ -282,65 +295,63 @@ const POS = ({ user }: any) => {
                   top: table.y,
                   width: table.w,
                   height: table.h,
-                  borderRadius: 2,
-                  bgcolor: alpha(color, isSelected ? 0.18 : 0.1),
-                  border: `2px solid ${color}`,
+                  borderRadius: 4,
+                  bgcolor: occupied ? 'primary.light' : 'background.paper',
+                  border: `${isSelected ? 2 : 1.5}px solid ${isSelected || occupied ? theme.palette.primary.main : theme.palette.divider}`,
+                  boxShadow: isSelected ? `0 8px 20px ${alpha(theme.palette.primary.main, 0.18)}` : '0 1px 3px rgba(0,0,0,0.05)',
                   cursor: 'grab',
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: 0.3,
-                  transition: 'border-color 0.15s, background-color 0.15s',
-                  boxShadow: isSelected ? `0 0 0 3px ${alpha(color, 0.2)}` : 'none',
+                  gap: 0.25,
+                  transition: 'border-color 0.15s, background-color 0.15s, box-shadow 0.15s',
                   '&:active': { cursor: 'grabbing' },
+                  '&:hover .table-remove': { opacity: 1 },
                 }}
               >
-                <Typography fontWeight={700} fontSize={13} lineHeight={1}>{table.name}</Typography>
-                <Chip
-                  size="small"
-                  label={table.status === 'occupied' ? '사용 중' : '빈 자리'}
-                  sx={{
-                    height: 16, fontSize: 9, fontWeight: 700,
-                    bgcolor: alpha(color, 0.2), color,
-                    '& .MuiChip-label': { px: 0.8 },
-                  }}
-                />
-                <Typography fontSize={11} fontWeight={600} lineHeight={1} color={table.guests > table.seats ? 'error.main' : 'text.secondary'}>
-                  {table.guests > 0 ? `착석 ${table.guests}/${table.seats}명` : `${table.seats}인석`}
+                <Typography fontWeight={700} fontSize={15} lineHeight={1.2} color={occupied ? 'primary.main' : 'text.primary'}>
+                  {table.name}
                 </Typography>
-                {table.orders.length > 0 && (
-                  <Typography fontSize={10} color="text.secondary" lineHeight={1}>
-                    {table.orders.reduce((s, o) => s + o.qty, 0)}개 주문
+                <Typography fontSize={12} lineHeight={1.3} color={table.guests > table.seats ? 'error.main' : 'text.secondary'}>
+                  {table.guests > 0 ? `${table.guests}/${table.seats}명` : `${table.seats}인석`}
+                </Typography>
+                {total > 0 && (
+                  <Typography fontSize={13} fontWeight={700} lineHeight={1.3} color="text.primary">
+                    ₩{total.toLocaleString()}
                   </Typography>
                 )}
 
-                {/* 삭제 버튼 */}
+                {/* 삭제 (마우스를 올렸을 때만) */}
                 <IconButton
+                  className="table-remove"
                   size="small"
+                  aria-label={`${table.name} 테이블 삭제`}
                   onMouseDown={e => e.stopPropagation()}
                   onClick={e => removeTable(e, table.id)}
                   sx={{
-                    position: 'absolute', top: -8, right: -8,
-                    width: 20, height: 20,
+                    position: 'absolute', top: -9, right: -9,
+                    width: 22, height: 22, opacity: isSelected ? 1 : 0,
                     bgcolor: 'background.paper',
                     border: `1px solid ${theme.palette.divider}`,
-                    '&:hover': { bgcolor: 'error.light', color: 'white' },
+                    transition: 'opacity 0.15s',
+                    '&:hover': { bgcolor: 'error.main', color: 'common.white', borderColor: 'error.main' },
                   }}
                 >
-                  <IconifyIcon icon="mingcute:close-line" width={10} />
+                  <IconifyIcon icon="mingcute:close-line" width={12} />
                 </IconButton>
 
-                {/* 리사이즈 핸들 */}
+                {/* 크기 조절 핸들 */}
                 <Box
                   onMouseDown={e => onResizeMouseDown(e, table.id)}
                   sx={{
-                    position: 'absolute', bottom: 2, right: 2,
+                    position: 'absolute', bottom: 4, right: 4,
                     width: 10, height: 10,
                     cursor: 'se-resize',
-                    bgcolor: color,
-                    borderRadius: '2px 0 2px 0',
-                    opacity: 0.5,
+                    borderRight: `2px solid ${theme.palette.text.disabled}`,
+                    borderBottom: `2px solid ${theme.palette.text.disabled}`,
+                    borderBottomRightRadius: 3,
+                    opacity: 0.6,
                     '&:hover': { opacity: 1 },
                   }}
                 />
@@ -350,60 +361,45 @@ const POS = ({ user }: any) => {
         </Paper>
 
         {/* ── 주문 패널 ── */}
-        <Paper
-          elevation={0}
-          sx={{
-            width: 320,
-            flexShrink: 0,
-            display: 'flex',
-            flexDirection: 'column',
-            borderRadius: 3,
-            border: `1px solid ${theme.palette.divider}`,
-            overflow: 'hidden',
-          }}
-        >
+        <Paper sx={{ width: { xs: '100%', md: 380 }, flexShrink: 0, overflow: 'hidden' }}>
           {!selectedTable ? (
-            <Box display="flex" alignItems="center" justifyContent="center" flex={1}>
-              <Stack alignItems="center" gap={2} p={4}>
-                <Box sx={{ p: 3, borderRadius: '50%', bgcolor: alpha(theme.palette.primary.main, 0.08) }}>
-                  <IconifyIcon icon="mingcute:table-2-line" width={40} color={theme.palette.primary.main} />
-                </Box>
-                <Typography color="text.secondary" textAlign="center">
-                  테이블을 선택하면<br />주문 패널이 열립니다
-                </Typography>
-              </Stack>
-            </Box>
+            <Stack alignItems="center" justifyContent="center" gap={2} sx={{ flex: 1, p: 6, minHeight: 240 }}>
+              <Box sx={{ width: 64, height: 64, borderRadius: '50%', bgcolor: 'primary.light', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <IconifyIcon icon="mingcute:table-2-line" width={32} color={theme.palette.primary.main} />
+              </Box>
+              <Typography color="text.secondary" textAlign="center" fontSize={15}>
+                테이블을 누르면<br />주문을 받을 수 있어요
+              </Typography>
+            </Stack>
           ) : (
             <>
               {/* 헤더 */}
-              <Box sx={{ p: 2, bgcolor: 'primary.dark', color: 'white' }}>
-                <Stack direction="row" justifyContent="space-between" alignItems="center">
-                  <Box>
-                    <Typography fontWeight={800} variant="h6" lineHeight={1}>{selectedTable.name} 테이블</Typography>
-                    <Typography variant="caption" sx={{ opacity: 0.75 }}>
-                      {selectedTable.status === 'occupied' ? '주문 진행 중' : '주문 대기'}
-                    </Typography>
-                  </Box>
-                  <IconButton size="small" onClick={() => setSelected(null)} sx={{ color: 'white' }}>
-                    <IconifyIcon icon="mingcute:close-line" width={18} />
-                  </IconButton>
-                </Stack>
-              </Box>
+              <Stack direction="row" justifyContent="space-between" alignItems="flex-start" sx={{ px: 5, pt: 5, pb: 3 }}>
+                <Box>
+                  <Typography fontSize={22} fontWeight={700} lineHeight={1.3}>{selectedTable.name} 테이블</Typography>
+                  <Typography variant="body2" color={selectedTable.status === 'occupied' ? 'primary.main' : 'text.secondary'}>
+                    {selectedTable.status === 'occupied' ? '주문 진행 중' : '주문 대기'}
+                  </Typography>
+                </Box>
+                <IconButton size="small" aria-label="주문 패널 닫기" onClick={() => setSelected(null)}>
+                  <IconifyIcon icon="mingcute:close-line" width={20} />
+                </IconButton>
+              </Stack>
 
-              {/* 좌석 수 · 착석 인원 */}
-              <Stack direction="row" gap={1.5} sx={{ p: 1.5, borderBottom: `1px solid ${theme.palette.divider}` }}>
+              {/* 착석 인원 · 좌석 수 */}
+              <Stack direction="row" gap={2} sx={{ px: 5, pb: 3 }}>
                 {([
                   { key: 'guests', label: '착석 인원', min: 0 },
                   { key: 'seats', label: '좌석 수', min: 1 },
                 ] as const).map(({ key, label, min }) => (
-                  <Box key={key} sx={{ flex: 1 }}>
-                    <Typography variant="caption" fontWeight={700} color="text.secondary">{label}</Typography>
-                    <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mt: 0.5, px: 0.5, borderRadius: 1.5, border: `1px solid ${theme.palette.divider}` }}>
+                  <Box key={key} sx={{ flex: 1, bgcolor: 'background.default', borderRadius: 3, px: 2, py: 1.5 }}>
+                    <Typography variant="body2" color="text.secondary">{label}</Typography>
+                    <Stack direction="row" alignItems="center" justifyContent="space-between">
                       <IconButton size="small" aria-label={`${label} 줄이기`} disabled={selectedTable[key] <= min}
                         onClick={() => updateSelected({ [key]: selectedTable[key] - 1 })}>
-                        <IconifyIcon icon="mingcute:minus-line" width={16} />
+                        <IconifyIcon icon="mingcute:minimize-line" width={16} />
                       </IconButton>
-                      <Typography fontWeight={800} color={key === 'guests' && selectedTable.guests > selectedTable.seats ? 'error.main' : 'text.primary'}>
+                      <Typography fontWeight={700} fontSize={17} color={key === 'guests' && selectedTable.guests > selectedTable.seats ? 'error.main' : 'text.primary'}>
                         {selectedTable[key]}명
                       </Typography>
                       <IconButton size="small" aria-label={`${label} 늘리기`} onClick={() => updateSelected({ [key]: selectedTable[key] + 1 })}>
@@ -414,94 +410,83 @@ const POS = ({ user }: any) => {
                 ))}
               </Stack>
               {selectedTable.guests > selectedTable.seats && (
-                <Alert severity="warning" sx={{ mx: 1.5, mt: 1, py: 0 }}>착석 인원이 좌석 수보다 많습니다.</Alert>
+                <Alert severity="warning" sx={{ mx: 5, mb: 2, py: 0 }}>착석 인원이 좌석 수보다 많습니다.</Alert>
               )}
 
-              {/* 메뉴 목록 */}
-              <Box sx={{ p: 1.5, borderBottom: `1px solid ${theme.palette.divider}` }}>
-                <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ px: 0.5, display: 'block', mb: 1 }}>
-                  메뉴 추가
-                </Typography>
-                <Stack gap={0.5} sx={{ maxHeight: 180, overflowY: 'auto' }}>
-                  {menus.length === 0 ? (
-                    <Typography variant="body2" color="text.disabled" p={1}>등록된 메뉴 없음</Typography>
-                  ) : menus.map(menu => (
-                    <Stack
-                      key={menu.id}
-                      direction="row"
-                      alignItems="center"
-                      justifyContent="space-between"
-                      onClick={() => addToOrder(menu)}
-                      sx={{
-                        p: 1.2, borderRadius: 2,
-                        border: `1px solid ${theme.palette.divider}`,
-                        cursor: 'pointer',
-                        '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.06), borderColor: theme.palette.primary.light },
-                      }}
-                    >
-                      <Box>
-                        <Typography variant="body2" fontWeight={600} lineHeight={1.2}>{menu.menuName}</Typography>
-                        {discountOf(menu.id) ? (
-                          <Typography variant="caption" color="error.main" fontWeight={700}>
-                            <s style={{ color: '#999', fontWeight: 400 }}>₩{menu.price?.toLocaleString()}</s> ₩{discountOf(menu.id)!.discountedPrice.toLocaleString()} ({discountOf(menu.id)!.discountPct}%)
-                          </Typography>
-                        ) : (
-                          <Typography variant="caption" color="text.secondary">₩{menu.price?.toLocaleString()}</Typography>
-                        )}
-                      </Box>
-                      <IconifyIcon icon="mingcute:add-circle-line" color={theme.palette.primary.main} width={22} />
-                    </Stack>
-                  ))}
-                </Stack>
-              </Box>
-
-              {/* 주문 내역 */}
-              <Box sx={{ flex: 1, overflowY: 'auto', p: 1.5 }}>
-                <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ px: 0.5, display: 'block', mb: 1 }}>
-                  주문 내역
-                </Typography>
-                {selectedTable.orders.length === 0 ? (
-                  <Typography variant="body2" color="text.disabled" p={1}>주문 내역 없음</Typography>
+              {/* 메뉴 (누르면 담김) */}
+              <Box sx={{ px: 5, pb: 3 }}>
+                {sectionLabel('메뉴')}
+                {menus.length === 0 ? (
+                  <Typography variant="body2" color="text.disabled">등록된 메뉴가 없어요</Typography>
                 ) : (
-                  <Stack gap={0.5}>
-                    {selectedTable.orders.map(o => (
-                      <Stack key={o.menuId} direction="row" alignItems="center" justifyContent="space-between"
-                        sx={{ p: 1, borderRadius: 1.5, bgcolor: alpha(theme.palette.primary.main, 0.04) }}
-                      >
-                        <Typography variant="body2" fontWeight={600} sx={{ flex: 1 }}>{o.menuName}</Typography>
-                        <Stack direction="row" alignItems="center" gap={0.5}>
-                          <IconButton size="small" onClick={() => changeQty(o.menuId, -1)} sx={{ width: 22, height: 22 }}>
-                            <IconifyIcon icon="mingcute:minus-line" width={14} />
-                          </IconButton>
-                          <Typography variant="body2" fontWeight={800} sx={{ minWidth: 20, textAlign: 'center' }}>{o.qty}</Typography>
-                          <IconButton size="small" onClick={() => changeQty(o.menuId, 1)} sx={{ width: 22, height: 22 }}>
-                            <IconifyIcon icon="mingcute:add-line" width={14} />
-                          </IconButton>
-                        </Stack>
-                        <Typography variant="body2" color="primary.main" fontWeight={700} sx={{ minWidth: 70, textAlign: 'right' }}>
-                          ₩{(o.price * o.qty).toLocaleString()}
-                        </Typography>
-                      </Stack>
-                    ))}
-                  </Stack>
+                  <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 1.5, maxHeight: 200, overflowY: 'auto' }}>
+                    {menus.map(menu => {
+                      const d = discountOf(menu.id);
+                      return (
+                        <Box
+                          key={menu.id}
+                          onClick={() => addToOrder(menu)}
+                          sx={{
+                            p: 2.5, borderRadius: 3, cursor: 'pointer', position: 'relative',
+                            bgcolor: 'background.default', transition: 'background-color 0.15s',
+                            '&:hover': { bgcolor: 'primary.light' }, '&:active': { transform: 'scale(0.98)' },
+                          }}
+                        >
+                          <Typography fontWeight={600} fontSize={14} lineHeight={1.3} noWrap>{menu.menuName}</Typography>
+                          {d ? (
+                            <Typography fontSize={13} fontWeight={700} color="error.main">
+                              ₩{d.discountedPrice.toLocaleString()} <Box component="span" fontWeight={500}>{d.discountPct}%</Box>
+                            </Typography>
+                          ) : (
+                            <Typography fontSize={13} color="text.secondary">₩{menu.price?.toLocaleString()}</Typography>
+                          )}
+                        </Box>
+                      );
+                    })}
+                  </Box>
                 )}
               </Box>
 
-              {/* 결제 영역 */}
-              <Box sx={{ p: 2, borderTop: `1px solid ${theme.palette.divider}` }}>
-                <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1.5}>
-                  <Typography fontWeight={700}>합계</Typography>
-                  <Typography variant="h6" fontWeight={900} color="primary.main">
-                    ₩{totalPrice.toLocaleString()}
-                  </Typography>
+              {/* 주문 내역 */}
+              <Box sx={{ flex: 1, overflowY: 'auto', px: 5, pb: 2, borderTop: `1px solid ${theme.palette.divider}`, pt: 3 }}>
+                {sectionLabel('주문 내역')}
+                {selectedTable.orders.length === 0 ? (
+                  <Typography variant="body2" color="text.disabled">메뉴를 누르면 여기에 담겨요</Typography>
+                ) : selectedTable.orders.map(o => (
+                  <Stack key={o.menuId} direction="row" alignItems="center" gap={1.5} sx={{ py: 1.5 }}>
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                      <Typography fontWeight={600} fontSize={15} noWrap>{o.menuName}</Typography>
+                      {o.discountPct ? <Typography variant="body2" color="error.main">{o.discountPct}% 할인</Typography> : null}
+                    </Box>
+                    <Stack direction="row" alignItems="center" sx={{ bgcolor: 'background.default', borderRadius: 999 }}>
+                      <IconButton size="small" aria-label={`${o.menuName} 하나 빼기`} onClick={() => changeQty(o.menuId, -1)}>
+                        <IconifyIcon icon="mingcute:minimize-line" width={14} />
+                      </IconButton>
+                      <Typography fontWeight={700} fontSize={14} sx={{ minWidth: 18, textAlign: 'center' }}>{o.qty}</Typography>
+                      <IconButton size="small" aria-label={`${o.menuName} 하나 더`} onClick={() => changeQty(o.menuId, 1)}>
+                        <IconifyIcon icon="mingcute:add-line" width={14} />
+                      </IconButton>
+                    </Stack>
+                    <Typography fontWeight={700} fontSize={15} sx={{ minWidth: 76, textAlign: 'right' }}>
+                      ₩{(o.price * o.qty).toLocaleString()}
+                    </Typography>
+                  </Stack>
+                ))}
+              </Box>
+
+              {/* 결제 */}
+              <Box sx={{ px: 5, py: 4, borderTop: `1px solid ${theme.palette.divider}` }}>
+                <Stack direction="row" justifyContent="space-between" alignItems="baseline" mb={3}>
+                  <Typography color="text.secondary" fontSize={15}>합계</Typography>
+                  <Typography fontSize={26} fontWeight={700}>₩{totalPrice.toLocaleString()}</Typography>
                 </Stack>
                 <Button
-                  fullWidth variant="contained" size="large"
+                  fullWidth size="large"
                   disabled={selectedTable.orders.length === 0 || paying}
                   onClick={handlePay}
-                  sx={{ borderRadius: 2, fontWeight: 700, py: 1.5, fontSize: 16 }}
+                  sx={{ py: 2, fontSize: 16 }}
                 >
-                  {paying ? <CircularProgress size={22} color="inherit" /> : '결제하기'}
+                  {paying ? <CircularProgress size={22} color="inherit" /> : `₩${totalPrice.toLocaleString()} 결제하기`}
                 </Button>
               </Box>
             </>
@@ -509,45 +494,44 @@ const POS = ({ user }: any) => {
         </Paper>
       </Box>
 
-      {/* ── 영수증 다이얼로그 ── */}
+      {/* ── 영수증 ── */}
       <Dialog open={receiptOpen} onClose={handleReceiptClose} maxWidth="xs" fullWidth>
-        <DialogTitle>
-          <Stack direction="row" alignItems="center" gap={1}>
-            <Box sx={{ p: 1, borderRadius: '50%', bgcolor: alpha(theme.palette.success.main, 0.12) }}>
-              <IconifyIcon icon="mingcute:check-circle-fill" color={theme.palette.success.main} width={24} />
-            </Box>
-            결제 완료
-          </Stack>
-        </DialogTitle>
-        <DialogContent>
-          {receipt && (
-            <Box sx={{ p: 2, bgcolor: 'grey.50', borderRadius: 2, fontFamily: 'monospace' }}>
-              <Typography variant="body2" textAlign="center" fontWeight={700} mb={0.5}>FoodGuard</Typography>
-              <Typography variant="caption" color="text.secondary" display="block" textAlign="center" mb={1}>
+        <DialogContent sx={{ pt: 6 }}>
+          <Stack alignItems="center" gap={1.5} mb={4}>
+            <IconifyIcon icon="mingcute:check-circle-fill" color={theme.palette.success.main} width={48} />
+            <Typography fontSize={20} fontWeight={700}>결제 완료</Typography>
+            {receipt && (
+              <Typography variant="body2" color="text.secondary">
                 {new Date().toLocaleString('ko-KR')} · {receipt.tableName} 테이블
               </Typography>
-              <Divider sx={{ mb: 1.5, borderStyle: 'dashed' }} />
-              <Stack gap={0.5} mb={1.5}>
+            )}
+          </Stack>
+          {receipt && (
+            <Box sx={{ p: 4, bgcolor: 'background.default', borderRadius: 3 }}>
+              <Stack gap={1.5} mb={2}>
                 {receipt.orders.map(o => (
                   <Stack key={o.menuId} direction="row" justifyContent="space-between">
-                    <Typography variant="body2">{o.menuName} × {o.qty}</Typography>
-                    <Typography variant="body2">₩{(o.price * o.qty).toLocaleString()}</Typography>
+                    <Typography fontSize={15}>
+                      {o.menuName} × {o.qty}
+                      {o.discountPct ? <Box component="span" color="error.main" fontSize={13}> {o.discountPct}%</Box> : null}
+                    </Typography>
+                    <Typography fontSize={15}>₩{(o.price * o.qty).toLocaleString()}</Typography>
                   </Stack>
                 ))}
               </Stack>
-              <Divider sx={{ mb: 1.5, borderStyle: 'dashed' }} />
-              <Stack direction="row" justifyContent="space-between">
-                <Typography fontWeight={800}>합 계</Typography>
-                <Typography fontWeight={800} color="primary.main">₩{receipt.total.toLocaleString()}</Typography>
+              <Divider sx={{ mb: 2 }} />
+              <Stack direction="row" justifyContent="space-between" alignItems="baseline">
+                <Typography fontWeight={700}>합계</Typography>
+                <Typography fontSize={22} fontWeight={700}>₩{receipt.total.toLocaleString()}</Typography>
               </Stack>
             </Box>
           )}
-          <Typography variant="caption" color="text.secondary" display="block" textAlign="center" mt={2}>
-            판매 실적이 자동 기록되었습니다.
+          <Typography variant="body2" color="text.secondary" display="block" textAlign="center" mt={3}>
+            판매 실적이 자동으로 기록됐어요.
           </Typography>
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={handleReceiptClose} variant="contained" fullWidth size="large" sx={{ borderRadius: 2 }}>
+        <DialogActions sx={{ px: 5, pb: 5 }}>
+          <Button onClick={handleReceiptClose} fullWidth size="large">
             확인
           </Button>
         </DialogActions>
