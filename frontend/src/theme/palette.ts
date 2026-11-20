@@ -10,9 +10,9 @@ export const palette: PaletteOptions = {
     contrastText: '#FFFFFF',
   },
   secondary: {
-    light: '#ECF3E7',
-    main: '#3B6D11', // Forest Green
-    dark: '#2A4E0C',
+    light: '#E8EBF5',
+    main: '#2D3A6E', // Navy (공공 포털형 시안의 보조색)
+    dark: '#1F2B5B',
     contrastText: '#FFFFFF',
   },
   info: {

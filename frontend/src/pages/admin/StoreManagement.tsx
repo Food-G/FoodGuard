@@ -452,7 +452,7 @@ const StoreManagement = () => {
         {/* 왼쪽: 가맹점 목록 */}
         <Grid item xs={12} md={4}>
           <Paper sx={{
-            border: `1px solid ${theme.palette.divider}`, borderRadius: 3,
+            border: `1px solid ${theme.palette.divider}`, borderRadius: '10px',
             height: 600, overflow: 'hidden', display: 'flex', flexDirection: 'column',
           }}>
             <Box sx={{ px: 2.5, py: 2, borderBottom: `1px solid ${theme.palette.divider}` }}>
@@ -531,7 +531,7 @@ const StoreManagement = () => {
         <Grid item xs={12} md={8}>
           {!selectedStore ? (
             <Paper sx={{
-              border: `1px solid ${theme.palette.divider}`, borderRadius: 3, height: 600,
+              border: `1px solid ${theme.palette.divider}`, borderRadius: '10px', height: 600,
               display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: 2,
             }}>
               <Box sx={{ p: 3, borderRadius: '50%', bgcolor: 'action.hover', display: 'flex' }}>
@@ -541,7 +541,7 @@ const StoreManagement = () => {
               <Typography variant="caption" color="text.disabled">왼쪽 목록에서 가맹점을 클릭하세요</Typography>
             </Paper>
           ) : (
-            <Paper sx={{ border: `1px solid ${theme.palette.divider}`, borderRadius: 3, height: 600, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <Paper sx={{ border: `1px solid ${theme.palette.divider}`, borderRadius: '10px', height: 600, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
               {/* 헤더 */}
               <Box sx={{ px: 3, pt: 2.5 }}>
                 <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
@@ -616,11 +616,11 @@ const StoreManagement = () => {
                           <Button variant="contained" fullWidth size="large" onClick={handleEditSubmit}
                             disabled={editSubmitting}
                             startIcon={editSubmitting ? <CircularProgress size={18} color="inherit" /> : null}
-                            sx={{ borderRadius: 3, py: 1.5 }}>
+                            sx={{ borderRadius: '10px', py: 1.5 }}>
                             {editSubmitting ? '저장 중...' : '저장'}
                           </Button>
                           <Button variant="outlined" size="large" onClick={() => setEditMode(false)}
-                            sx={{ borderRadius: 3, py: 1.5, minWidth: 80 }}>
+                            sx={{ borderRadius: '10px', py: 1.5, minWidth: 80 }}>
                             취소
                           </Button>
                         </Stack>
@@ -642,7 +642,7 @@ const StoreManagement = () => {
                         <Button
                           variant="contained" fullWidth size="large"
                           startIcon={<IconifyIcon icon="mingcute:chart-bar-fill" width={20} />}
-                          sx={{ borderRadius: 3, py: 1.5 }}
+                          sx={{ borderRadius: '10px', py: 1.5 }}
                           onClick={() => navigate(`/admin/stats?storeId=${selectedStore.id}&storeName=${encodeURIComponent(selectedStore.storeName)}`)}
                         >
                           매출 통계 보기

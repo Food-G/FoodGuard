@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import {
   Typography, Paper, Grid, Stack, useTheme,
   Button, CircularProgress, Alert, Chip,
@@ -117,13 +117,33 @@ const Predictions = ({ user }: any) => {
       color: menuColorMap[name],
       data: (summary?.byMenu[name] ?? []).map((p) => p.predictedQty),
       emphasis: { focus: 'series' },
+      triggerLineEvent: true, // 점뿐 아니라 선 위에서도 강조·툴팁 대상이 되게
       z: isSelected ? 10 : 1,
     };
   });
 
+  // 선에 마우스를 올리면 그 메뉴만 강조되므로, 툴팁도 그 메뉴 한 줄만 보여준다
+  const hoveredMenu = useRef<string | null>(null);
+  const chartEvents = useMemo(() => ({
+    mouseover: (e: any) => { if (e.componentType === 'series') hoveredMenu.current = e.seriesName; },
+    mouseout: () => { hoveredMenu.current = null; },
+    globalout: () => { hoveredMenu.current = null; },
+  }), []);
+
   const chartOption = {
     color: CHART_COLORS,
-    tooltip: { trigger: 'axis', axisPointer: { type: 'cross', crossStyle: { color: theme.palette.divider } } },
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'cross', crossStyle: { color: theme.palette.divider } },
+      formatter: (params: any[]) => {
+        const focus = hoveredMenu.current ?? chartMenu;
+        const rows = focus ? params.filter((p) => p.seriesName === focus) : params;
+        const head = params[0]?.axisValueLabel ?? '';
+        return [`<div style="font-weight:700;margin-bottom:4px">${head}</div>`,
+          ...rows.map((p) => `<div style="display:flex;align-items:center;gap:6px">${p.marker}<span style="flex:1">${p.seriesName}</span><b style="margin-left:12px">${p.value ?? '-'}</b></div>`),
+        ].join('');
+      },
+    },
     legend: { data: menuNames, textStyle: { color: theme.palette.text.secondary }, bottom: 0, type: 'scroll' },
     grid: { top: '8%', left: '3%', right: '4%', bottom: '18%', containLabel: true },
     xAxis: {
@@ -252,7 +272,7 @@ const Predictions = ({ user }: any) => {
             })()}
 
             {predictions.length > 0 ? (
-              <ReactEChart option={chartOption} echarts={echarts} sx={{ height: 380 }} />
+              <ReactEChart option={chartOption} echarts={echarts} onEvents={chartEvents} sx={{ height: 380 }} />
             ) : (
               <Stack alignItems="center" justifyContent="center" height={300} gap={2}>
                 <Typography color="text.secondary" variant="body1">예측 데이터가 없습니다.</Typography>
@@ -364,9 +384,9 @@ const Predictions = ({ user }: any) => {
                               variant="determinate"
                               value={p.confidence}
                               sx={{
-                                width: 80, height: 6, borderRadius: 3,
+                                width: 80, height: 6, borderRadius: '10px',
                                 bgcolor: theme.palette.action.hover,
-                                '& .MuiLinearProgress-bar': { bgcolor: confColor(p.confidence), borderRadius: 3 },
+                                '& .MuiLinearProgress-bar': { bgcolor: confColor(p.confidence), borderRadius: '10px' },
                               }}
                             />
                             <Typography variant="caption" fontWeight={700} sx={{ color: confColor(p.confidence), minWidth: 40 }}>

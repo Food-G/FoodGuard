@@ -7,6 +7,10 @@ const Chip: Components<Omit<Theme, 'components'>>['MuiChip'] = {
     size: 'small',
   },
   styleOverrides: {
+    // 기본색 외곽선 칩은 검은 테두리 대신 연회색
+    outlined: ({ ownerState, theme }) => (ownerState.color === 'default' || !ownerState.color
+      ? { borderColor: '#D5D9E2', color: theme.palette.text.secondary }
+      : {}),
     root: ({ theme }) => ({
       paddingTop: theme.spacing(1.25),
       paddingBottom: theme.spacing(1.25),

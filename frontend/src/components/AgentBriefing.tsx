@@ -17,49 +17,71 @@ import {
 // 실패를 null 로 바꾼다. 카드는 null 을 "확인 불가"로 보여준다
 const orNull = <T,>(p: Promise<T>): Promise<T | null> => p.catch(() => null);
 
-const CARD_ICON: Record<string, string> = {
+export const CARD_ICON: Record<string, string> = {
   '발주안': 'mingcute:refresh-2-line',
   '폐기 위험': 'mingcute:delete-2-line',
   '예측 건강도': 'mingcute:brain-fill',
   '데이터·입고 이슈': 'mingcute:alert-line',
 };
 
+// 상태별 파스텔 배너 카드 (메인 화면 배너 카드와 같은 형태)
+export const TONE: Record<Tone, { label: string; color: string; bg: string }> = {
+  attention: { label: '확인 필요', color: '#E0803D', bg: '#FDF3EA' },
+  ok: { label: '양호', color: '#1D9E75', bg: '#E9F6F1' },
+  unknown: { label: '정보 없음', color: '#8A90A6', bg: '#F4F6F9' },
+};
+
 const Card = ({ card }: { card: BriefingCard }) => {
-  const theme = useTheme();
   const navigate = useNavigate();
-  const color: Record<Tone, string> = {
-    attention: theme.palette.warning.main, ok: theme.palette.success.main, unknown: theme.palette.text.disabled,
-  };
-  const label: Record<Tone, string> = { attention: '확인 필요', ok: '양호', unknown: '정보 없음' };
+  const t = TONE[card.tone];
   return (
-    <Paper elevation={0} onClick={() => navigate(card.to)} role="link" tabIndex={0}
+    <Stack direction="row" gap={1.5} onClick={() => navigate(card.to)} role="link" tabIndex={0}
       onKeyDown={(e) => { if (e.key === 'Enter') navigate(card.to); }}
       sx={{
-        p: 2, borderRadius: 3, minWidth: 0, cursor: 'pointer', border: `1px solid ${theme.palette.divider}`,
-        borderLeft: `5px solid ${color[card.tone]}`, '&:hover': { bgcolor: 'action.hover' },
+        p: 2.5, borderRadius: '10px', minWidth: 0, height: 1, cursor: 'pointer', bgcolor: t.bg, position: 'relative',
+        transition: 'transform .2s, box-shadow .2s',
+        '&:hover': { transform: 'translateY(-3px)', boxShadow: `0 14px 28px ${alpha(t.color, 0.18)}` },
       }}>
-      <Stack direction="row" alignItems="center" gap={1} mb={0.5}>
-        <IconifyIcon icon={CARD_ICON[card.title]} width={18} color={color[card.tone]} />
-        <Typography variant="caption" color="text.secondary" fontWeight={700} flex={1} noWrap>{card.title}</Typography>
-        <Typography variant="caption" sx={{ color: color[card.tone], fontWeight: 700, whiteSpace: 'nowrap' }}>{label[card.tone]}</Typography>
-      </Stack>
-      <Typography variant="h6" fontWeight={800} lineHeight={1.2}>{card.value}</Typography>
-      <Typography variant="caption" color="text.secondary" display="block" mt={0.5}>{card.sub}</Typography>
-    </Paper>
+      <Box flex={1} minWidth={0} display="flex" flexDirection="column">
+        <Stack direction="row" alignItems="center" gap={0.8}>
+          <Typography fontWeight={800} fontSize={15} noWrap>{card.title}</Typography>
+          <Box sx={{ px: 0.9, py: 0.15, borderRadius: 9, bgcolor: 'common.white', color: t.color, fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' }}>
+            {t.label}
+          </Box>
+        </Stack>
+        <Typography fontWeight={900} fontSize={20} lineHeight={1.25} mt={1}>{card.value}</Typography>
+        <Typography fontSize={12.5} color="text.secondary" mt={0.6} sx={{ wordBreak: 'keep-all' }}>{card.sub}</Typography>
+        <Stack direction="row" alignItems="center" gap={0.5} sx={{
+          mt: 'auto', pt: 2, width: 'fit-content', fontSize: 12, fontWeight: 700, color: t.color,
+        }}>
+          자세히 보기 <IconifyIcon icon="mingcute:right-line" width={13} />
+        </Stack>
+      </Box>
+      <Box sx={{
+        width: 46, height: 46, flexShrink: 0, borderRadius: '10px', bgcolor: 'common.white', color: t.color,
+        display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 8px 18px ${alpha(t.color, 0.2)}`,
+      }}>
+        <IconifyIcon icon={CARD_ICON[card.title]} width={26} />
+      </Box>
+    </Stack>
   );
 };
 
 const Heading = ({ children }: { children: string }) => (
-  <Stack direction="row" alignItems="center" gap={1} mb={1.5}>
-    <IconifyIcon icon="mingcute:robot-line" width={22} />
-    <Typography variant="h6" fontWeight={800}>{children}</Typography>
+  <Stack direction="row" alignItems="center" gap={1} mb={2}>
+    <Box sx={{ width: 32, height: 32, borderRadius: '30%', bgcolor: alpha('#1D9E75', 0.1), color: 'primary.main', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <IconifyIcon icon="mingcute:robot-line" width={20} />
+    </Box>
+    <Typography fontWeight={800} fontSize={18}>{children}</Typography>
   </Stack>
 );
 
-const OwnerBriefing = ({ storeId }: { storeId: number }) => {
+/** 점주 매장의 브리핑 카드 4장 (발주안·폐기 위험·예측 건강도·데이터/입고 이슈). 불러오는 중이면 null */
+export const useOwnerBriefing = (storeId: number | null) => {
   const [cards, setCards] = useState<BriefingCard[] | null>(null);
 
   useEffect(() => {
+    if (!storeId) return;
     let alive = true;
     Promise.all([
       orNull(agentService.getProposals(storeId, 'PENDING')),
@@ -74,11 +96,17 @@ const OwnerBriefing = ({ storeId }: { storeId: number }) => {
     return () => { alive = false; };
   }, [storeId]);
 
+  return cards;
+};
+
+const OwnerBriefing = ({ storeId }: { storeId: number }) => {
+  const cards = useOwnerBriefing(storeId);
+
   return (
     <Box>
       <Heading>오늘의 에이전트 브리핑</Heading>
       {!cards ? <CircularProgress size={24} /> : (
-        <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(4, 1fr)' } }}>
+        <Box sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(4, 1fr)' } }}>
           {cards.map((c) => <Card key={c.title} card={c} />)}
         </Box>
       )}
@@ -86,7 +114,7 @@ const OwnerBriefing = ({ storeId }: { storeId: number }) => {
   );
 };
 
-const HqBriefing = () => {
+export const HqBriefing = () => {
   const theme = useTheme();
   const navigate = useNavigate();
   const [rows, setRows] = useState<StoreRisk[] | null>(null);
@@ -133,7 +161,7 @@ const HqBriefing = () => {
       {failed ? (
         <Typography variant="body2" color="text.secondary">매장 목록을 불러오지 못했습니다.</Typography>
       ) : !rows ? <CircularProgress size={24} /> : (
-        <Paper elevation={0} sx={{ border: `1px solid ${theme.palette.divider}`, borderRadius: 3, overflowX: 'auto' }}>
+        <Paper elevation={0} sx={{ border: `1px solid ${theme.palette.divider}`, borderRadius: '10px', overflowX: 'auto' }}>
           <Table size="small">
             <TableHead>
               <TableRow>

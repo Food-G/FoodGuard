@@ -172,7 +172,7 @@ const WastePrediction = ({ user }: any) => {
 
       {/* 요약 카드 */}
       {!loading && wasteItems.length > 0 && (
-        <Paper sx={{ p: 2.5, border: `1px solid ${theme.palette.error.light}`, borderRadius: 3, bgcolor: 'error.50' }}>
+        <Paper sx={{ p: 2.5, border: `1px solid ${theme.palette.error.light}`, borderRadius: '10px', bgcolor: 'error.50' }}>
           <Stack direction="row" gap={1} alignItems="center" mb={0.5}>
             <IconifyIcon icon="mingcute:alert-fill" color={theme.palette.error.main} width={20} />
             <Typography fontWeight={700} color="error.main">
@@ -185,9 +185,9 @@ const WastePrediction = ({ user }: any) => {
         </Paper>
       )}
 
-      <Paper sx={{ p: 3, border: `1px solid ${theme.palette.divider}`, borderRadius: 3 }}>
+      <Paper sx={{ p: 3, border: `1px solid ${theme.palette.divider}`, borderRadius: '10px' }}>
         <Typography variant="h6" fontWeight={700} mb={2}>식재료별 폐기 예측</Typography>
-        <Box sx={{ height: 480 }}>
+        <Box sx={{ height: !loading && rows.length === 0 ? 240 : 480 }}>
           {loading ? (
             <Stack alignItems="center" justifyContent="center" height="100%">
               <CircularProgress />

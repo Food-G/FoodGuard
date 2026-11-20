@@ -147,13 +147,13 @@ const AdminDashboard = () => {
           <Grid item xs={12} sm={6} lg={3} key={card.label}>
             <Paper
               sx={{
-                p: 3, borderRadius: 4, border: `1px solid ${theme.palette.divider}`, height: 1,
+                p: 3, borderRadius: '10px', border: `1px solid ${theme.palette.divider}`, height: 1,
                 transition: 'transform 0.15s, box-shadow 0.15s',
                 '&:hover': { transform: 'translateY(-3px)', boxShadow: `0 8px 20px -4px ${card.color}25` },
               }}
             >
               <Stack gap={1.5}>
-                <Box sx={{ p: 1.25, borderRadius: 3, bgcolor: `${card.color}15`, color: card.color, width: 'fit-content', display: 'flex' }}>
+                <Box sx={{ p: 1.25, borderRadius: '10px', bgcolor: `${card.color}15`, color: card.color, width: 'fit-content', display: 'flex' }}>
                   <IconifyIcon icon={card.icon} width={26} />
                 </Box>
                 <Box>
@@ -178,7 +178,7 @@ const AdminDashboard = () => {
       {/* Chart + Pending Orders */}
       <Grid container spacing={3.5}>
         <Grid item xs={12} lg={7}>
-          <Paper sx={{ p: 4, borderRadius: 4, border: `1px solid ${theme.palette.divider}`, height: 380 }}>
+          <Paper sx={{ p: 4, borderRadius: '10px', border: `1px solid ${theme.palette.divider}`, height: 380 }}>
             <Typography variant="h6" fontWeight={700} mb={2.5}>이번 주 매출 Top 가맹점</Typography>
             {loading ? (
               <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 290 }}>
@@ -195,7 +195,7 @@ const AdminDashboard = () => {
         </Grid>
 
         <Grid item xs={12} lg={5}>
-          <Paper sx={{ p: 4, borderRadius: 4, border: `1px solid ${theme.palette.divider}`, height: 380 }}>
+          <Paper sx={{ p: 4, borderRadius: '10px', border: `1px solid ${theme.palette.divider}`, height: 380 }}>
             <Typography variant="h6" fontWeight={700} mb={2.5}>승인 대기 발주</Typography>
             {loading ? (
               <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 280 }}>
@@ -259,13 +259,13 @@ const AdminDashboard = () => {
             <Paper
               onClick={() => navigate(m.path)}
               sx={{
-                p: 3.5, borderRadius: 4, border: `1px solid ${theme.palette.divider}`,
+                p: 3.5, borderRadius: '10px', border: `1px solid ${theme.palette.divider}`,
                 cursor: 'pointer', transition: 'transform 0.15s, box-shadow 0.15s',
                 '&:hover': { transform: 'translateY(-4px)', boxShadow: `0 10px 24px -4px ${m.color}30`, borderColor: m.color },
               }}
             >
               <Stack direction="row" alignItems="center" gap={2.5}>
-                <Box sx={{ p: 1.5, borderRadius: 3, bgcolor: `${m.color}15`, color: m.color, display: 'flex', flexShrink: 0 }}>
+                <Box sx={{ p: 1.5, borderRadius: '10px', bgcolor: `${m.color}15`, color: m.color, display: 'flex', flexShrink: 0 }}>
                   <IconifyIcon icon={m.icon} width={28} />
                 </Box>
                 <Box sx={{ flex: 1 }}>

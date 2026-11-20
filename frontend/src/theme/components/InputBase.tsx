@@ -7,7 +7,7 @@ const InputBase: Components<Omit<Theme, 'components'>>['MuiInputBase'] = {
   },
   styleOverrides: {
     root: ({ theme }) => ({
-      borderRadius: theme.shape.borderRadius * 2,
+      borderRadius: theme.shape.borderRadius,
       padding: 0,
     }),
     input: ({ theme }) => ({

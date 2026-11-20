@@ -142,7 +142,7 @@ const SalesStats = ({ user }: { user: any }) => {
       {error && <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>{error}</Alert>}
 
       {/* Filter */}
-      <Paper sx={{ p: 2.5, borderRadius: 3, mb: 3 }}>
+      <Paper sx={{ p: 2.5, borderRadius: '10px', mb: 3 }}>
         <Stack direction={{ xs: 'column', sm: 'row' }} gap={2} alignItems={{ sm: 'center' }} flexWrap="wrap">
           <ToggleButtonGroup
             value={period}
@@ -190,14 +190,14 @@ const SalesStats = ({ user }: { user: any }) => {
           <CircularProgress />
         </Box>
       ) : daySummaries.length === 0 ? (
-        <Paper sx={{ p: 6, textAlign: 'center', borderRadius: 3 }}>
+        <Paper sx={{ p: 6, textAlign: 'center', borderRadius: '10px' }}>
           <IconifyIcon icon="mingcute:calendar-line" width={48} color="text.disabled" />
           <Typography color="text.secondary" mt={2}>선택한 기간에 판매 내역이 없습니다.</Typography>
         </Paper>
       ) : (
         <Stack gap={2}>
           {daySummaries.map(day => (
-            <Paper key={day.date} sx={{ borderRadius: 3, overflow: 'hidden' }}>
+            <Paper key={day.date} sx={{ borderRadius: '10px', overflow: 'hidden' }}>
               {/* Day Header */}
               <Stack
                 direction="row"

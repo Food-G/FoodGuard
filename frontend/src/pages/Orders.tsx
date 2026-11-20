@@ -114,7 +114,7 @@ const Orders = ({ user }: any) => {
             : <IconifyIcon icon="mingcute:sparkles-line" />}
           onClick={handleAutoOrder}
           disabled={ordering}
-          sx={{ px: 3, py: 1.5, borderRadius: 3 }}
+          sx={{ px: 3, py: 1.5, borderRadius: '10px' }}
         >
           {ordering ? '발주 등록 중...' : 'AI 예측 기반 자동 발주'}
         </Button>
@@ -123,7 +123,7 @@ const Orders = ({ user }: any) => {
       <AlertMessages error={error} success={success}
         onClearError={() => setError('')} onClearSuccess={() => setSuccess('')} />
 
-      <Paper sx={{ p: 3, border: `1px solid ${theme.palette.divider}`, borderRadius: 3 }}>
+      <Paper sx={{ p: 3, border: `1px solid ${theme.palette.divider}`, borderRadius: '10px' }}>
         <Stack direction="row" alignItems="center" justifyContent="space-between" mb={2}>
           <Typography variant="h6" fontWeight={700}>발주 내역</Typography>
           <Chip label={`총 ${rows.length}건`} size="small" color="primary" variant="outlined" />

@@ -88,7 +88,7 @@ const DeliveryDriverGroup = () => {
         {scanSuccess && <Alert severity="success" onClose={() => setScanSuccess('')}>{scanSuccess}</Alert>}
 
         {/* 검수 단계 표시 */}
-        <Paper sx={{ p: 2, borderRadius: 3 }}>
+        <Paper sx={{ p: 2, borderRadius: '10px' }}>
           <Typography variant="caption" color="text.secondary" mb={1.5} display="block">검수 책임 흐름</Typography>
           <Stack direction="row" justifyContent="space-between">
             {STAGES.map((label, i) => (
@@ -101,9 +101,9 @@ const DeliveryDriverGroup = () => {
               </Stack>
             ))}
           </Stack>
-          <Box sx={{ height: 5, bgcolor: 'grey.200', borderRadius: 3, overflow: 'hidden', mt: 1.5 }}>
+          <Box sx={{ height: 5, bgcolor: 'grey.200', borderRadius: '10px', overflow: 'hidden', mt: 1.5 }}>
             <Box sx={{
-              height: '100%', bgcolor: 'primary.main', borderRadius: 3,
+              height: '100%', bgcolor: 'primary.main', borderRadius: '10px',
               width: currentStage < 0 ? '0%' : `${((currentStage + 1) / STAGES.length) * 100}%`,
               transition: 'width 0.5s',
             }} />
@@ -111,7 +111,7 @@ const DeliveryDriverGroup = () => {
         </Paper>
 
         {/* 배달지 정보 */}
-        <Paper sx={{ p: 2.5, borderRadius: 3 }}>
+        <Paper sx={{ p: 2.5, borderRadius: '10px' }}>
           <Typography variant="subtitle2" color="text.secondary" mb={1.5}>배달지 정보</Typography>
           <Stack direction="row" gap={1} alignItems="center">
             <Typography fontSize={20}>🏪</Typography>
@@ -123,7 +123,7 @@ const DeliveryDriverGroup = () => {
         </Paper>
 
         {/* 배달 품목 목록 */}
-        <Paper sx={{ borderRadius: 3, overflow: 'hidden' }}>
+        <Paper sx={{ borderRadius: '10px', overflow: 'hidden' }}>
           <Box sx={{ px: 2.5, py: 1.5, borderBottom: '1px solid', borderColor: 'divider' }}>
             <Stack direction="row" alignItems="center" gap={1}>
               <Typography fontSize={18}>📋</Typography>
@@ -155,7 +155,7 @@ const DeliveryDriverGroup = () => {
 
         {/* 상태별 안내 및 버튼 */}
         {info?.status === 'APPROVED' && (
-          <Paper sx={{ p: 2.5, borderRadius: 3, bgcolor: 'warning.50', border: '1px solid', borderColor: 'warning.200' }}>
+          <Paper sx={{ p: 2.5, borderRadius: '10px', bgcolor: 'warning.50', border: '1px solid', borderColor: 'warning.200' }}>
             <Stack direction="row" gap={1} alignItems="center">
               <Typography fontSize={20}>⏳</Typography>
               <Typography fontWeight={600} color="warning.dark">본사 발송 처리 대기 중입니다.</Typography>
@@ -172,7 +172,7 @@ const DeliveryDriverGroup = () => {
             color="success"
             size="large"
             onClick={() => setScanning(true)}
-            sx={{ borderRadius: 3, py: 2.5, fontSize: 17, fontWeight: 700 }}
+            sx={{ borderRadius: '10px', py: 2.5, fontSize: 17, fontWeight: 700 }}
           >
             📷 QR / 바코드 스캔으로 검수
           </Button>
@@ -187,7 +187,7 @@ const DeliveryDriverGroup = () => {
         )}
 
         {info?.status === 'DRIVER_RECEIVED' && (
-          <Paper sx={{ p: 2.5, borderRadius: 3, bgcolor: 'success.50', border: '1px solid', borderColor: 'success.200' }}>
+          <Paper sx={{ p: 2.5, borderRadius: '10px', bgcolor: 'success.50', border: '1px solid', borderColor: 'success.200' }}>
             <Stack direction="row" gap={1} alignItems="center">
               <Typography fontSize={20}>✅</Typography>
               <Typography fontWeight={700} color="success.dark">배달기사 검수 완료!</Typography>

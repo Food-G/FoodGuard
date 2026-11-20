@@ -2,7 +2,6 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   Box,
   Link,
-  Paper,
   Stack,
   Button,
   TextField,
@@ -17,10 +16,18 @@ import {
   alpha,
   IconButton,
   InputAdornment,
+  Collapse,
 } from '@mui/material';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import IconifyIcon from '../../components/base/IconifyIcon';
+import AuthVisual, { enter } from '../../components/AuthVisual';
 import { authService } from '../../services/authService';
+
+const FEATURES = [
+  { icon: 'mingcute:store-2-line', text: '매장 정보만 입력하면 바로 시작' },
+  { icon: 'mingcute:user-follow-line', text: '가맹점 점주·본사 관리자 계정 지원' },
+  { icon: 'mingcute:robot-line', text: 'AI 에이전트 제안은 승인해야만 실행' },
+];
 
 const POSTCODE_SCRIPT_URL = 'https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js';
 
@@ -133,60 +140,62 @@ const Signup = () => {
     },
   };
 
+  // 섹션 제목: 번호 배지 + 제목
+  const stepTitle = (n: number, title: string) => (
+    <Stack direction="row" alignItems="center" gap={1.2}>
+      <Box sx={{
+        width: 26, height: 26, borderRadius: '50%', bgcolor: 'primary.main', color: 'common.white',
+        fontSize: 13, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        {n}
+      </Box>
+      <Typography variant="subtitle1" fontWeight={700} color="text.primary">{title}</Typography>
+    </Stack>
+  );
+
   return (
-    <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', bgcolor: 'background.default' }}>
-      <Stack sx={{ flexGrow: 1, py: 8, px: 2 }} alignItems="center" justifyContent="center">
-        <Box sx={{ mb: 4, textAlign: 'center' }}>
-          <Stack direction="row" alignItems="center" gap={1.5} justifyContent="center" mb={2}>
-            <IconifyIcon icon="mingcute:leaf-fill" color="primary.main" width={48} height={48} />
-            <Typography variant="h2" fontWeight={900} color="primary.main" sx={{ letterSpacing: '-0.05em' }}>
-              FoodGuard
+    <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: { xs: 'column', md: 'row' } }}>
+      <AuthVisual
+        eyebrow="JOIN FOODGUARD"
+        title={<>함께 시작하는<br />지구를 위한 발걸음</>}
+        features={FEATURES}
+      />
+
+      {/* ── 회원가입 폼: 데스크톱은 오른쪽에서 스크롤, 모바일은 배너 위로 겹치는 시트 ── */}
+      <Stack
+        alignItems="center"
+        sx={{
+          flex: { md: '1 1 45%' }, minWidth: 0, bgcolor: 'background.paper', position: 'relative',
+          px: { xs: 3, sm: 5 }, py: { xs: 4, md: 8 },
+          mt: { xs: -4, md: 0 }, borderRadius: { xs: '28px 28px 0 0', md: 0 },
+        }}
+      >
+        <Stack component="form" onSubmit={handleSubmit} gap={3} sx={{ width: 1, maxWidth: 560, my: 'auto' }}>
+          <Box sx={enter(2)}>
+            <Typography variant="h4" fontWeight={800} color="text.primary" gutterBottom>
+              계정 생성하기
             </Typography>
-          </Stack>
-          <Typography variant="h6" color="text.secondary" fontWeight={500}>
-            함께 시작하는 지구를 위한 발걸음
-          </Typography>
-        </Box>
-
-        <Paper
-          elevation={0}
-          sx={{
-            py: { xs: 6, sm: 8 },
-            px: { xs: 4, sm: 8 },
-            width: '100%',
-            maxWidth: 640,
-            borderRadius: 6,
-            border: (theme) => `1px solid ${theme.palette.divider}`,
-            bgcolor: 'background.paper',
-          }}
-        >
-          <Stack component="form" onSubmit={handleSubmit} gap={4}>
-            <Box textAlign="center" mb={1}>
-              <Typography variant="h4" fontWeight={800} color="text.primary" gutterBottom>
-                계정 생성하기
-              </Typography>
-              <Typography variant="body1" color="text.secondary">
-                이미 계정이 있으신가요?{' '}
-                <Link component={RouterLink} to="/login" fontWeight={700} underline="none">
-                  로그인하기
-                </Link>
-              </Typography>
-            </Box>
-
-            {error && (
-              <Alert severity="error" sx={{ borderRadius: 3 }}>
-                {error}
-              </Alert>
-            )}
-            {success && (
-              <Alert severity="success" sx={{ borderRadius: 3 }}>
-                회원가입 성공! 로그인 페이지로 이동합니다.
-              </Alert>
-            )}
-
-            <Typography variant="subtitle1" fontWeight={700} color="text.primary">
-              기본 정보
+            <Typography variant="body1" color="text.secondary">
+              이미 계정이 있으신가요?{' '}
+              <Link component={RouterLink} to="/login" fontWeight={700} underline="none">
+                로그인하기
+              </Link>
             </Typography>
+          </Box>
+
+          {error && (
+            <Alert severity="error" sx={{ borderRadius: 3 }}>
+              {error}
+            </Alert>
+          )}
+          {success && (
+            <Alert severity="success" sx={{ borderRadius: 3 }}>
+              회원가입 성공! 로그인 페이지로 이동합니다.
+            </Alert>
+          )}
+
+          <Stack gap={2} sx={enter(3)}>
+            {stepTitle(1, '기본 정보')}
 
             <Stack direction={{ xs: 'column', sm: 'row' }} gap={2}>
               <TextField
@@ -270,95 +279,100 @@ const Signup = () => {
                 <MenuItem value="HQ_ADMIN">본사 관리자</MenuItem>
               </Select>
             </FormControl>
+          </Stack>
 
-            {formData.role === 'OWNER' && (
-              <>
-                <Divider sx={{ my: 1 }} />
-                <Typography variant="subtitle1" fontWeight={700} color="text.primary">
-                  가맹점 정보
-                </Typography>
+          {/* 점주일 때만 매장 정보를 펼친다 */}
+          <Collapse in={formData.role === 'OWNER'} timeout={350} unmountOnExit>
+            <Stack gap={2} sx={enter(4)}>
+              <Divider sx={{ mb: 1 }} />
+              {stepTitle(2, '가맹점 정보')}
 
-                <Stack direction={{ xs: 'column', sm: 'row' }} gap={2}>
-                  <TextField
-                    fullWidth
-                    variant="filled"
-                    label="매장명"
-                    name="storeName"
-                    required
-                    value={formData.storeName}
-                    onChange={handleChange}
-                    sx={textFieldStyle}
-                  />
-                  <TextField
-                    fullWidth
-                    variant="filled"
-                    label="지역 (예: 서울 강남구)"
-                    name="region"
-                    required
-                    value={formData.region}
-                    onChange={handleChange}
-                    sx={textFieldStyle}
-                  />
-                </Stack>
-
+              <Stack direction={{ xs: 'column', sm: 'row' }} gap={2}>
                 <TextField
                   fullWidth
                   variant="filled"
-                  label="기본 주소"
-                  name="address"
+                  label="매장명"
+                  name="storeName"
                   required
-                  value={formData.address}
-                  onClick={openPostcode}
-                  InputProps={{ readOnly: true }}
-                  placeholder="클릭하여 주소 검색"
-                  sx={{ ...textFieldStyle, cursor: 'pointer' }}
-                />
-
-                <TextField
-                  fullWidth
-                  variant="filled"
-                  label="매장 전화번호"
-                  name="phone"
-                  required
-                  placeholder="02-1234-5678"
-                  value={formData.phone}
+                  value={formData.storeName}
                   onChange={handleChange}
                   sx={textFieldStyle}
                 />
-              </>
-            )}
+                <TextField
+                  fullWidth
+                  variant="filled"
+                  label="지역 (예: 서울 강남구)"
+                  name="region"
+                  required
+                  value={formData.region}
+                  onChange={handleChange}
+                  sx={textFieldStyle}
+                />
+              </Stack>
 
-            <Button
-              type="submit"
-              variant="contained"
-              size="large"
-              sx={{
-                py: 2,
-                mt: 2,
-                borderRadius: 3,
-                fontSize: '1.1rem',
-                fontWeight: 700,
-                boxShadow: (theme) => `0 8px 16px ${alpha(theme.palette.primary.main, 0.24)}`,
-              }}
-            >
-              회원가입 완료하기
-            </Button>
+              <TextField
+                fullWidth
+                variant="filled"
+                label="기본 주소"
+                name="address"
+                required
+                value={formData.address}
+                onClick={openPostcode}
+                InputProps={{
+                  readOnly: true,
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconifyIcon icon="mingcute:search-line" />
+                    </InputAdornment>
+                  ),
+                }}
+                placeholder="클릭하여 주소 검색"
+                sx={{ ...textFieldStyle, cursor: 'pointer' }}
+              />
 
-            <Typography variant="body2" textAlign="center" color="text.secondary" sx={{ mt: 1 }}>
-              가입 시 FoodGuard의{' '}
-              <Link href="#!" fontWeight={600} underline="hover">
-                이용약관
-              </Link>
-              에 동의하게 됩니다.
-            </Typography>
-          </Stack>
-        </Paper>
+              <TextField
+                fullWidth
+                variant="filled"
+                label="매장 전화번호"
+                name="phone"
+                required
+                placeholder="02-1234-5678"
+                value={formData.phone}
+                onChange={handleChange}
+                sx={textFieldStyle}
+              />
+            </Stack>
+          </Collapse>
 
-        <Box sx={{ py: 6, textAlign: 'center', opacity: 0.5 }}>
-          <Typography variant="caption" color="text.secondary">
-            © 2026 FoodGuard Team. All rights reserved.
+          <Button
+            type="submit"
+            variant="contained"
+            size="large"
+            endIcon={<IconifyIcon icon="mingcute:arrow-right-line" />}
+            sx={{
+              py: 1.8,
+              mt: 1,
+              borderRadius: 3,
+              fontSize: '1.05rem',
+              fontWeight: 700,
+              boxShadow: (theme) => `0 8px 16px ${alpha(theme.palette.primary.main, 0.24)}`,
+              transition: 'transform .2s, box-shadow .2s',
+              '&:hover': { transform: 'translateY(-2px)', boxShadow: (theme) => `0 12px 24px ${alpha(theme.palette.primary.main, 0.32)}` },
+              ...enter(5),
+            }}
+          >
+            회원가입 완료하기
+          </Button>
+
+          <Typography variant="body2" textAlign="center" color="text.secondary" sx={enter(6)}>
+            가입 시 FoodGuard의{' '}
+            <Link href="#!" fontWeight={600} underline="hover">
+              이용약관
+            </Link>
+            에 동의하게 됩니다.
           </Typography>
-        </Box>      </Stack>
+        </Stack>
+      </Stack>
     </Box>
   );
 };

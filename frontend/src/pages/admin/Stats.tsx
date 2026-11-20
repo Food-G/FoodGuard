@@ -57,20 +57,20 @@ const Stats = () => {
     <Stack gap={4} sx={{ bgcolor: 'background.default' }}>
       <Grid container spacing={3.5}>
         <Grid item xs={12} lg={8}>
-          <Paper sx={{ p: 4, height: 450, border: `1px solid ${theme.palette.divider}`, borderRadius: 5, bgcolor: 'background.paper' }}>
+          <Paper sx={{ p: 4, height: 450, border: `1px solid ${theme.palette.divider}`, borderRadius: '10px', bgcolor: 'background.paper' }}>
             <Typography variant="h6" fontWeight={700} mb={3}>네트워크 통합 매출 vs 자원 폐기 추이</Typography>
             <ReactEChart option={wasteTrendOption} echarts={echarts} sx={{ height: 350 }} />
           </Paper>
         </Grid>
         
         <Grid item xs={12} lg={4}>
-          <Paper sx={{ p: 4, height: 450, border: `1px solid ${theme.palette.divider}`, borderRadius: 5, bgcolor: 'background.paper' }}>
+          <Paper sx={{ p: 4, height: 450, border: `1px solid ${theme.palette.divider}`, borderRadius: '10px', bgcolor: 'background.paper' }}>
             <Typography variant="h6" fontWeight={700} mb={3}>가맹점별 자원 손실 비중</Typography>
             <ReactEChart option={storeWasteOption} echarts={echarts} sx={{ height: 350 }} />          </Paper>
         </Grid>
 
         <Grid item xs={12}>
-          <Paper sx={{ p: 4, border: `1px solid ${theme.palette.primary.main}30`, bgcolor: 'primary.light', borderRadius: 4 }}>
+          <Paper sx={{ p: 4, border: `1px solid ${theme.palette.primary.main}30`, bgcolor: 'primary.light', borderRadius: '10px' }}>
              <Stack direction="row" alignItems="center" gap={2}>
                 <Typography variant="h5" color="primary.dark" fontWeight={800}>🌿 환경 분석 임팩트:</Typography>
                 <Typography variant="body1" color="primary.dark" fontWeight={500}>

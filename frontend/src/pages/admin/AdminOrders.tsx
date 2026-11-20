@@ -328,7 +328,7 @@ const AdminOrders = () => {
         );
         if (pendingByStore.length === 0) return null;
         return (
-          <Paper sx={{ p: 2.5, border: `1px solid ${theme.palette.warning.light}`, borderRadius: 3, bgcolor: 'warning.50' }}>
+          <Paper sx={{ p: 2.5, border: `1px solid ${theme.palette.warning.light}`, borderRadius: '10px', bgcolor: 'warning.50' }}>
             <Stack direction="row" alignItems="center" gap={1} mb={1.5}>
               <IconifyIcon icon="mingcute:alert-fill" color={theme.palette.warning.main} width={18} />
               <Typography variant="subtitle2" fontWeight={700} color="warning.dark">
@@ -353,7 +353,7 @@ const AdminOrders = () => {
       })()}
 
       {/* 3단계 흐름 안내 */}
-      <Paper sx={{ p: 2.5, border: `1px solid ${theme.palette.divider}`, borderRadius: 3 }}>
+      <Paper sx={{ p: 2.5, border: `1px solid ${theme.palette.divider}`, borderRadius: '10px' }}>
         <Typography variant="subtitle2" color="text.secondary" mb={1.5} fontWeight={700}>
           검수 책임 흐름
         </Typography>
@@ -399,7 +399,7 @@ const AdminOrders = () => {
       </Paper>
 
       {/* 탭 */}
-      <Paper sx={{ border: `1px solid ${theme.palette.divider}`, borderRadius: 3, overflow: 'hidden' }}>
+      <Paper sx={{ border: `1px solid ${theme.palette.divider}`, borderRadius: '10px', overflow: 'hidden' }}>
         <Box sx={{ borderBottom: `1px solid ${theme.palette.divider}`, px: 2 }}>
           <Tabs value={tab} onChange={(_, v) => setTab(v)}>
             <Tab

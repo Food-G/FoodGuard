@@ -89,7 +89,7 @@ const SalesEntry = ({ user }: any) => {
     <Stack gap={4} sx={{ bgcolor: 'background.default' }}>
       <Grid container spacing={3.5}>
         <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 4, bgcolor: 'background.paper', border: `1px solid ${theme.palette.divider}`, borderRadius: 5 }}>
+          <Paper sx={{ p: 4, bgcolor: 'background.paper', border: `1px solid ${theme.palette.divider}`, borderRadius: '10px' }}>
             <Typography variant="h6" color="text.primary" fontWeight={700} sx={{ mb: 3, display: 'flex', alignItems: 'center', gap: 1 }}>
               <IconifyIcon icon="mingcute:save-fill" color={theme.palette.primary.main} />
               매출 등록
@@ -129,7 +129,7 @@ const SalesEntry = ({ user }: any) => {
                 value={formData.saleDate}
                 onChange={(e) => setFormData({ ...formData, saleDate: e.target.value })}
               />
-              <Button type="submit" fullWidth variant="contained" size="large" startIcon={<IconifyIcon icon="mingcute:save-line" />} sx={{ borderRadius: 3 }}>
+              <Button type="submit" fullWidth variant="contained" size="large" startIcon={<IconifyIcon icon="mingcute:save-line" />} sx={{ borderRadius: '10px' }}>
                 매출 기록 저장
               </Button>
             </Stack>
@@ -137,7 +137,7 @@ const SalesEntry = ({ user }: any) => {
         </Grid>
         
         <Grid item xs={12} md={8}>
-          <Paper sx={{ width: '100%', p: 3, border: `1px solid ${theme.palette.divider}`, borderRadius: 5 }}>
+          <Paper sx={{ width: '100%', p: 3, border: `1px solid ${theme.palette.divider}`, borderRadius: '10px' }}>
             <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
               <Typography variant="h6" fontWeight={700} color="text.primary">판매 내역</Typography>
               <Chip label={`총 ${rows.length}건`} size="small" color="primary" variant="outlined" />

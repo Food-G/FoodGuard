@@ -169,7 +169,7 @@ const DeliveryDriver = () => {
         {error && <Alert severity="error" onClose={() => setError('')}>{error}</Alert>}
 
         {/* 배달 정보 */}
-        <Paper sx={{ p: 2.5, borderRadius: 3 }}>
+        <Paper sx={{ p: 2.5, borderRadius: '10px' }}>
           <Typography variant="subtitle2" color="text.secondary" mb={1.5}>배달 정보</Typography>
           <Stack gap={1.5}>
             <Stack direction="row" gap={1} alignItems="center">
@@ -190,7 +190,7 @@ const DeliveryDriver = () => {
 
         {/* 배송 단계 */}
         {tracking && (
-          <Paper sx={{ p: 2, borderRadius: 3 }}>
+          <Paper sx={{ p: 2, borderRadius: '10px' }}>
             <Stack direction="row" justifyContent="space-between" alignItems="center">
               {STAGE_LABELS.map((label, i) => (
                 <Stack key={i} alignItems="center" gap={0.5} sx={{ flex: 1, opacity: i <= stage ? 1 : 0.35 }}>
@@ -215,7 +215,7 @@ const DeliveryDriver = () => {
 
         {/* 지도 */}
         {position && (
-          <Paper sx={{ borderRadius: 3, overflow: 'hidden' }}>
+          <Paper sx={{ borderRadius: '10px', overflow: 'hidden' }}>
             <Box sx={{ height: 300 }}>
               <MapContainer center={[position.lat, position.lng]} zoom={15} style={{ height: '100%', width: '100%' }}>
                 <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
@@ -242,7 +242,7 @@ const DeliveryDriver = () => {
             variant="contained"
             size="large"
             onClick={startTracking}
-            sx={{ borderRadius: 3, py: 2, fontSize: 16, fontWeight: 700 }}
+            sx={{ borderRadius: '10px', py: 2, fontSize: 16, fontWeight: 700 }}
             startIcon={<Typography fontSize={20}>🚀</Typography>}
           >
             배달 시작
@@ -254,7 +254,7 @@ const DeliveryDriver = () => {
             size="large"
             onClick={completeDelivery}
             disabled={completing}
-            sx={{ borderRadius: 3, py: 2, fontSize: 16, fontWeight: 700 }}
+            sx={{ borderRadius: '10px', py: 2, fontSize: 16, fontWeight: 700 }}
             startIcon={completing ? <CircularProgress size={20} color="inherit" /> : <Typography fontSize={20}>✅</Typography>}
           >
             {completing ? '처리 중...' : '배달 완료'}

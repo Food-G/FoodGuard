@@ -92,7 +92,7 @@ const Ingredients = () => {
       {error && <Alert severity="error" onClose={() => setError('')}>{error}</Alert>}
       {success && <Alert severity="success" onClose={() => setSuccess('')}>{success}</Alert>}
 
-      <Paper sx={{ p: 3, border: `1px solid ${theme.palette.divider}`, borderRadius: 3 }}>
+      <Paper sx={{ p: 3, border: `1px solid ${theme.palette.divider}`, borderRadius: '10px' }}>
         <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
           <Typography variant="h6" fontWeight={700}>식자재 목록</Typography>
           <Button

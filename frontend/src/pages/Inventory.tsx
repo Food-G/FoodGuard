@@ -193,7 +193,7 @@ const Inventory = ({ user }: any) => {
       {success && <Alert severity="success" onClose={() => setSuccess('')}>{success}</Alert>}
 
       {/* 메뉴별 식자재 구성 */}
-      <Paper sx={{ p: 3, border: `1px solid ${theme.palette.divider}`, borderRadius: 3 }}>
+      <Paper sx={{ p: 3, border: `1px solid ${theme.palette.divider}`, borderRadius: '10px' }}>
         <Typography variant="h6" fontWeight={700} mb={2}>메뉴별 식자재 구성</Typography>
 
         {/* 메뉴 선택 버튼 */}
@@ -324,7 +324,7 @@ const Inventory = ({ user }: any) => {
       </Paper>
 
       {/* 전체 재고 현황 */}
-      <Paper sx={{ p: 3, border: `1px solid ${theme.palette.divider}`, borderRadius: 3 }}>
+      <Paper sx={{ p: 3, border: `1px solid ${theme.palette.divider}`, borderRadius: '10px' }}>
         <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
           <Typography variant="h6" fontWeight={700}>전체 재고 현황</Typography>
           <Button

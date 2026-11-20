@@ -387,11 +387,11 @@ const POS = ({ user }: any) => {
       {errorMsg && <Alert severity="error" onClose={() => setErrorMsg('')} sx={{ py: 0.2 }}>{errorMsg}</Alert>}
 
       {/* ── 상단 상태바 ── */}
-      <Paper elevation={0} sx={{ p: 1.5, borderRadius: 3, border: `1px solid ${theme.palette.divider}`, bgcolor: 'primary.dark', color: 'white' }}>
+      <Paper elevation={0} sx={{ px: 2, py: 1.2, borderRadius: '10px', border: 'none', bgcolor: '#1F2B5B', color: 'white' }}>
         <Stack direction="row" alignItems="center" justifyContent="space-between" flexWrap="wrap" gap={1}>
           <Stack direction="row" alignItems="center" gap={1.5}>
-            <IconifyIcon icon="mingcute:store-line" width={26} />
-            <Typography variant="h5" fontWeight={900}>FoodGuard POS</Typography>
+            <IconifyIcon icon="mingcute:store-line" width={22} />
+            <Typography fontSize={17} fontWeight={800}>영업 현황</Typography>
             <Chip size="small" label={new Date(now).toLocaleTimeString('ko-KR')} sx={{ bgcolor: alpha('#fff', 0.18), color: 'white', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }} />
           </Stack>
           <Stack direction="row" alignItems="center" gap={1}>
@@ -402,7 +402,7 @@ const POS = ({ user }: any) => {
             <ToggleButtonGroup
               size="small" exclusive value={view}
               onChange={(_, v) => v && setView(v)}
-              sx={{ bgcolor: alpha('#fff', 0.12), borderRadius: 2, '& .MuiToggleButton-root': { color: 'white', border: 'none', px: 1.5, fontWeight: 700 }, '& .Mui-selected': { bgcolor: 'white !important', color: 'primary.dark !important' } }}
+              sx={{ bgcolor: alpha('#fff', 0.12), borderRadius: 2, '& .MuiToggleButton-root': { color: 'white', border: 'none', px: 1.5, fontWeight: 700 }, '& .Mui-selected': { bgcolor: 'white !important', color: '#1F2B5B !important' } }}
             >
               <ToggleButton value="tables"><IconifyIcon icon="mingcute:grid-line" width={18} />&nbsp;테이블</ToggleButton>
               <ToggleButton value="order" disabled={!selectedTable}><IconifyIcon icon="mingcute:bill-line" width={18} />&nbsp;주문</ToggleButton>
@@ -436,7 +436,7 @@ const POS = ({ user }: any) => {
             sx={{
               flex: 1, position: 'relative', overflow: 'hidden',
               bgcolor: alpha(theme.palette.primary.main, 0.02),
-              border: `2px dashed ${theme.palette.divider}`, borderRadius: 3, userSelect: 'none',
+              border: `2px dashed ${theme.palette.divider}`, borderRadius: '10px', userSelect: 'none',
             }}
           >
             {tables.map(table => {
@@ -486,7 +486,7 @@ const POS = ({ user }: any) => {
       {view === 'order' && selectedTable && (
         <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 1.5 }}>
           {/* 좌측: 메뉴 */}
-          <Paper elevation={0} sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', borderRadius: 3, border: `1px solid ${theme.palette.divider}`, overflow: 'hidden' }}>
+          <Paper elevation={0} sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', borderRadius: '10px', border: `1px solid ${theme.palette.divider}`, overflow: 'hidden' }}>
             {/* 카테고리 탭 */}
             <Box sx={{ display: 'flex', gap: 0.5, p: 1, borderBottom: `1px solid ${theme.palette.divider}`, overflowX: 'auto', flexShrink: 0 }}>
               {categories.map(c => (
@@ -530,7 +530,7 @@ const POS = ({ user }: any) => {
           </Paper>
 
           {/* 우측: 주문 내역 + 기능 버튼 */}
-          <Paper elevation={0} sx={{ width: { xs: '100%', md: 380 }, flexShrink: 0, maxHeight: { xs: '60vh', md: 'none' }, display: 'flex', flexDirection: 'column', borderRadius: 3, border: `1px solid ${theme.palette.divider}`, overflow: 'hidden' }}>
+          <Paper elevation={0} sx={{ width: { xs: '100%', md: 380 }, flexShrink: 0, maxHeight: { xs: '60vh', md: 'none' }, display: 'flex', flexDirection: 'column', borderRadius: '10px', border: `1px solid ${theme.palette.divider}`, overflow: 'hidden' }}>
             {/* 헤더 */}
             <Box sx={{ p: 1.5, bgcolor: 'primary.dark', color: 'white' }}>
               <Stack direction="row" justifyContent="space-between" alignItems="center">
@@ -684,7 +684,7 @@ const POS = ({ user }: any) => {
               </Stack>
               <Box sx={{ display: 'flex', gap: 0.5 }}>
                 {Array.from({ length: splitWays }).map((_, i) => (
-                  <Box key={i} sx={{ flex: 1, height: 8, borderRadius: 4, bgcolor: i < splitPaid ? 'success.main' : alpha(theme.palette.text.disabled, 0.2) }} />
+                  <Box key={i} sx={{ flex: 1, height: 8, borderRadius: '10px', bgcolor: i < splitPaid ? 'success.main' : alpha(theme.palette.text.disabled, 0.2) }} />
                 ))}
               </Box>
             </Box>

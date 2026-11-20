@@ -8,23 +8,25 @@ const Button: Components<Omit<Theme, 'components'>>['MuiButton'] = {
   },
   styleOverrides: {
     root: ({ theme }) => ({
-      borderRadius: theme.shape.borderRadius * 1.5,
+      borderRadius: theme.shape.borderRadius,
+      boxShadow: 'none',
       textTransform: 'none',
     }),
-    sizeSmall: ({ theme }) => ({
-      padding: theme.spacing(1.25, 2),
-      fontSize: theme.typography.body1.fontSize,
-      fontWeight: theme.typography.body1.fontWeight,
+    // 공공 포털형 시안에 맞춰 버튼을 작고 단정하게
+    sizeSmall: () => ({
+      padding: '5px 12px',
+      fontSize: '0.8125rem',
+      fontWeight: 600,
     }),
-    sizeMedium: ({ theme }) => ({
-      padding: theme.spacing(2.5, 4),
-      fontSize: theme.typography.subtitle1.fontSize,
-      fontWeight: theme.typography.subtitle2.fontWeight,
+    sizeMedium: () => ({
+      padding: '8px 18px',
+      fontSize: '0.875rem',
+      fontWeight: 700,
     }),
-    sizeLarge: ({ theme }) => ({
-      padding: theme.spacing(2.5, 6),
-      fontSize: theme.typography.h5.fontSize,
-      fontWeight: theme.typography.h5.fontWeight,
+    sizeLarge: () => ({
+      padding: '11px 24px',
+      fontSize: '0.9375rem',
+      fontWeight: 700,
     }),
     disabled: ({ theme }) => ({
       backgroundColor: theme.palette.action.disabled,

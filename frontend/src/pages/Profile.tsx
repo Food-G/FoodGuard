@@ -83,7 +83,7 @@ const Profile = () => {
       {msg && <Alert severity="success" sx={{ mb: 2, borderRadius: 2 }}>{msg}</Alert>}
 
       {/* Photo section */}
-      <Paper sx={{ p: 4, borderRadius: 3, mb: 3 }}>
+      <Paper sx={{ p: 4, borderRadius: '10px', mb: 3 }}>
         <Stack alignItems="center" gap={3}>
           <Box sx={{ position: 'relative' }}>
             <Avatar
@@ -146,7 +146,7 @@ const Profile = () => {
       </Paper>
 
       {/* Info section */}
-      <Paper sx={{ p: 3, borderRadius: 3 }}>
+      <Paper sx={{ p: 3, borderRadius: '10px' }}>
         <Typography variant="h6" fontWeight={700} mb={2.5}>계정 정보</Typography>
 
         <Stack gap={2.5}>

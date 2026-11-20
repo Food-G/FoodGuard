@@ -134,9 +134,9 @@ const DonationHistory = ({ user }: any) => {
       <AlertMessages error={error} success={success}
         onClearError={() => setError('')} onClearSuccess={() => setSuccess('')} />
 
-      <Paper sx={{ p: 3, border: `1px solid ${theme.palette.divider}`, borderRadius: 3 }}>
+      <Paper sx={{ p: 3, border: `1px solid ${theme.palette.divider}`, borderRadius: '10px' }}>
         <Typography variant="h6" fontWeight={700} mb={2}>기부 내역</Typography>
-        <Box sx={{ height: 480 }}>
+        <Box sx={{ height: !loading && rows.length === 0 ? 240 : 480 }}>
           {loading ? (
             <Stack alignItems="center" justifyContent="center" height="100%">
               <CircularProgress />

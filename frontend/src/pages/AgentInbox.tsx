@@ -58,7 +58,7 @@ const RunningBanner = ({ active, now }: { active: ActiveRun; now: number }) => {
   const sec = Math.max(0, Math.floor((now - active.startedAt) / 1000));
   return (
     <Paper elevation={0} role="status" aria-live="polite" sx={{
-      p: { xs: 2, sm: 2.5 }, borderRadius: 3,
+      p: { xs: 2, sm: 2.5 }, borderRadius: '10px',
       border: `2px solid ${theme.palette.primary.main}`, bgcolor: alpha(theme.palette.primary.main, 0.04),
     }}>
       <Stack direction="row" alignItems="center" gap={2}>
@@ -70,7 +70,7 @@ const RunningBanner = ({ active, now }: { active: ActiveRun; now: number }) => {
           </Typography>
         </Box>
       </Stack>
-      <LinearProgress sx={{ mt: 2, height: 6, borderRadius: 3 }} />
+      <LinearProgress sx={{ mt: 2, height: 6, borderRadius: '10px' }} />
       <Stack direction="row" gap={1} mt={1.5} flexWrap="wrap">
         {PHASES.map((p, i) => {
           const isCurrent = i === currentIdx;
@@ -199,7 +199,7 @@ const ProposalCard = ({ p, isHq, onApprove, onReject, onReplan, onRollback }: {
   const canDecide = p.type !== 'MODEL_PROMOTE' || isHq;
   const agent = AGENT_LABEL[p.agent] ?? { name: p.agent, icon: 'mingcute:robot-line' };
   return (
-    <Paper sx={{ p: 2.5, border: `1px solid ${theme.palette.divider}`, borderRadius: 3 }}>
+    <Paper sx={{ p: 2.5, border: `1px solid ${theme.palette.divider}`, borderRadius: '10px' }}>
       <Stack direction="row" alignItems="center" gap={1.5} mb={1}>
         <IconifyIcon icon={agent.icon} width={22} />
         <Typography fontWeight={700}>{agent.name}</Typography>
@@ -379,7 +379,7 @@ const AgentInbox = ({ user }: any) => {
   return (
     <Stack gap={3} sx={{ bgcolor: 'background.default' }}>
       <Stack direction="row" alignItems="center" gap={1}>
-        <Typography variant="h5" fontWeight={700}>AI 승인함</Typography>
+        <Typography fontSize={18} fontWeight={800}>제안 목록</Typography>
         <Chip label={`승인 대기 ${proposals.filter((p) => p.status === 'PENDING').length}건`} color="warning" size="small" />
         {agentFilter && (
           <Chip size="small" variant="outlined" onDelete={() => setSearchParams({})}
@@ -412,7 +412,7 @@ const AgentInbox = ({ user }: any) => {
       <AlertMessages error={error} success={success}
         onClearError={() => setError('')} onClearSuccess={() => setSuccess('')} />
 
-      <Paper sx={{ border: `1px solid ${theme.palette.divider}`, borderRadius: 3 }}>
+      <Paper sx={{ border: `1px solid ${theme.palette.divider}`, borderRadius: '10px' }}>
         <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ px: 2 }}>
           <Tab label="제안" />
           <Tab label="실행 기록" />
@@ -439,7 +439,7 @@ const AgentInbox = ({ user }: any) => {
           ))}
         </Stack>
       ) : (
-        <Paper sx={{ p: 2, border: `1px solid ${theme.palette.divider}`, borderRadius: 3 }}>
+        <Paper sx={{ p: 2, border: `1px solid ${theme.palette.divider}`, borderRadius: '10px' }}>
           <Table size="small">
             <TableHead>
               <TableRow>

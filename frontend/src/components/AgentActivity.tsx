@@ -214,7 +214,7 @@ const AgentActivity = ({ storeId }: { storeId: number }) => {
   const meta = (a: string) => AGENT[a] ?? { name: a, icon: 'mingcute:robot-line' };
 
   return (
-    <Paper elevation={0} sx={{ p: { xs: 2, sm: 3 }, borderRadius: 3, border: `1px solid ${theme.palette.divider}` }}>
+    <Paper elevation={0} sx={{ p: { xs: 2, sm: 3 }, borderRadius: '10px', border: `1px solid ${theme.palette.divider}` }}>
       {/* 헤더 */}
       <Stack direction="row" alignItems="center" justifyContent="space-between" flexWrap="wrap" gap={1} mb={1.5}>
         <Stack direction="row" alignItems="center" gap={1}>
