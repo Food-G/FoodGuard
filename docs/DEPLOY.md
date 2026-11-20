@@ -15,6 +15,8 @@
 운영은 `ddl-auto=none` 이라 **자동으로 바뀌지 않는다.** 엔티티를 바꾸면 SQL 을 직접 실행한다.
 공유 DB 를 쓰면 지금 스키마가 그대로 반영되어 있다. `validate` 는 공유 DB 의 대문자 `STORE`·`USER` 때문에 쓸 수 없다.
 
+- [ ] 배포 전 `backend/src/main/resources/db/2026-11-20_staff_pos.sql` 실행 (hyeon 병합: `EMPLOYEE`·`EMPLOYEE_SCHEDULE`·`ATTENDANCE`·`POS_TABLE`). 없으면 직원·출퇴근·POS 좌석 API 가 오류. `IF NOT EXISTS` 라 이미 있어도 안전
+
 ## 실행
 
 ```bash

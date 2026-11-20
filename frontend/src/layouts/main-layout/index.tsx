@@ -1,4 +1,7 @@
 import { ReactElement, ReactNode } from 'react';
+
+export const drawerOpenWidth = 240;
+export const drawerCloseWidth = 110;
 import { Box, Toolbar } from '@mui/material';
 import Topbar from './Topbar/Topbar';
 import Footer from './Footer/Footer';
@@ -30,7 +33,7 @@ const MainLayout = ({ children, onLogout }: MainLayoutProps): ReactElement => {
           {children}
         </Box>
       </Box>
-      <Footer open={false} />
+      <Footer />
     </>
   );
 };

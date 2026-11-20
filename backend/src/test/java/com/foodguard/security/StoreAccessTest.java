@@ -13,6 +13,7 @@ import org.springframework.web.servlet.HandlerMapping;
 import java.util.List;
 import java.util.Map;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -103,6 +104,11 @@ class StoreAccessTest {
         verify(mockAccess).checkStore(3L);
         verify(mockAccess).checkUser(9L);
         verify(mockAccess).checkEntity("Menu", 11L);
+    }
+
+    @Test
+    void 엔티티_id_경로마다_소속_매장_조회_쿼리가_있다() {
+        assertThat(StoreAccess.STORE_ID_QUERY.keySet()).containsAll(StoreAccessInterceptor.ID_ENTITY.values());
     }
 
     private static <T> T any() {

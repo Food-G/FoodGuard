@@ -3,6 +3,7 @@ import { Components } from '@mui/material/styles/components';
 import scrollbar from 'theme/styles/scrollbar';
 import simplebar from 'theme/styles/simplebar';
 import echart from 'theme/styles/echart';
+import swiper from 'theme/styles/swiper';
 
 const CssBaseline: Components<Omit<Theme, 'components'>>['MuiCssBaseline'] = {
   defaultProps: {},
@@ -32,6 +33,7 @@ const CssBaseline: Components<Omit<Theme, 'components'>>['MuiCssBaseline'] = {
       ...scrollbar(theme),
     },
     ...simplebar(theme),
+    ...swiper(theme),
     ...echart(),
   }),
 };

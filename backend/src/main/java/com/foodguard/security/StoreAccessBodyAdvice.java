@@ -10,7 +10,7 @@ import org.springframework.web.servlet.mvc.method.annotation.RequestBodyAdviceAd
 import java.lang.reflect.Type;
 import java.util.Map;
 
-// 요청 본문(Map)의 storeId·userId·menuId 가 로그인한 점주의 것인지 검사 (경로 쪽은 StoreAccessInterceptor)
+// 요청 본문(Map)의 storeId·userId·menuId·employeeId 가 로그인한 점주의 것인지 검사 (경로 쪽은 StoreAccessInterceptor)
 @ControllerAdvice
 @RequiredArgsConstructor
 public class StoreAccessBodyAdvice extends RequestBodyAdviceAdapter {
@@ -30,6 +30,7 @@ public class StoreAccessBodyAdvice extends RequestBodyAdviceAdapter {
         if (map.get("storeId") != null) storeAccess.checkStore(Long.valueOf(map.get("storeId").toString()));
         if (map.get("userId") != null) storeAccess.checkUser(Long.valueOf(map.get("userId").toString()));
         if (map.get("menuId") != null) storeAccess.checkEntity("Menu", Long.valueOf(map.get("menuId").toString()));
+        if (map.get("employeeId") != null) storeAccess.checkEntity("Employee", Long.valueOf(map.get("employeeId").toString()));
         return body;
     }
 }
