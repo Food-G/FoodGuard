@@ -8,6 +8,7 @@ import java.util.Optional;
 
 public interface OrderRequestRepository extends JpaRepository<OrderRequest, Long> {
     List<OrderRequest> findByStoreId(Long storeId);
+    boolean existsByIngredientId(Long ingredientId);
     List<OrderRequest> findByStoreIdAndStatus(Long storeId, String status);
     List<OrderRequest> findByStoreIdAndStatusIn(Long storeId, List<String> statuses);
     Optional<OrderRequest> findByDeliveryToken(String deliveryToken);

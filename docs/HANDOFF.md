@@ -74,6 +74,17 @@
 - 예측 요청 한 번에 약 25초(백엔드 동기 호출, 타임아웃 60초). 매장이 늘면 비동기·캐시 필요
 - 공용 식자재(`store_id` 없음)는 아무 점주나 수정 가능 — 본사 전용으로 할지 결정
 
+### 문자로 메뉴·식자재 관리 (2026-11-06, PROJECT_STATUS 23절)
+
+- 메뉴 관리는 문자 요청 → 미리보기 확인 → 반영. 식자재 관리 메뉴 제거, 설정 제안은 재고·폐기 화면으로
+- 공용 식자재 삭제를 본사 전용으로 막았다
+- Claude 장애 대비: 메뉴 화면의 "수동 입력" 스위치 (기본 꺼짐)
+
+### 메뉴 재구성 (2026-11-06, PROJECT_STATUS 21절)
+
+- 재고·폐기 통합, 기부 화면 분리(완료 내역 목록 제거), 판매 입력 → 판매량 확인 (POS 자동 기록, 코드 집계, AI 요약)
+- 문자로 판매 수정·취소 (22절). 수정 기록은 알림·로그뿐이라 정식 감사 테이블은 없다
+
 ### 전 기능 점검·배포 준비 (2026-11-06, PROJECT_STATUS 20절)
 
 - `python qa_smoke.py run` (ai-service): 133개 항목 전 기능 점검, 끝나면 `python qa_smoke.py cleanup`
@@ -136,9 +147,9 @@
 
 | 확인 | 명령 (위치) | 기대값 |
 |---|---|---|
-| AI 단위 테스트 | `python -m pytest tests` (ai-service) | 57 passed (2026-11-20) |
-| 백엔드 단위 테스트 | `gradlew.bat test --tests "com.foodguard.service.*" --tests "com.foodguard.security.*"` (backend) | BUILD SUCCESSFUL (41개, 2026-11-20) |
-| 전 기능 점검 | `python qa_smoke.py run` (ai-service, 서버 3개 필요, 약 2분) | 133개 통과 (11/06 기준. 11/20 항목 추가 후 미측정) |
+| AI 단위 테스트 | `python -m pytest tests` (ai-service) | 64 passed |
+| 백엔드 단위 테스트 | `gradlew.bat test --tests "com.foodguard.service.*" --tests "com.foodguard.security.*"` (backend) | BUILD SUCCESSFUL (44개) |
+| 전 기능 점검 | `python qa_smoke.py run` (ai-service, 서버 3개 필요, 약 3분) | 182개 통과 |
 | 프론트 타입체크 | `npx tsc --noEmit` (frontend) | 오류 0 |
 | 프론트 빌드·lint | `npm run build`, `npx eslint src` (frontend) | 빌드 통과, lint 오류 0·경고 11 (2026-11-20) |
 | DB 백테스트 | `python backtest.py --db --step 7` (ai-service) | 1,765 평가일, 글로벌 모델 wMAPE **9.2%** / MASE **0.900**, 요일 평균(4주) 9.9% / 0.952, 식자재 7일 커버리지 **56.2%** (평균 잉여율 4.4%, 부족률 3.0%) |

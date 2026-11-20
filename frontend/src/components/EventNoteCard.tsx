@@ -10,7 +10,7 @@ const TYPE_LABEL: Record<string, string> = {
 };
 
 // 날짜별 특이사항 메모 → AI(claude)가 유형·예상 증감 배율로 바꿔 저장 → 다음 AI 수요 예측의 피처로 사용
-const EventNoteCard = ({ storeId }: { storeId: number }) => {
+const EventNoteCard = ({ storeId, sx }: { storeId: number; sx?: object }) => {
   const theme = useTheme();
   const [notes, setNotes] = useState<any[]>([]);
   const [form, setForm] = useState({ eventDate: new Date().toISOString().split('T')[0], note: '' });
@@ -42,7 +42,7 @@ const EventNoteCard = ({ storeId }: { storeId: number }) => {
   };
 
   return (
-    <Paper sx={{ p: 4, mt: 3.5, bgcolor: 'background.paper', border: `1px solid ${theme.palette.divider}`, borderRadius: 5 }}>
+    <Paper sx={{ p: 4, mt: 3.5, bgcolor: 'background.paper', border: `1px solid ${theme.palette.divider}`, borderRadius: 3, ...sx }}>
       <Typography variant="h6" color="text.primary" fontWeight={700} sx={{ mb: 1 }}>특이사항</Typography>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
         단체 예약·주변 행사·궂은 날씨처럼 판매에 영향을 줄 일을 적으면 AI가 예상 증감으로 바꿔 수요 예측에 반영합니다.

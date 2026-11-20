@@ -47,6 +47,7 @@ public class AgentService {
     private final StoreRepository storeRepository;
     private final WasteRecordRepository wasteRecordRepository;
     private final DiscountService discountService;
+    private final SalesDataService salesDataService;
 
     // ── 식자재 설정 제안 ──
 
@@ -191,6 +192,12 @@ public class AgentService {
         facts.put("storeCount", list.size());
         facts.put("stores", list);
         return facts;
+    }
+
+    // ── 판매 요약 ──
+
+    public Map<String, Object> salesInsight(Long storeId, LocalDate start, LocalDate end) {
+        return aiClient.post("/api/agents/sales-insight", salesDataService.summary(storeId, start, end));
     }
 
     // ── 점주 질문 답변 ──

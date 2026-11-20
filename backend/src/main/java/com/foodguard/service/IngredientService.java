@@ -1,5 +1,7 @@
 package com.foodguard.service;
 
+import com.foodguard.security.AuthUser;
+import com.foodguard.security.StoreAccess;
 import com.foodguard.entity.Ingredient;
 import com.foodguard.entity.Store;
 import com.foodguard.repository.IngredientRepository;
@@ -22,6 +24,7 @@ public class IngredientService {
     private final MenuIngredientRepository menuIngredientRepository;
     private final InventoryRepository inventoryRepository;
     private final OrderRequestRepository orderRequestRepository;
+    private final StoreAccess storeAccess;
 
     // 식자재 등록
     @Transactional
@@ -59,6 +62,12 @@ public class IngredientService {
     // 식자재 삭제 (연결 레코드 전부 먼저 삭제: 발주→메뉴구성→재고→식자재)
     @Transactional
     public String delete(Long id) {
+        // 공용 식자재를 지우면 다른 매장의 레시피·재고·발주 기록까지 사라진다
+        Ingredient target = ingredientRepository.findById(id).orElseThrow(() -> new RuntimeException("식자재를 찾을 수 없습니다."));
+        AuthUser user = storeAccess.currentUser();
+        if (target.getStore() == null && (user == null || !user.isHqAdmin())) {
+            throw new RuntimeException("공용 식자재는 본사만 삭제할 수 있습니다.");
+        }
         orderRequestRepository.deleteByIngredientId(id);
         menuIngredientRepository.deleteByIngredientId(id);
         inventoryRepository.deleteByIngredientId(id);

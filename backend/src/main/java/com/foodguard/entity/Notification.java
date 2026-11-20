@@ -27,7 +27,7 @@ public class Notification {
     private Store store;
 
     @Column(nullable = false)
-    private String type; // STOCK, WASTE, ORDER, ACCURACY
+    private String type; // STOCK, WASTE, ORDER, ACCURACY, SALES
 
     @Column(name = "is_read", nullable = false)
     private boolean isRead = false;

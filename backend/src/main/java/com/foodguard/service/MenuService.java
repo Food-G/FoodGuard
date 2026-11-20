@@ -26,6 +26,10 @@ public class MenuService {
         validate(menuName, price);
         Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new RuntimeException("가맹점을 찾을 수 없습니다."));
+        String normalized = MenuAgentService.normalizeName(menuName);
+        if (menuRepository.findByStoreIdAndIsActiveTrue(storeId).stream().anyMatch(m -> MenuAgentService.normalizeName(m.getMenuName()).equals(normalized))) {
+            throw new RuntimeException("'" + menuName + "' 메뉴가 이미 있습니다.");
+        }
         Menu menu = new Menu();
         menu.setStore(store);
         menu.setMenuName(menuName);

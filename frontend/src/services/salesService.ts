@@ -1,11 +1,53 @@
 import { api } from './api';
 
+export interface SalesSummary {
+  start: string;
+  end: string;
+  totalQuantity: number;
+  revenue: number;
+  discountQuantity: number;
+  discountAmount: number;
+  previousQuantity: number;
+  previousRevenue: number;
+  byMenu: { menuId: number; menuName: string; quantity: number; revenue: number; discountQuantity: number }[];
+  byDay: { date: string; quantity: number; revenue: number }[];
+}
+
+export interface SalesInsight {
+  summary: string;
+  highlights: string[];
+  unverifiedNumbers: string[];
+}
+
+export interface SalesCorrectionChange {
+  menuId: number;
+  menuName: string;
+  saleDate: string;
+  currentTotal: number;
+  newTotal: number;
+  amountChange: number;
+  stockChanges: { ingredient: string; change: number; unit: string }[];
+}
+
+export interface SalesCorrectionProposal {
+  understood: string;
+  clarification: string | null;
+  changes: SalesCorrectionChange[];
+}
+
 export const salesService = {
-  getByStore: async (storeId: number) => {
-    return api.get(`/sales/${storeId}`);
+  proposeCorrection: async (storeId: number, message: string): Promise<SalesCorrectionProposal> => {
+    return api.post(`/sales/${storeId}/corrections/propose`, { message });
   },
-  create: async (data: any) => {
-    return api.post('/sales', data);
+  applyCorrection: async (storeId: number, changes: SalesCorrectionChange[], reason: string) => {
+    return api.post(`/sales/${storeId}/corrections/apply`, { changes, reason });
+  },
+  // 판매량 집계 (POS 결제가 자동 기록한 판매 기준)
+  getSummary: async (storeId: number, start: string, end: string): Promise<SalesSummary> => {
+    return api.get(`/sales/${storeId}/summary?start=${start}&end=${end}`);
+  },
+  getInsight: async (storeId: number, start: string, end: string): Promise<SalesInsight> => {
+    return api.post(`/sales/${storeId}/insight?start=${start}&end=${end}`, {});
   },
   getByDateRange: async (storeId: number, start: string, end: string) => {
     return api.get(`/sales/${storeId}/range?start=${start}&end=${end}`);

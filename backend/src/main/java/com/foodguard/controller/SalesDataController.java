@@ -43,6 +43,13 @@ public class SalesDataController {
         return ResponseEntity.ok(salesDataService.getAllStoreWeeklySummary());
     }
 
+    @GetMapping("/{storeId}/summary")
+    public ResponseEntity<Map<String, Object>> summary(@PathVariable Long storeId,
+                                                       @RequestParam String start,
+                                                       @RequestParam String end) {
+        return ResponseEntity.ok(salesDataService.summary(storeId, LocalDate.parse(start), LocalDate.parse(end)));
+    }
+
     @GetMapping("/{storeId}/range")
     public ResponseEntity<List<SalesData>> getByDateRange(
             @PathVariable Long storeId,

@@ -78,7 +78,7 @@ const OWNER_GROUPS: { title: string; tiles: TileProps[] }[] = [
     title: '운영',
     tiles: [
       { title: 'POS 시스템', desc: '테이블 주문·결제 (판매 자동 기록)', icon: 'mingcute:card-pay-line', color: '#D32F2F', path: '/pos' },
-      { title: '판매 입력', desc: '판매량 직접 입력·휴무/품절 기록', icon: 'mingcute:chart-line-line', color: '#00796B', path: '/sales' },
+      { title: '판매량 확인', desc: 'POS 판매 집계·판매 수정·휴무/품절 기록', icon: 'mingcute:chart-line-line', color: '#00796B', path: '/sales' },
       { title: '예약 현황', desc: '오늘·예정 예약 확인', icon: 'mingcute:calendar-2-line', color: '#1976D2', path: '/reservations' },
       { title: '메뉴 관리', desc: '메뉴·가격·레시피 관리', icon: 'mingcute:fork-spoon-line', color: '#0277BD', path: '/menus' },
       { title: '직원 관리', desc: '명단·근무 스케줄·주휴수당', icon: 'mingcute:user-2-line', color: '#5E35B1', path: '/staff' },
@@ -88,9 +88,9 @@ const OWNER_GROUPS: { title: string; tiles: TileProps[] }[] = [
   {
     title: '재고',
     tiles: [
-      { title: '재고 현황', desc: '식자재 수량·유통기한 확인', icon: 'mingcute:inventory-line', color: '#2E7D32', path: '/inventory' },
+      { title: '재고·폐기 관리', desc: '재고·유통기한·폐기 예측·할인 소진', icon: 'mingcute:inventory-line', color: '#2E7D32', path: '/inventory' },
       { title: '식자재 발주', desc: 'AI 추천량으로 발주', icon: 'mingcute:truck-line', color: '#1565C0', path: '/orders' },
-      { title: '폐기예측 & 기부', desc: '폐기 임박 재고 할인·기부', icon: 'mingcute:heart-fill', color: '#C62828', path: '/waste-prediction' },
+      { title: '기부', desc: '기부 등록·진행 중 기부 처리', icon: 'mingcute:heart-fill', color: '#C62828', path: '/donations' },
     ],
   },
   {
@@ -458,7 +458,7 @@ const ExpiringWidget = ({ items, state }: { items: any[]; state: 'loading' | 'er
     .sort((a, b) => expiryEnd(a.expiryDate).getTime() - expiryEnd(b.expiryDate).getTime())
     .slice(0, 3);
   return (
-    <SideCard icon="mingcute:time-line" color="#B53D00" title="폐기 임박 TOP 3" more={{ label: '폐기예측 & 기부', path: '/waste-prediction' }}>
+    <SideCard icon="mingcute:time-line" color="#B53D00" title="폐기 임박 TOP 3" more={{ label: '재고·폐기 관리', path: '/inventory' }}>
       {state === 'loading' ? <EmptyLine text="불러오는 중…" />
         : state === 'error' ? <EmptyLine text="데이터 없음" />
         : top.length === 0 ? <EmptyLine text="✓ 폐기 임박 품목이 없어요" />
@@ -530,7 +530,7 @@ const Dashboard = ({ user }: any) => {
   }
 
   const invValue =(n: number) => (invState === 'loading' ? null : invState === 'error' ? undefined : n);
-  const noSales = { text: '아직 판매 기록이 없어요', action: '판매 입력하기', path: '/sales' };
+  const noSales = { text: '아직 판매 기록이 없어요', action: 'POS 열기', path: '/pos' };
 
   const kpis: KpiProps[] = [
     { label: '오늘 매출', icon: 'mingcute:coin-line', color: '#E65100', path: '/sales-stats', unit: '원',
@@ -541,7 +541,7 @@ const Dashboard = ({ user }: any) => {
       value: todayReservations === null ? null : todayReservations?.length, empty: { text: '오늘 예약이 없어요' } },
     { label: '재고 부족 품목', icon: 'mingcute:inventory-line', color: '#C62828', path: '/inventory', unit: '개',
       value: invValue(inventory.filter(isLowStock).length), empty: { text: '부족한 재고가 없어요', good: true } },
-    { label: '폐기 임박 품목', icon: 'mingcute:time-line', color: '#B53D00', path: '/waste-prediction', unit: '개',
+    { label: '폐기 임박 품목', icon: 'mingcute:time-line', color: '#B53D00', path: '/inventory', unit: '개',
       value: invValue(inventory.filter(isExpiringSoon).length), empty: { text: '폐기 임박 품목이 없어요', good: true } },
   ];
 

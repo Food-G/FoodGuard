@@ -18,7 +18,7 @@ public class AiRateLimitInterceptor implements HandlerInterceptor {
 
     // Claude 를 부르는 POST 경로. GET 은 조회라 제한하지 않는다
     static final String[] PATHS = {
-            "/api/assistant/**", "/api/ingest/*/sales/preview", "/api/ingest/*/invoice/preview",
+            "/api/assistant/**", "/api/sales/*/insight", "/api/sales/*/corrections/propose", "/api/menu-agent/*/propose", "/api/ingest/*/sales/preview", "/api/ingest/*/invoice/preview",
             "/api/ingredients/suggest/**", "/api/orders/recommend/*/review", "/api/orders/recommend/*/explain",
             "/api/discounts/store/*/briefing", "/api/stats/hq/weekly-report", "/api/event-notes", "/api/predictions/*/trigger",
     };

@@ -12,8 +12,7 @@ import { ConfirmProvider } from './hooks/useConfirm';
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Assistant = lazy(() => import('./pages/Assistant'));
 const Inventory = lazy(() => import('./pages/Inventory'));
-const Ingredients = lazy(() => import('./pages/Ingredients'));
-const SalesEntry = lazy(() => import('./pages/SalesEntry'));
+const SalesView = lazy(() => import('./pages/SalesView'));
 const Predictions = lazy(() => import('./pages/Predictions'));
 const Orders = lazy(() => import('./pages/Orders'));
 const StoreManagement = lazy(() => import('./pages/admin/StoreManagement'));
@@ -26,8 +25,7 @@ const Login = lazy(() => import('./pages/auth/Login'));
 const Signup = lazy(() => import('./pages/auth/Signup'));
 const DeliveryDriver = lazy(() => import('./pages/DeliveryDriver'));
 const DeliveryDriverGroup = lazy(() => import('./pages/DeliveryDriverGroup'));
-const WastePrediction = lazy(() => import('./pages/WastePrediction'));
-const DonationHistory = lazy(() => import('./pages/DonationHistory'));
+const Donations = lazy(() => import('./pages/Donations'));
 const ScanComplete = lazy(() => import('./pages/ScanComplete'));
 const OwnerScanComplete = lazy(() => import('./pages/OwnerScanComplete'));
 const Reservations = lazy(() => import('./pages/Reservations'));
@@ -76,11 +74,8 @@ function App() {
               </ProtectedRoute>
             } />
 
-            <Route path="/ingredients" element={
-              <ProtectedRoute role="OWNER">
-                <Ingredients user={user} />
-              </ProtectedRoute>
-            } />
+            {/* 재고·폐기 화면과 메뉴 관리로 나뉘었다. 예전 주소 호환 */}
+            <Route path="/ingredients" element={<Navigate to="/inventory" replace />} />
 
             <Route path="/orders" element={
               <ProtectedRoute role="OWNER">
@@ -90,7 +85,7 @@ function App() {
 
             <Route path="/sales" element={
               <ProtectedRoute role="OWNER">
-                <SalesEntry user={user} />
+                <SalesView user={user} />
               </ProtectedRoute>
             } />
 
@@ -126,15 +121,12 @@ function App() {
               </ProtectedRoute>
             } />
 
-            <Route path="/waste-prediction" element={
-              <ProtectedRoute role="OWNER">
-                <WastePrediction user={user} />
-              </ProtectedRoute>
-            } />
+            {/* 재고 화면으로 합쳐졌다. 예전 주소 호환 */}
+            <Route path="/waste-prediction" element={<Navigate to="/inventory" replace />} />
 
             <Route path="/donations" element={
               <ProtectedRoute role="OWNER">
-                <DonationHistory user={user} />
+                <Donations user={user} />
               </ProtectedRoute>
             } />
 

@@ -186,6 +186,42 @@ class AgentFeaturesTest {
         assertThatThrownBy(() -> prediction.triggerPrediction(STORE)).hasMessageNotContaining("이미 실행 중");
     }
 
+    private static SalesData sale(Menu menu, LocalDate day, int qty, Integer unitPrice, Integer pct) {
+        SalesData s = new SalesData();
+        s.setMenu(menu);
+        s.setSaleDate(day);
+        s.setQuantity(qty);
+        s.setUnitPrice(unitPrice);
+        s.setDiscountPct(pct);
+        return s;
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void 판매량_집계는_실제_판매가와_할인을_반영하고_판매_없는_날도_보여_준다() {
+        Menu burger = menu(10L, "버거");
+        burger.setPrice(5000);
+        Menu cola = menu(11L, "콜라");
+        cola.setPrice(2000);
+        LocalDate start = LocalDate.of(2026, 11, 1);
+
+        Map<String, Object> r = SalesDataService.summarize(start, start.plusDays(2), List.of(
+                sale(burger, start, 2, 3500, 30),      // 할인
+                sale(burger, start, 1, null, null),    // 단가 없음 → 메뉴 가격
+                sale(cola, start.plusDays(2), 4, 2000, null)),
+                List.of(sale(cola, start.minusDays(1), 3, null, null)));
+
+        assertThat(r).containsEntry("totalQuantity", 7L).containsEntry("revenue", 20000L)
+                .containsEntry("discountQuantity", 2L).containsEntry("discountAmount", 3000L)
+                .containsEntry("previousQuantity", 3L).containsEntry("previousRevenue", 6000L);
+        List<Map<String, Object>> menus = (List<Map<String, Object>>) r.get("byMenu");
+        assertThat(menus.get(0)).containsEntry("menuName", "콜라").containsEntry("quantity", 4L);
+        assertThat(menus.get(1)).containsEntry("menuName", "버거").containsEntry("revenue", 12000L).containsEntry("discountQuantity", 2L);
+        List<Map<String, Object>> days = (List<Map<String, Object>>) r.get("byDay");
+        assertThat(days).hasSize(3);
+        assertThat(days.get(1)).containsEntry("quantity", 0L);
+    }
+
     private static OrderRequest order(LocalDate orderedOn, LocalDate receivedOn) {
         OrderRequest o = new OrderRequest();
         o.setOrderedAt(orderedOn.atTime(9, 0));

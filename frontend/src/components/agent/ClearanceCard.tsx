@@ -7,7 +7,7 @@ import { discountService, errorText, ClearanceCandidate, ClearanceBriefing } fro
 const BELOW_COST_PCT = 60;
 
 // 유통기한 임박 식자재 소진: 남을 양과 메뉴를 보여 주고 점주가 메뉴별 할인율을 정한다. POS 결제에 바로 적용된다
-const ClearanceCard = ({ storeId, onChanged }: { storeId: number; onChanged?: () => void }) => {
+const ClearanceCard = ({ storeId, refreshKey, onChanged }: { storeId: number; refreshKey?: number; onChanged?: () => void }) => {
   const theme = useTheme();
   const [candidates, setCandidates] = useState<ClearanceCandidate[]>([]);
   const [pct, setPct] = useState<Record<string, string>>({});
@@ -17,7 +17,7 @@ const ClearanceCard = ({ storeId, onChanged }: { storeId: number; onChanged?: ()
   const [error, setError] = useState('');
 
   const load = () => discountService.candidates(storeId).then(setCandidates).catch((e) => setError(errorText(e, '소진 후보를 불러오지 못했습니다.')));
-  useEffect(() => { load(); }, [storeId]);
+  useEffect(() => { load(); }, [storeId, refreshKey]);
 
   const apply = async (c: ClearanceCandidate, menuId: number) => {
     const key = `${c.ingredientId}-${menuId}`;

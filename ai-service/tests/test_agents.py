@@ -154,6 +154,80 @@ def test_clearance_drops_unknown_and_flags_invented_numbers(monkeypatch):
     assert r["unverifiedNumbers"] == ["30"]
 
 
+def test_sales_insight_limits_highlights_and_flags_numbers(monkeypatch):
+    fake(monkeypatch, agents, {"summary": "총 120개 팔렸고 999개 늘었습니다", "highlights": ["a", "b", "c", "d"]})
+    r = client.post("/api/agents/sales-insight", json={"totalQuantity": 120, "byMenu": []}).json()
+    assert len(r["highlights"]) == 3
+    assert r["unverifiedNumbers"] == ["999"]
+
+
+CORRECTION_SALES = [{"saleDate": "2026-11-06", "menuId": 1, "menuName": "버거", "total": 3}]
+
+
+def test_correction_drops_invented_sales_and_no_change(monkeypatch):
+    fake(monkeypatch, agents, {"understood": "u", "clarification": None, "actions": [
+        {"saleDate": "2026-11-06", "menuId": 1, "newTotal": 2},
+        {"saleDate": "2026-11-06", "menuId": 999, "newTotal": 0},   # 없는 메뉴
+        {"saleDate": "2026-01-01", "menuId": 1, "newTotal": 0},     # 없는 날짜
+        {"saleDate": "2026-11-06", "menuId": 1, "newTotal": 1},     # 같은 판매 중복
+    ]})
+    r = client.post("/api/agents/sales-correction", json={"message": "m", "today": "2026-11-06", "sales": CORRECTION_SALES}).json()
+    assert r["actions"] == [{"saleDate": "2026-11-06", "menuId": 1, "newTotal": 2}]
+
+
+def test_correction_negative_or_same_total_asks_again(monkeypatch):
+    for bad in (-1, 3):
+        fake(monkeypatch, agents, {"understood": "u", "clarification": None, "actions": [{"saleDate": "2026-11-06", "menuId": 1, "newTotal": bad}]})
+        r = client.post("/api/agents/sales-correction", json={"message": "m", "today": "2026-11-06", "sales": CORRECTION_SALES}).json()
+        assert r["actions"] == [] and r["clarification"]
+
+
+def test_correction_rejects_empty_and_long_and_skips_claude_without_sales():
+    base = {"today": "2026-11-06", "sales": CORRECTION_SALES}
+    assert client.post("/api/agents/sales-correction", json={"message": " ", **base}).status_code == 400
+    assert client.post("/api/agents/sales-correction", json={"message": "가" * 301, **base}).status_code == 400
+    r = client.post("/api/agents/sales-correction", json={"message": "취소", "today": "2026-11-06", "sales": []}).json()
+    assert r["actions"] == [] and r["clarification"]
+
+
+RECIPE_MENUS = [{"id": 1, "name": "버거", "price": 5000, "recipe": [{"ingredientId": 7, "name": "빵"}]}]
+INGS = [{"id": 7, "name": "빵", "unit": "개"}, {"id": 8, "name": "쌀", "unit": "kg"}]
+BLANK = {"menuId": None, "menuName": None, "price": None, "category": None, "ingredientId": None, "removeIngredientIds": [], "ingredients": []}
+
+
+def menu_change(**kw):
+    return {**BLANK, **kw}
+
+
+def post_menu(monkeypatch, *changes, clarification=None):
+    fake(monkeypatch, agents, {"understood": "u", "clarification": clarification, "changes": list(changes)})
+    return client.post("/api/agents/menu-changes", json={"message": "m", "menus": RECIPE_MENUS, "ingredients": INGS}).json()
+
+
+def test_menu_changes_keeps_valid(monkeypatch):
+    r = post_menu(monkeypatch,
+                  menu_change(op="ADD_MENU", menuName="새메뉴", price=4000),
+                  menu_change(op="REMOVE_INGREDIENTS", menuId=1, removeIngredientIds=[7]),
+                  menu_change(op="DELETE_INGREDIENT", ingredientId=8))
+    assert len(r["changes"]) == 3
+
+
+def test_menu_changes_rejects_all_when_any_invalid(monkeypatch):
+    for bad in (menu_change(op="ADD_MENU", menuName="새메뉴"),                       # 가격 없음
+                menu_change(op="UPDATE_MENU", menuId=99, price=1),                    # 없는 메뉴
+                menu_change(op="REMOVE_INGREDIENTS", menuId=1, removeIngredientIds=[8]),  # 레시피에 없음
+                menu_change(op="DELETE_INGREDIENT", ingredientId=999),
+                menu_change(op="ADD_INGREDIENTS", menuId=1)):
+        r = post_menu(monkeypatch, menu_change(op="DELETE_MENU", menuId=1), bad)
+        assert r["changes"] == [] and r["clarification"]
+
+
+def test_menu_changes_rejects_empty_and_long_message():
+    base = {"menus": RECIPE_MENUS, "ingredients": INGS}
+    assert client.post("/api/agents/menu-changes", json={"message": " ", **base}).status_code == 400
+    assert client.post("/api/agents/menu-changes", json={"message": "가" * 501, **base}).status_code == 400
+
+
 def test_clearance_empty_skips_claude():
     assert client.post("/api/agents/clearance", json={"candidates": []}).json()["items"] == []
 

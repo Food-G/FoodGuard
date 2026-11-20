@@ -9,7 +9,9 @@ import com.foodguard.repository.MenuRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
+import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -30,12 +32,29 @@ public class MenuIngredientService {
             throw new RuntimeException("이 가맹점의 식자재가 아닙니다.");
         }
 
-        MenuIngredient mi = new MenuIngredient();
+        if (!MenuAgentService.compatible(unit, ingredient.getUnit())) {
+            throw new RuntimeException(ingredient.getName() + "은(는) " + ingredient.getUnit() + " 단위 식자재라 " + unit + "(으)로 쓸 수 없습니다.");
+        }
+        // 같은 식자재를 두 번 넣으면 재고가 두 번 차감된다. 사용량을 바꾼다
+        MenuIngredient mi = menuIngredientRepository.findByMenuId(menuId).stream()
+                .filter(x -> x.getIngredient().getId().equals(ingredientId)).findFirst().orElseGet(MenuIngredient::new);
         mi.setMenu(menu);
         mi.setIngredient(ingredient);
         mi.setQtyPerUnit(BigDecimal.valueOf(qtyPerUnit));
         mi.setUnit(unit);
         return menuIngredientRepository.save(mi);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> getByStore(Long storeId) {
+        return menuIngredientRepository.findActiveByStore(storeId).stream().map(mi -> Map.<String, Object>of(
+                "id", mi.getId(),
+                "menuId", mi.getMenu().getId(),
+                "ingredientId", mi.getIngredient().getId(),
+                "ingredientName", mi.getIngredient().getName(),
+                "baseUnit", mi.getIngredient().getUnit(),
+                "qtyPerUnit", mi.getQtyPerUnit(),
+                "unit", mi.getUnit())).toList();
     }
 
     public List<MenuIngredient> getByMenu(Long menuId) {        return menuIngredientRepository.findByMenuId(menuId);

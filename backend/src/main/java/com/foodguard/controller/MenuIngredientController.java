@@ -24,6 +24,12 @@ public class MenuIngredientController {
         ));
     }
 
+    // 매장 전체 레시피 (메뉴 화면, 재고 화면)
+    @GetMapping("/store/{storeId}")
+    public ResponseEntity<List<Map<String, Object>>> getByStore(@PathVariable Long storeId) {
+        return ResponseEntity.ok(menuIngredientService.getByStore(storeId));
+    }
+
     @GetMapping("/menu/{menuId}")    public ResponseEntity<List<MenuIngredient>> getByMenu(@PathVariable Long menuId) {
         return ResponseEntity.ok(menuIngredientService.getByMenu(menuId));
     }
