@@ -1,590 +1,421 @@
+import { useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import { Link as RouterLink, useNavigate } from 'react-router-dom';
-import { Box, Typography, Badge, Chip, CircularProgress, Button, ButtonBase } from '@mui/material';
+import { Box, Typography, Badge, Paper, Stack, useTheme } from '@mui/material';
+import * as echarts from 'echarts';
 import IconifyIcon from '../components/base/IconifyIcon';
+import ReactEChart from '../components/base/ReactEChart';
+import { useMyStore } from '../hooks/useMyStore';
+import { notificationService } from '../services/notificationService';
+import { predictionService, PredictionResult } from '../services/predictionService';
+import { orderService } from '../services/orderService';
+import { wastePredictionService } from '../services/wastePredictionService';
 import { inventoryService } from '../services/inventoryService';
 import { salesService } from '../services/salesService';
-import { storeService } from '../services/storeService';
-import { reservationService, Reservation } from '../services/reservationService';
 import { employeeService, attendanceService, Employee, Attendance } from '../services/employeeService';
-import { addDays, hhmm, localDate, minutesBetween, minutesLabel } from '../helpers/date';
-import { predictionService, PredictionResult } from '../services/predictionService';
+import { hhmm, localDate, minutesBetween, minutesLabel } from '../helpers/date';
 
-/* ───────── 공통 ───────── */
-// 키보드 포커스가 보이도록 (마우스 클릭에는 표시하지 않음)
-const FOCUS_SX = {
-  '&.Mui-focusVisible, &:focus-visible': { outline: '3px solid #1565C0', outlineOffset: 2 },
-};
-
-const CARD_SX = {
-  borderRadius: 3,
-  bgcolor: '#ffffff',
-  border: '1px solid #E8EAF0',
-  boxShadow: '0 2px 12px rgba(0,0,0,0.07)',
-  p: { xs: 2, md: 2.5 },
-};
-
-/* ───────── 기능 타일 ───────── */
-interface TileProps {
+interface Shortcut {
   title: string;
-  desc: string;
   icon: string;
-  color: string;
   path: string;
   badge?: number;
 }
 
-const LaunchTile = ({ title, desc, icon, color, path, badge }: TileProps) => (
-  <ButtonBase
-    component={RouterLink}
-    to={path}
-    title={desc}
-    sx={{
-      ...FOCUS_SX,
-      width: '100%',
-      minHeight: 76,
-      justifyContent: 'flex-start',
-      gap: 1.5,
-      px: 2,
-      py: 1.5,
-      borderRadius: 3,
-      bgcolor: '#ffffff',
-      border: '1px solid #E8EAF0',
-      borderLeft: `4px solid ${color}`,
-      textAlign: 'left',
-      position: 'relative',
-      transition: 'transform 0.15s ease, box-shadow 0.15s ease',
-      '&:hover': { transform: 'translateY(-2px)', boxShadow: `0 8px 20px ${color}33` },
-    }}
-  >
-    <Box sx={{ width: 44, height: 44, borderRadius: 2.5, bgcolor: `${color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-      <IconifyIcon icon={icon} width={24} height={24} color={color} />
-    </Box>
-    <Box sx={{ minWidth: 0 }}>
-      <Typography fontWeight={700} fontSize={15} color="#1A1C1E" lineHeight={1.3}>{title}</Typography>
-      <Typography fontSize={13} color="#44474E" lineHeight={1.4} sx={{ mt: 0.3 }}>{desc}</Typography>
-    </Box>
-    {badge != null && badge > 0 && (
-      <Badge badgeContent={badge} color="error" sx={{ position: 'absolute', top: 14, right: 14 }} />
-    )}
-  </ButtonBase>
-);
+interface Recommendation {
+  ingredientId: number;
+  ingredientName: string;
+  unit: string;
+  orderQty: number;
+  currentStock: number;
+  coverageDays: number;
+}
 
-const TILE_GRID_SX = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 1.5 };
+interface TodaySummary { quantity: number; revenue: number; prevQuantity: number; prevRevenue: number }
 
-// POS 는 테이블 주문·결제(결제 시 판매가 자동 기록), 판매 입력은 판매량 직접 입력·휴무/품절 기록이라 별도 유지
-const OWNER_GROUPS: { title: string; tiles: TileProps[] }[] = [
+// 업무별 묶음 (hyeon 의 운영·재고·분석 구분을 그대로)
+const OWNER_GROUPS: { title: string; items: Shortcut[] }[] = [
   {
     title: '운영',
-    tiles: [
-      { title: 'POS 시스템', desc: '테이블 주문·결제 (판매 자동 기록)', icon: 'mingcute:card-pay-line', color: '#D32F2F', path: '/pos' },
-      { title: '판매 입력', desc: '판매량 직접 입력·휴무/품절 기록', icon: 'mingcute:chart-line-line', color: '#00796B', path: '/sales' },
-      { title: '예약 현황', desc: '오늘·예정 예약 확인', icon: 'mingcute:calendar-2-line', color: '#1976D2', path: '/reservations' },
-      { title: '메뉴 관리', desc: '메뉴·가격·레시피 관리', icon: 'mingcute:fork-spoon-line', color: '#0277BD', path: '/menus' },
-      { title: '직원 관리', desc: '명단·근무 스케줄·주휴수당', icon: 'mingcute:user-2-line', color: '#5E35B1', path: '/staff' },
-      { title: '출퇴근', desc: '직원 PIN 출퇴근 기록', icon: 'mingcute:time-line', color: '#00695C', path: '/clock' },
+    items: [
+      { title: 'POS',        icon: 'mingcute:card-pay-line',   path: '/pos' },
+      { title: '판매 입력',  icon: 'mingcute:chart-line-line', path: '/sales' },
+      { title: '예약',       icon: 'mingcute:calendar-2-line', path: '/reservations' },
+      { title: '메뉴',       icon: 'mingcute:fork-spoon-line', path: '/menus' },
+      { title: '직원',       icon: 'mingcute:user-2-line',     path: '/staff' },
+      { title: '출퇴근',     icon: 'mingcute:time-line',       path: '/clock' },
     ],
   },
   {
     title: '재고',
-    tiles: [
-      { title: '재고 현황', desc: '식자재 수량·유통기한 확인', icon: 'mingcute:inventory-line', color: '#2E7D32', path: '/inventory' },
-      { title: '식자재 발주', desc: 'AI 추천량으로 발주', icon: 'mingcute:truck-line', color: '#1565C0', path: '/orders' },
-      { title: '폐기예측 & 기부', desc: '폐기 임박 재고 할인·기부', icon: 'mingcute:heart-fill', color: '#C62828', path: '/waste-prediction' },
+    items: [
+      { title: '재고',       icon: 'mingcute:inventory-line',  path: '/inventory' },
+      { title: '발주',       icon: 'mingcute:refresh-2-line',  path: '/orders' },
+      { title: '식자재',     icon: 'mingcute:leaf-line',       path: '/ingredients' },
+      { title: '폐기·기부',  icon: 'mingcute:heart-line',      path: '/waste-prediction' },
+      { title: '기부 이력',  icon: 'mingcute:history-line',    path: '/donations' },
+      { title: '가게 정보',  icon: 'mingcute:store-2-line',    path: '/store' },
     ],
   },
   {
     title: '분석·AI',
-    tiles: [
-      { title: '매출 통계', desc: '기간별 매출·판매 추이', icon: 'mingcute:chart-bar-fill', color: '#E65100', path: '/sales-stats' },
-      { title: 'AI 수요 예측', desc: '7일 메뉴별 판매 예측', icon: 'mingcute:brain-fill', color: '#7B1FA2', path: '/predictions' },
-      { title: 'AI 운영 비서', desc: '매장 운영 질문·대화', icon: 'mingcute:chat-3-line', color: '#3949AB', path: '/assistant' },
+    items: [
+      { title: '매출 통계',  icon: 'mingcute:chart-bar-line',  path: '/sales-stats' },
+      { title: '수요 예측',  icon: 'mingcute:brain-line',      path: '/predictions' },
+      { title: 'AI 비서',    icon: 'mingcute:chat-3-line',     path: '/assistant' },
     ],
   },
 ];
 
-const ADMIN_TILES: TileProps[] = [
-  { title: '발주 관리', desc: '가맹점 발주 승인·처리', icon: 'mingcute:truck-line', color: '#1976D2', path: '/admin/orders' },
-  { title: '가맹점 관리', desc: '가맹점 목록·위치 관리', icon: 'mingcute:grid-fill', color: '#2E7D32', path: '/admin/stores' },
-  { title: '통계 분석', desc: '매출·폐기·추천 적용률', icon: 'mingcute:chart-bar-fill', color: '#7B1FA2', path: '/admin/stats' },
+const ADMIN_SHORTCUTS: Shortcut[] = [
+  { title: '발주 관리',   icon: 'mingcute:truck-line',       path: '/admin/orders' },
+  { title: '가맹점 관리', icon: 'mingcute:grid-line',        path: '/admin/stores' },
+  { title: '통계 분석',   icon: 'mingcute:chart-bar-line',   path: '/admin/stats' },
 ];
 
-/* ───────── 오늘 요약 KPI ───────── */
-interface KpiProps {
-  label: string;
-  icon: string;
-  color: string;
-  path: string;
-  // null: 불러오는 중, undefined: 데이터 없음(조회 실패·API 없음)
-  value: number | null | undefined;
-  unit: string;
-  format?: (n: number) => string;
-  // 값이 0 일 때 숫자 대신 보여줄 문구와 바로가기
-  empty: { text: string; action?: string; path?: string; good?: boolean };
-  prev?: number | null;  // 어제 값 (있을 때만 증감 표시)
-}
+const QUICK_ACTIONS: Shortcut[] = [
+  { title: '오늘 판매 입력하기', icon: 'mingcute:edit-2-line',     path: '/sales' },
+  { title: '발주 추천 보기',     icon: 'mingcute:refresh-2-line',  path: '/orders' },
+  { title: 'AI 비서에게 묻기',   icon: 'mingcute:chat-3-line',     path: '/assistant' },
+];
 
-// 어제가 0 이거나 없으면 % 를 낼 수 없으니 표시하지 않는다
-const Delta = ({ value, prev }: { value: number; prev?: number | null }) => {
-  if (prev == null || prev <= 0 || value <= 0) return null;
-  const pct = Math.round(((value - prev) / prev) * 100);
-  const up = pct >= 0;
-  return (
-    <Typography fontSize={12} fontWeight={700} color={up ? '#1B5E20' : '#B71C1C'}>
-      {pct === 0 ? '어제와 같음' : `${up ? '▲' : '▼'} ${Math.abs(pct)}% 어제 대비`}
-    </Typography>
-  );
+const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
+const dayLabel = (iso: string) => {
+  const d = new Date(`${iso}T00:00:00`);
+  return `${d.getMonth() + 1}/${d.getDate()}(${WEEKDAYS[d.getDay()]})`;
 };
 
-const KpiCard = ({ label, icon, color, path, value, unit, format, empty, prev }: KpiProps) => {
-  const isEmpty = value === 0;
-  return (
-    <ButtonBase
-      component={RouterLink}
-      to={isEmpty && empty.path ? empty.path : path}
-      sx={{
-        ...CARD_SX,
-        ...FOCUS_SX,
-        flexDirection: 'column',
-        alignItems: 'flex-start',
-        justifyContent: 'flex-start',
-        gap: 0.8,
-        textAlign: 'left',
-        cursor: 'pointer',
-        transition: 'transform 0.15s ease, box-shadow 0.15s ease',
-        '&:hover': { transform: 'translateY(-3px)', boxShadow: `0 10px 22px ${color}33` },
-      }}
-    >
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
-        <IconifyIcon icon={icon} width={20} height={20} color={color} />
-        <Typography fontSize={14} fontWeight={600} color="#44474E">{label}</Typography>
-      </Box>
-      {value === null ? (
-        <Typography fontSize={15} color="#44474E">불러오는 중…</Typography>
-      ) : value === undefined ? (
-        <Typography fontSize={15} fontWeight={600} color="#5F6368">데이터 없음</Typography>
-      ) : isEmpty ? (
-        // 한글이 글자 단위로 끊기지 않게 keep-all, 바로가기는 다음 줄
-        <Typography fontSize={14} fontWeight={600} color={empty.good ? '#1B5E20' : '#44474E'} lineHeight={1.45} sx={{ wordBreak: 'keep-all' }}>
-          {empty.good && '✓ '}{empty.text}
-          {empty.action && <Box component="span" sx={{ display: 'block', color: '#1565C0', whiteSpace: 'nowrap' }}>{empty.action} →</Box>}
-        </Typography>
-      ) : (
-        <>
-          <Typography fontSize={{ xs: 26, md: 30 }} fontWeight={800} color="#1A1C1E" lineHeight={1.1}>
-            {(format ?? ((n: number) => n.toLocaleString()))(value)}
-            <Typography component="span" fontSize={15} fontWeight={600} color="#44474E" sx={{ ml: 0.5 }}>{unit}</Typography>
-          </Typography>
-          <Delta value={value} prev={prev} />
-        </>
-      )}
-    </ButtonBase>
-  );
-};
-
-/* ───────── 재고 경고 ───────── */
-const WEEKDAY = ['일', '월', '화', '수', '목', '금', '토'];
-// 재고에 품목별 기준 수량 컬럼이 없어 기존 판정 기준(1 이하)을 기준 수량으로 쓴다
+// 재고 경고 기준 (hyeon 과 같음): 재고 1 이하, 유통기한 3일 이내(그날 24:00 까지)
 const LOW_STOCK_QTY = 1;
 const EXPIRY_SOON_DAYS = 3;
-
-// 유통기한(날짜만 저장됨)이 끝나는 시각 = 그날 24:00
+const qtyOf = (item: any) => Number(item.currentQty ?? item.quantity ?? 0);
 const expiryEnd = (expiryDate: string) => {
   const [y, m, d] = expiryDate.split('-').map(Number);
   return new Date(y, m - 1, d + 1);
 };
-
-const expiryDateLabel = (expiryDate: string) => {
-  const [y, m, d] = expiryDate.split('-').map(Number);
-  return `${m}/${String(d).padStart(2, '0')}(${WEEKDAY[new Date(y, m - 1, d).getDay()]})`;
-};
-
-const remainingLabel = (expiryDate: string, now: Date) => {
-  const ms = expiryEnd(expiryDate).getTime() - now.getTime();
-  if (ms <= 0) return '기한 지남';
-  const hours = Math.floor(ms / 3_600_000);
-  const minutes = Math.floor((ms % 3_600_000) / 60_000);
-  if (hours >= 24) return `${Math.floor(hours / 24)}일 ${hours % 24}시간 남음`;
-  return hours > 0 ? `${hours}시간 ${minutes}분 남음` : `${minutes}분 남음`;
-};
-
-const qtyOf = (item: any) => Number(item.currentQty ?? item.quantity ?? 0);
 const isLowStock = (item: any) => qtyOf(item) <= LOW_STOCK_QTY;
 const isExpiringSoon = (item: any) => {
   if (!item.expiryDate) return false;
   const soon = new Date(); soon.setDate(soon.getDate() + EXPIRY_SOON_DAYS);
   return expiryEnd(item.expiryDate) <= soon;
 };
+const remainingLabel = (expiryDate: string) => {
+  const ms = expiryEnd(expiryDate).getTime() - Date.now();
+  if (ms <= 0) return '기한 지남';
+  const hours = Math.floor(ms / 3_600_000);
+  return hours >= 24 ? `${Math.floor(hours / 24)}일 ${hours % 24}시간 남음` : `${hours}시간 남음`;
+};
 
-const InventoryAlertWidget = ({ items, loading }: { items: any[]; loading: boolean }) => {
+// 아이콘 바로가기 (Square 홈 왼쪽 열처럼 한 가지 색으로)
+const ShortcutTile = ({ title, icon, path, badge }: Shortcut) => {
   const navigate = useNavigate();
-  const [now, setNow] = useState(new Date());
-
-  useEffect(() => {
-    const timer = setInterval(() => setNow(new Date()), 60_000);
-    return () => clearInterval(timer);
-  }, []);
-
-  const alerts = items.filter((item) => isLowStock(item) || isExpiringSoon(item))
-    // 마감이 가까운 순, 유통기한 없는 재고 부족 항목은 뒤로
-    .sort((a, b) =>
-      (a.expiryDate ? expiryEnd(a.expiryDate).getTime() : Infinity) -
-      (b.expiryDate ? expiryEnd(b.expiryDate).getTime() : Infinity));
-  const shown = alerts.slice(0, 5);
-
-  const header = (right: React.ReactNode) => (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
-      <IconifyIcon icon="mingcute:warning-fill" width={22} height={22} color="#E65100" />
-      <Typography fontWeight={700} fontSize={16} color="#1A1C1E">재고 경고 알림</Typography>
-      <Box sx={{ ml: 'auto' }}>{right}</Box>
-    </Box>
-  );
-
-  // 경고가 없으면 한 줄로 간단히, 카드 전체가 재고 현황 바로가기
-  if (loading || alerts.length === 0) {
-    return (
-      <ButtonBase component={RouterLink} to="/inventory" sx={{ ...CARD_SX, ...FOCUS_SX, py: 1.5, borderTop: '3px solid #FF9800', textAlign: 'left' }}>
-        {header(loading ? (
-          <CircularProgress size={16} sx={{ color: '#FF9800' }} />
-        ) : (
-          <Chip
-            icon={<IconifyIcon icon="mingcute:check-circle-fill" width={14} height={14} color="#1B7F5B" />}
-            label="경고 없음" size="small"
-            sx={{ bgcolor: '#F1F8F5', color: '#1B7F5B', fontWeight: 700, fontSize: 12, border: '1px solid #C8E6D5' }}
-          />
-        ))}
-      </ButtonBase>
-    );
-  }
-
   return (
-    <Box sx={{ ...CARD_SX, borderTop: '3px solid #FF9800' }}>
-      {header(
-        <Button component={RouterLink} to="/inventory" variant="text" size="small" sx={{ ...FOCUS_SX, fontWeight: 700 }}>
-          전체 {alerts.length}건 보기
-        </Button>,
-      )}
-      <Box component="ul" sx={{ listStyle: 'none', m: 0, p: 0, mt: 1.5, display: 'flex', flexDirection: 'column', gap: 1 }}>
-        {shown.map((item, i) => {
-          const end = item.expiryDate ? expiryEnd(item.expiryDate) : null;
-          const expired = end != null && end <= now;
-          const low = isLowStock(item);
-          return (
-            <Box component="li" key={item.id ?? i} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, px: 1.5, py: 1, borderRadius: 2, bgcolor: expired ? '#FFEBEE' : '#FFF8F0', border: `1px solid ${expired ? '#FFCDD2' : '#FFE0B2'}` }}>
-              <Box sx={{ minWidth: 0, flex: 1 }}>
-                <Typography fontSize={15} color="#1A1C1E" fontWeight={700} noWrap>{item.ingredient?.name ?? '식자재'}</Typography>
-                <Typography fontSize={13} color="#44474E">
-                  현재 <b style={{ color: low ? '#C62828' : undefined }}>{qtyOf(item)}{item.unit}</b> · 기준 {LOW_STOCK_QTY}{item.unit}
-                </Typography>
-                {item.expiryDate && (
-                  <Typography fontSize={13} color={expired ? '#B71C1C' : '#B53D00'} fontWeight={600}>
-                    유통기한 {expiryDateLabel(item.expiryDate)} · {remainingLabel(item.expiryDate, now)}
-                  </Typography>
-                )}
-              </Box>
-              <Button
-                variant="outlined" size="small"
-                onClick={() => navigate('/orders')}
-                startIcon={<IconifyIcon icon="mingcute:truck-line" width={16} height={16} />}
-                sx={{ ...FOCUS_SX, flexShrink: 0, fontWeight: 700, bgcolor: '#fff' }}
-              >
-                발주
-              </Button>
-            </Box>
-          );
-        })}
-      </Box>
-    </Box>
+    <Stack
+      alignItems="center" gap={1} onClick={() => navigate(path)}
+      sx={{ cursor: 'pointer', userSelect: 'none', '&:hover .tile': { bgcolor: 'primary.main', color: 'common.white' } }}
+    >
+      <Badge badgeContent={badge || undefined} color="error">
+        <Box
+          className="tile"
+          sx={{
+            width: 52, height: 52, borderRadius: 3.5, bgcolor: 'primary.light', color: 'primary.main',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s ease',
+          }}
+        >
+          <IconifyIcon icon={icon} width={26} height={26} />
+        </Box>
+      </Badge>
+      <Typography variant="body2" color="text.primary" textAlign="center">{title}</Typography>
+    </Stack>
   );
 };
 
-/* ───────── 직원 출퇴근 (오늘 출퇴근 기록) ───────── */
-type EmpStatus = 'working' | 'off' | 'absent';
-
-const STATUS_CHIP: Record<EmpStatus, { label: string; bg: string; color: string; border: string }> = {
-  working: { label: '근무중', bg: '#E8F5E9', color: '#1B5E20', border: '#A5D6A7' },
-  off:     { label: '퇴근',   bg: '#EEF4FF', color: '#0D47A1', border: '#BBCFFF' },
-  absent:  { label: '미출근', bg: '#F1F3F5', color: '#5F6368', border: '#DADCE0' },
+// 어제와 비교 (어제가 0 이면 % 를 낼 수 없어 표시하지 않음)
+const Delta = ({ value, prev }: { value: number; prev?: number | null }) => {
+  const theme = useTheme();
+  if (prev == null || prev <= 0 || value <= 0) return null;
+  const pct = Math.round(((value - prev) / prev) * 100);
+  return (
+    <Typography variant="body2" fontWeight={600} mt={1}
+      sx={{ color: pct >= 0 ? theme.palette.success.main : theme.palette.error.main }}>
+      {pct === 0 ? '어제와 같아요' : `어제보다 ${Math.abs(pct)}% ${pct > 0 ? '많아요' : '적어요'}`}
+    </Typography>
+  );
 };
 
-// 근무중 직원이 먼저 보이게
-const STATUS_ORDER: Record<EmpStatus, number> = { working: 0, off: 1, absent: 2 };
-
-const StatusChip = ({ status }: { status: EmpStatus }) => {
-  const s = STATUS_CHIP[status];
-  return <Chip label={s.label} size="small" sx={{ height: 22, fontSize: 12, fontWeight: 700, bgcolor: s.bg, color: s.color, border: `1px solid ${s.border}` }} />;
+// 작은 회색 라벨 위에 큰 숫자 (토스·Square 카드)
+const StatCard = ({ label, value, unit, path, sub, tone }: {
+  label: string; value: string; unit: string; path: string; sub?: React.ReactNode; tone?: 'error' | 'warning';
+}) => {
+  const navigate = useNavigate();
+  return (
+    <Paper onClick={() => navigate(path)} sx={{ p: 5, cursor: 'pointer', '&:hover': { boxShadow: '0 4px 16px rgba(0,0,0,0.06)' } }}>
+      <Typography variant="body2" color="text.secondary" mb={1.5}>{label}</Typography>
+      <Stack direction="row" alignItems="center" gap={0.5} flexWrap="wrap">
+        <Typography fontSize={26} fontWeight={700} lineHeight={1.2} color={tone ? `${tone}.main` : 'text.primary'}>{value}</Typography>
+        <Typography fontSize={16} fontWeight={600} color="text.secondary">{unit}</Typography>
+        <IconifyIcon icon="mingcute:right-line" width={20} color="#B0B8C1" />
+      </Stack>
+      {sub}
+    </Paper>
+  );
 };
 
-const EmployeeWidget = ({ storeId }: { storeId: number | null }) => {
+// 오른쪽 열 카드: 제목 + 더보기 + 목록 행
+const ListCard = ({ title, more, children }: { title: string; more?: { label: string; path: string }; children: React.ReactNode }) => {
+  const navigate = useNavigate();
+  return (
+    <Paper sx={{ p: 5 }}>
+      <Stack direction="row" alignItems="center" justifyContent="space-between" mb={1}>
+        <Typography fontSize={18} fontWeight={700}>{title}</Typography>
+        {more && (
+          <Typography variant="body2" color="text.secondary" sx={{ cursor: 'pointer' }} onClick={() => navigate(more.path)}>
+            {more.label} ›
+          </Typography>
+        )}
+      </Stack>
+      {children}
+    </Paper>
+  );
+};
+
+const ListRow = ({ title, sub, right, rightColor, onClick }: {
+  title: string; sub?: string; right?: string; rightColor?: string; onClick?: () => void;
+}) => {
+  const theme = useTheme();
+  return (
+    <Stack
+      direction="row" alignItems="center" gap={2} onClick={onClick}
+      sx={{ py: 2.5, cursor: onClick ? 'pointer' : 'default', borderTop: `1px solid ${theme.palette.divider}`, '&:first-of-type': { borderTop: 'none' } }}
+    >
+      <Box sx={{ flex: 1, minWidth: 0 }}>
+        <Typography fontWeight={600} fontSize={15} noWrap>{title}</Typography>
+        {sub && <Typography variant="body2" color="text.secondary" noWrap>{sub}</Typography>}
+      </Box>
+      {right && <Typography fontWeight={700} fontSize={15} sx={{ whiteSpace: 'nowrap', color: rightColor }}>{right}</Typography>}
+      {onClick && <IconifyIcon icon="mingcute:right-line" width={18} color="#B0B8C1" />}
+    </Stack>
+  );
+};
+
+const EmptyText = ({ children }: { children: React.ReactNode }) => (
+  <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>{children}</Typography>
+);
+
+const Dashboard = ({ user }: any) => {
+  const theme = useTheme();
+  const navigate = useNavigate();
+  const role = user?.role || 'OWNER';
+  const { storeId, storeLoading } = useMyStore(user);
+  const [orderBadge, setOrderBadge] = useState(0);
+  const [predictions, setPredictions] = useState<PredictionResult[]>([]);
+  const [recs, setRecs] = useState<Recommendation[]>([]);
+  const [wasteCount, setWasteCount] = useState<number | null>(null);
+  const [loaded, setLoaded] = useState(false);
+  // undefined: 조회 실패 (null: 불러오는 중)
+  const [summary, setSummary] = useState<TodaySummary | null | undefined>(null);
+  const [inventory, setInventory] = useState<any[] | null>(null);
   const [employees, setEmployees] = useState<Employee[] | null>(null);
   const [records, setRecords] = useState<Attendance[]>([]);
-  const now = new Date();
 
   useEffect(() => {
     if (!storeId) return;
+    const fetch_ = () =>
+      notificationService.getUnread(storeId)
+        .then((data: any[]) => setOrderBadge((data ?? []).filter((n) => n.type === 'ORDER').length))
+        .catch(() => {});
+    fetch_();
+    const t = setInterval(fetch_, 30000);
+    return () => clearInterval(t);
+  }, [storeId]);
+
+  useEffect(() => {
+    if (!storeId || role === 'HQ_ADMIN') return;
+    Promise.allSettled([
+      predictionService.getByStore(storeId).then((p) => setPredictions(p ?? [])),
+      orderService.getRecommend(storeId).then((r: Recommendation[]) => setRecs((r ?? []).filter((i) => i.orderQty > 0))),
+      wastePredictionService.summary(storeId).then((s: any) => setWasteCount(s?.wasteCount ?? 0)),
+    ]).finally(() => setLoaded(true));
+  }, [storeId, role]);
+
+  // 오늘 매출·재고·출퇴근은 영업 중 바뀌므로 주기적으로 다시 읽는다 (실패하면 직전 값 유지)
+  useEffect(() => {
+    if (!storeId || role === 'HQ_ADMIN') return;
     const load = () => {
+      salesService.getTodaySummary(storeId)
+        .then((s: TodaySummary) => setSummary(s))
+        .catch(() => setSummary((s) => (s ? s : undefined)));
+      inventoryService.getByStore(storeId).then((items: any[]) => setInventory(items ?? [])).catch(() => {});
       const today = localDate(new Date());
       employeeService.getByStore(storeId).then(setEmployees).catch(() => {});
       attendanceService.getByStore(storeId, today, today).then(setRecords).catch(() => {});
     };
     load();
-    const timer = setInterval(load, 60_000);
-    return () => clearInterval(timer);
-  }, [storeId]);
-
-  // 재직 직원마다 오늘 첫 출근·마지막 퇴근·근무 시간(근무 중이면 지금까지)
-  const rows = (employees ?? []).filter((e) => e.active).map((e) => {
-    const mine = records.filter((r) => r.employeeId === e.id);
-    const status: EmpStatus = mine.length === 0 ? 'absent' : mine.some((r) => !r.clockOut) ? 'working' : 'off';
-    const minutes = mine.reduce((s, r) => s + minutesBetween(r.clockIn, r.clockOut ?? now), 0);
-    return { e, status, in: mine[0]?.clockIn, out: status === 'off' ? mine[mine.length - 1].clockOut : null, minutes };
-  }).sort((a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status]);
-  const onCount = rows.filter((r) => r.status === 'working').length;
-
-  return (
-    <ButtonBase
-      component={RouterLink}
-      to="/staff"
-      aria-label="직원 출퇴근 현황, 직원 관리로 이동"
-      sx={{ ...CARD_SX, ...FOCUS_SX, borderTop: '3px solid #1976D2', flexDirection: 'column', alignItems: 'stretch', textAlign: 'left' }}
-    >
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
-        <IconifyIcon icon="mingcute:user-2-fill" width={22} height={22} color="#1976D2" />
-        <Typography fontWeight={700} fontSize={16} color="#1A1C1E">직원 출퇴근 현황</Typography>
-        <Typography fontSize={13} fontWeight={700} color="#1B5E20" sx={{ ml: 'auto' }}>근무중 {onCount}명</Typography>
-      </Box>
-      {employees == null ? (
-        <Typography fontSize={14} color="#44474E">{storeId ? '불러오는 중…' : '-'}</Typography>
-      ) : rows.length === 0 ? (
-        <Typography fontSize={14} color="#44474E">등록된 직원이 없습니다. 눌러서 직원을 등록하세요.</Typography>
-      ) : (
-        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 1 }}>
-          {rows.map(({ e, status, in: clockIn, out, minutes }) => (
-            <Box key={e.id} sx={{ px: 1.5, py: 1, borderRadius: 2, bgcolor: status === 'absent' ? '#FAFAFA' : '#F7F9FF', border: '1px solid #E8EAF0' }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8, justifyContent: 'space-between' }}>
-                <Typography fontSize={14} fontWeight={700} color="#1A1C1E" noWrap>{e.name}</Typography>
-                <StatusChip status={status} />
-              </Box>
-              <Typography fontSize={13} color="#44474E" sx={{ mt: 0.3 }}>
-                {status === 'absent' ? '출근 기록 없음' : `${hhmm(clockIn)} ~ ${out ? hhmm(out) : '근무중'}`}
-              </Typography>
-              {status !== 'absent' && <Typography fontSize={12} color="#44474E">{minutesLabel(minutes)}</Typography>}
-            </Box>
-          ))}
-        </Box>
-      )}
-    </ButtonBase>
-  );
-};
-
-/* ───────── 오른쪽 요약 카드 (오늘 예약 · AI 예측 · 폐기 임박) ───────── */
-const SideCard = ({ icon, color, title, more, children }: { icon: string; color: string; title: string; more: { label: string; path: string }; children: React.ReactNode }) => (
-  <Box sx={{ ...CARD_SX, borderTop: `3px solid ${color}` }}>
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.2 }}>
-      <IconifyIcon icon={icon} width={22} height={22} color={color} />
-      <Typography fontWeight={700} fontSize={16} color="#1A1C1E">{title}</Typography>
-      <Button component={RouterLink} to={more.path} variant="text" size="small" sx={{ ...FOCUS_SX, ml: 'auto', fontWeight: 700 }}>
-        {more.label}
-      </Button>
-    </Box>
-    {children}
-  </Box>
-);
-
-const EmptyLine = ({ text }: { text: string }) => (
-  <Typography fontSize={14} color="#5F6368" sx={{ py: 0.5 }}>{text}</Typography>
-);
-
-const ListRow = ({ left, main, right }: { left: React.ReactNode; main: React.ReactNode; right?: React.ReactNode }) => (
-  <Box component="li" sx={{ display: 'flex', alignItems: 'center', gap: 1.5, py: 0.9, borderTop: '1px solid #F0F1F4', '&:first-of-type': { borderTop: 0 } }}>
-    <Typography fontSize={14} fontWeight={800} color="#1A1C1E" sx={{ minWidth: 44 }}>{left}</Typography>
-    <Box sx={{ flex: 1, minWidth: 0 }}>{main}</Box>
-    {right && <Typography fontSize={13} fontWeight={700} color="#44474E" sx={{ whiteSpace: 'nowrap' }}>{right}</Typography>}
-  </Box>
-);
-
-const LIST_SX = { listStyle: 'none', m: 0, p: 0 };
-
-// 오늘 예약중인 예약 (방문완료·취소 제외). list 는 null: 불러오는 중, undefined: 조회 실패
-const ReservationWidget = ({ list }: { list: Reservation[] | null | undefined }) => (
-  <SideCard icon="mingcute:calendar-2-line" color="#1976D2" title="오늘 예약" more={{ label: '전체 보기', path: '/reservations' }}>
-    {list === null ? <EmptyLine text="불러오는 중…" />
-      : list === undefined ? <EmptyLine text="데이터 없음" />
-      : list.length === 0 ? <EmptyLine text="오늘 예약이 없어요" />
-      : (
-        <Box component="ul" sx={LIST_SX}>
-          {list.slice(0, 5).map((r) => (
-            <ListRow key={r.id} left={hhmm(r.reservationTime)} right={`${r.guests}명`}
-              main={<Typography fontSize={14} fontWeight={600} noWrap>{r.customerName}{r.note && <Typography component="span" fontSize={12} color="#5F6368"> · {r.note}</Typography>}</Typography>} />
-          ))}
-        </Box>
-      )}
-  </SideCard>
-);
-
-// 내일 예측 판매량이 많은 메뉴 TOP 3 (PREDICTION_RESULT)
-const ForecastWidget = ({ storeId }: { storeId: number | null }) => {
-  const [rows, setRows] = useState<PredictionResult[] | null | undefined>(null);
-  const tomorrow = localDate(addDays(new Date(), 1));
-
-  useEffect(() => {
-    if (!storeId) return;
-    predictionService.getByStore(storeId)
-      .then((all) => setRows((all ?? []).filter((p) => p.predictionDate === tomorrow).sort((a, b) => b.predictedQty - a.predictedQty).slice(0, 3)))
-      .catch(() => setRows(undefined));
-  }, [storeId, tomorrow]);
-
-  return (
-    <SideCard icon="mingcute:brain-fill" color="#7B1FA2" title="내일 판매 예측 TOP 3" more={{ label: '예측 보기', path: '/predictions' }}>
-      {rows === null ? <EmptyLine text={storeId ? '불러오는 중…' : '데이터 없음'} />
-        : rows === undefined ? <EmptyLine text="데이터 없음" />
-        : rows.length === 0 ? <EmptyLine text="내일 예측이 아직 없어요 · AI 수요 예측에서 실행하세요" />
-        : (
-          <Box component="ul" sx={LIST_SX}>
-            {rows.map((p, i) => (
-              <ListRow key={p.id} left={`${i + 1}위`} right={`${Math.round(p.predictedQty)}개 예상`}
-                main={<Typography fontSize={14} fontWeight={600} noWrap>{p.menuName}</Typography>} />
-            ))}
-          </Box>
-        )}
-    </SideCard>
-  );
-};
-
-// 유통기한이 가까운 재고 TOP 3 (재고 경고 카드와 같은 기준: 3일 이내·기한 지남)
-const ExpiringWidget = ({ items, state }: { items: any[]; state: 'loading' | 'error' | 'ok' }) => {
-  const now = new Date();
-  const top = items.filter(isExpiringSoon)
-    .sort((a, b) => expiryEnd(a.expiryDate).getTime() - expiryEnd(b.expiryDate).getTime())
-    .slice(0, 3);
-  return (
-    <SideCard icon="mingcute:time-line" color="#B53D00" title="폐기 임박 TOP 3" more={{ label: '폐기예측 & 기부', path: '/waste-prediction' }}>
-      {state === 'loading' ? <EmptyLine text="불러오는 중…" />
-        : state === 'error' ? <EmptyLine text="데이터 없음" />
-        : top.length === 0 ? <EmptyLine text="✓ 폐기 임박 품목이 없어요" />
-        : (
-          <Box component="ul" sx={LIST_SX}>
-            {top.map((item, i) => (
-              <ListRow key={item.id ?? i} left={`${i + 1}`} right={remainingLabel(item.expiryDate, now)}
-                main={<Typography fontSize={14} fontWeight={600} noWrap>{item.ingredient?.name ?? '식자재'} <Typography component="span" fontSize={12} color="#5F6368">{qtyOf(item)}{item.unit}</Typography></Typography>} />
-            ))}
-          </Box>
-        )}
-    </SideCard>
-  );
-};
-
-/* ───────── Dashboard ───────── */
-// 1024px 이하(태블릿)는 오른쪽 열을 아래로, KPI 는 2~3열로 (테마 lg 가 1024 라 직접 지정)
-const WIDE = '@media (min-width: 1025px)';
-
-interface TodaySummary { quantity: number; revenue: number; prevQuantity: number; prevRevenue: number }
-
-const Dashboard = ({ user }: any) => {
-  const role = user?.role || 'OWNER';
-  const [storeId, setStoreId] = useState<number | null>(null);
-  const [inventory, setInventory] = useState<any[]>([]);
-  const [invState, setInvState] = useState<'loading' | 'error' | 'ok'>('loading');
-  // null: 불러오는 중, undefined: 조회 실패
-  const [summary, setSummary] = useState<TodaySummary | null | undefined>(null);
-  // 오늘 예약중인 예약 (null: 불러오는 중, undefined: 조회 실패)
-  const [todayReservations, setTodayReservations] = useState<Reservation[] | null | undefined>(null);
-
-  useEffect(() => {
-    if (user?.id && role === 'OWNER') {
-      storeService.getMyStores(user.id)
-        .then((stores: any[]) => {
-          if (stores.length > 0) setStoreId(stores[0].id);
-          else { setInvState('error'); setSummary(undefined); setTodayReservations(undefined); }
-        })
-        .catch(() => { setInvState('error'); setSummary(undefined); setTodayReservations(undefined); });
-    }
-  }, [user?.id, role]);
-
-  useEffect(() => {
-    if (!storeId) return;
-    const load = () => {
-      // 갱신 실패 시 직전 값 유지, 처음부터 실패면 '데이터 없음'
-      inventoryService.getByStore(storeId)
-        .then((items: any[]) => { setInventory(items ?? []); setInvState('ok'); })
-        .catch(() => setInvState((s) => (s === 'ok' ? s : 'error')));
-      salesService.getTodaySummary(storeId)
-        .then((s: TodaySummary) => setSummary(s))
-        .catch(() => setSummary((s) => (s ? s : undefined)));
-      const today = localDate(new Date());
-      reservationService.getByStore(storeId)
-        .then((all) => setTodayReservations((all ?? []).filter((r) => r.reservationDate === today && r.status === 'RESERVED')))
-        .catch(() => setTodayReservations((r) => (r ? r : undefined)));
-    };
-    load();
-    const timer = setInterval(load, 30_000);
-    return () => clearInterval(timer);
-  }, [storeId]);
+    const t = setInterval(load, 60000);
+    return () => clearInterval(t);
+  }, [storeId, role]);
 
   if (role === 'HQ_ADMIN') {
     return (
-      <Box sx={{ ...TILE_GRID_SX, p: { xs: 0, md: 2 } }}>
-        {ADMIN_TILES.map((tile) => <LaunchTile key={tile.path} {...tile} />)}
-      </Box>
+      <Stack gap={5}>
+        <Typography fontSize={28} fontWeight={700}>본사 관리</Typography>
+        <Paper sx={{ p: 5 }}>
+          <Stack direction="row" gap={6}>
+            {ADMIN_SHORTCUTS.map((s) => <ShortcutTile key={s.path} {...s} />)}
+          </Stack>
+        </Paper>
+      </Stack>
     );
   }
 
-  const invValue =(n: number) => (invState === 'loading' ? null : invState === 'error' ? undefined : n);
-  const noSales = { text: '아직 판매 기록이 없어요', action: '판매 입력하기', path: '/sales' };
+  // 날짜별 전체 메뉴 예측 합계 (가장 가까운 날을 강조)
+  const byDate = new Map<string, number>();
+  predictions.forEach((p) => byDate.set(p.predictionDate, (byDate.get(p.predictionDate) ?? 0) + p.predictedQty));
+  const dates = [...byDate.keys()].sort();
+  const totals = dates.map((d) => Math.round(byDate.get(d) ?? 0));
 
-  const kpis: KpiProps[] = [
-    { label: '오늘 매출', icon: 'mingcute:coin-line', color: '#E65100', path: '/sales-stats', unit: '원',
-      value: summary === null ? null : summary?.revenue, prev: summary?.prevRevenue, empty: noSales },
-    { label: '오늘 판매 건수', icon: 'mingcute:shopping-bag-1-line', color: '#00796B', path: '/sales', unit: '건',
-      value: summary === null ? null : summary?.quantity, prev: summary?.prevQuantity, empty: noSales },
-    { label: '오늘 예약', icon: 'mingcute:calendar-2-line', color: '#1976D2', path: '/reservations', unit: '건',
-      value: todayReservations === null ? null : todayReservations?.length, empty: { text: '오늘 예약이 없어요' } },
-    { label: '재고 부족 품목', icon: 'mingcute:inventory-line', color: '#C62828', path: '/inventory', unit: '개',
-      value: invValue(inventory.filter(isLowStock).length), empty: { text: '부족한 재고가 없어요', good: true } },
-    { label: '폐기 임박 품목', icon: 'mingcute:time-line', color: '#B53D00', path: '/waste-prediction', unit: '개',
-      value: invValue(inventory.filter(isExpiringSoon).length), empty: { text: '폐기 임박 품목이 없어요', good: true } },
-  ];
+  const chartOption = {
+    grid: { left: 8, right: 8, top: 32, bottom: 8, containLabel: true },
+    tooltip: { trigger: 'axis', valueFormatter: (v: number) => `${v.toLocaleString()}개` },
+    xAxis: {
+      type: 'category', data: dates.map(dayLabel),
+      axisTick: { show: false }, axisLine: { show: false }, axisLabel: { color: theme.palette.text.secondary },
+    },
+    yAxis: { type: 'value', show: false },
+    series: [{
+      type: 'bar', barWidth: '46%',
+      data: totals.map((v, i) => ({
+        value: v,
+        itemStyle: { color: i === 0 ? theme.palette.primary.main : theme.palette.divider, borderRadius: 8 },
+        label: { show: i === 0, position: 'top', color: theme.palette.primary.main, fontWeight: 700, formatter: `${v.toLocaleString()}개` },
+      })),
+    }],
+  };
+
+  // 재고 경고: 유통기한 가까운 순, 기한 없는 재고 부족은 뒤로
+  const alerts = (inventory ?? []).filter((i) => isLowStock(i) || isExpiringSoon(i))
+    .sort((a, b) =>
+      (a.expiryDate ? expiryEnd(a.expiryDate).getTime() : Infinity) -
+      (b.expiryDate ? expiryEnd(b.expiryDate).getTime() : Infinity));
+  const lowStockCount = (inventory ?? []).filter(isLowStock).length;
+
+  // 재직 직원의 오늘 출퇴근 (근무중 먼저)
+  const staff = (employees ?? []).filter((e) => e.active).map((e) => {
+    const mine = records.filter((r) => r.employeeId === e.id);
+    const working = mine.some((r) => !r.clockOut);
+    const minutes = mine.reduce((s, r) => s + minutesBetween(r.clockIn, r.clockOut ?? new Date()), 0);
+    return { e, mine, working, minutes };
+  }).sort((a, b) => Number(b.working) - Number(a.working) || b.mine.length - a.mine.length);
+
+  const headline = !storeId && !storeLoading
+    ? '가게를 먼저 등록해 주세요.'
+    : !loaded ? '매장 현황을 불러오고 있어요.'
+    : recs.length ? null : '지금은 발주할 식자재가 없어요.';
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, p: { xs: 0, md: 1 } }}>
-      {/* 오늘 요약 + 주요 버튼 */}
-      <Box component="section" aria-label="오늘 요약">
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, flexWrap: 'wrap', mb: 1.5 }}>
-          <Typography component="h2" fontSize={20} fontWeight={800} color="#1A1C1E">오늘 요약</Typography>
-          <Button
-            component={RouterLink} to="/orders" variant="contained" size="large"
-            startIcon={<IconifyIcon icon="mingcute:truck-line" width={20} height={20} />}
-            sx={{ ...FOCUS_SX, fontWeight: 700, fontSize: 15, borderRadius: 2.5, px: 3 }}
-          >
-            식자재 발주
-          </Button>
-        </Box>
-        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' }, [WIDE]: { gridTemplateColumns: 'repeat(5, 1fr)' }, gap: 1.5 }}>
-          {kpis.map((k) => <KpiCard key={k.label} {...k} />)}
-        </Box>
-      </Box>
-
-      {/* 좌: 기능 타일 그룹 / 우: 위젯 (1024px 이하는 한 열) */}
-      <Box sx={{ display: 'grid', gridTemplateColumns: '1fr', [WIDE]: { gridTemplateColumns: 'minmax(0, 3fr) minmax(340px, 2fr)' }, gap: 3, alignItems: 'start' }}>
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
-          {OWNER_GROUPS.map((group) => (
-            <Box component="section" key={group.title} aria-label={group.title}>
-              <Typography component="h3" fontSize={15} fontWeight={700} color="#44474E" sx={{ mb: 1 }}>{group.title}</Typography>
-              <Box sx={TILE_GRID_SX}>
-                {group.tiles.map((tile) => <LaunchTile key={tile.path} {...tile} />)}
+    <Box sx={{ display: 'grid', gap: 5, gridTemplateColumns: { xs: 'minmax(0, 1fr)', lg: '240px minmax(0, 1fr) 320px' }, alignItems: 'start' }}>
+      {/* 왼쪽: 업무별 바로가기 (휴대폰에서는 요약 다음) */}
+      <Paper sx={{ p: 4, order: { xs: 1, lg: 0 } }}>
+        <Stack gap={4}>
+          {OWNER_GROUPS.map((g) => (
+            <Box key={g.title}>
+              <Typography variant="body2" color="text.secondary" fontWeight={600} mb={2}>{g.title}</Typography>
+              <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', rowGap: 3, columnGap: 1 }}>
+                {g.items.map((s) => (
+                  <ShortcutTile key={s.path} {...s} badge={s.path === '/orders' ? orderBadge : undefined} />
+                ))}
               </Box>
             </Box>
           ))}
+        </Stack>
+      </Paper>
+
+      {/* 가운데: 한 줄 요약, 핵심 숫자, 7일 예측 */}
+      <Stack gap={5}>
+        <Box>
+          <Typography fontSize={{ xs: 24, md: 30 }} fontWeight={700} lineHeight={1.35}>안녕하세요, 사장님.</Typography>
+          <Typography fontSize={{ xs: 24, md: 30 }} fontWeight={700} lineHeight={1.35}>
+            {headline ?? (
+              <>발주가 필요한 식자재가 <Box component="span" color="primary.main">{recs.length}개</Box> 있어요.</>
+            )}
+          </Typography>
         </Box>
 
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <InventoryAlertWidget items={inventory} loading={invState === 'loading'} />
-          <EmployeeWidget storeId={storeId} />
-          <ReservationWidget list={todayReservations} />
-          <ForecastWidget storeId={storeId} />
-          <ExpiringWidget items={inventory} state={invState} />
+        <Box sx={{ display: 'grid', gap: 3, gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' } }}>
+          <StatCard label="오늘 매출" path="/sales-stats" unit="원"
+            value={summary == null ? '-' : summary.revenue.toLocaleString()}
+            sub={summary ? <Delta value={summary.revenue} prev={summary.prevRevenue} /> : undefined} />
+          <StatCard label="오늘 판매" path="/sales" unit="건"
+            value={summary == null ? '-' : summary.quantity.toLocaleString()}
+            sub={summary ? <Delta value={summary.quantity} prev={summary.prevQuantity} /> : undefined} />
+          <StatCard label="폐기 위험 식자재" path="/waste-prediction" unit="개"
+            value={wasteCount == null ? '-' : String(wasteCount)} tone={wasteCount ? 'error' : undefined} />
+          <StatCard label="재고 부족 품목" path="/inventory" unit="개"
+            value={inventory == null ? '-' : String(lowStockCount)} tone={lowStockCount ? 'warning' : undefined} />
         </Box>
-      </Box>
+
+        <Paper sx={{ p: 5 }}>
+          <Stack direction="row" alignItems="center" justifyContent="space-between" mb={2}>
+            <Typography fontSize={18} fontWeight={700}>다음 7일 판매 예측</Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ cursor: 'pointer' }} onClick={() => navigate('/predictions')}>
+              자세히 보기 ›
+            </Typography>
+          </Stack>
+          {dates.length ? (
+            <ReactEChart echarts={echarts} option={chartOption} sx={{ height: 260 }} />
+          ) : (
+            <Typography variant="body2" color="text.secondary" sx={{ py: 8, textAlign: 'center' }}>
+              아직 예측이 없어요. 수요 예측 화면에서 AI 예측을 실행해 주세요.
+            </Typography>
+          )}
+        </Paper>
+      </Stack>
+
+      {/* 오른쪽: 바로 할 일, 발주 추천, 재고 경고, 직원 출퇴근 */}
+      <Stack gap={5} sx={{ order: { xs: 2, lg: 0 } }}>
+        <Stack gap={2}>
+          {QUICK_ACTIONS.map((a) => (
+            <Paper
+              key={a.title} onClick={() => navigate(a.path)}
+              sx={{ px: 4, py: 3.5, cursor: 'pointer', flexDirection: 'row', alignItems: 'center', gap: 2.5, '&:hover': { bgcolor: 'primary.light' } }}
+            >
+              <IconifyIcon icon={a.icon} width={20} color={theme.palette.primary.main} />
+              <Typography fontWeight={600} color="primary.main" fontSize={15}>{a.title}</Typography>
+            </Paper>
+          ))}
+        </Stack>
+
+        <ListCard title="발주 추천" more={recs.length > 5 ? { label: `${recs.length - 5}개 더`, path: '/orders' } : undefined}>
+          {recs.length === 0
+            ? <EmptyText>{loaded ? '발주가 필요한 식자재가 없어요.' : '불러오는 중…'}</EmptyText>
+            : recs.slice(0, 5).map((r) => (
+              <ListRow key={r.ingredientId} title={r.ingredientName} onClick={() => navigate('/orders')}
+                sub={`${r.coverageDays}일분 · 재고 ${r.currentStock}${r.unit}`} right={`${r.orderQty}${r.unit}`} />
+            ))}
+        </ListCard>
+
+        <ListCard title="재고 경고" more={{ label: '재고 보기', path: '/inventory' }}>
+          {inventory == null ? <EmptyText>불러오는 중…</EmptyText>
+            : alerts.length === 0 ? <EmptyText>부족하거나 기한이 임박한 재고가 없어요.</EmptyText>
+            : alerts.slice(0, 5).map((i, idx) => (
+              <ListRow key={i.id ?? idx} title={i.ingredient?.name ?? '식자재'} onClick={() => navigate('/orders')}
+                sub={`재고 ${qtyOf(i)}${i.ingredient?.unit ?? i.unit ?? ''}${isLowStock(i) ? ' · 부족' : ''}`}
+                right={i.expiryDate && isExpiringSoon(i) ? remainingLabel(i.expiryDate) : '발주 필요'}
+                rightColor={i.expiryDate && isExpiringSoon(i) ? theme.palette.warning.main : theme.palette.error.main} />
+            ))}
+        </ListCard>
+
+        <ListCard title="직원 출퇴근" more={{ label: '직원 관리', path: '/staff' }}>
+          {employees == null ? <EmptyText>불러오는 중…</EmptyText>
+            : staff.length === 0 ? <EmptyText>등록된 직원이 없어요.</EmptyText>
+            : staff.map(({ e, mine, working, minutes }) => (
+              <ListRow key={e.id} title={e.name}
+                sub={mine.length === 0 ? '출근 기록 없음'
+                  : `${hhmm(mine[0].clockIn)} ~ ${working ? '근무중' : hhmm(mine[mine.length - 1].clockOut)} · ${minutesLabel(minutes)}`}
+                right={working ? '근무중' : mine.length ? '퇴근' : '미출근'}
+                rightColor={working ? theme.palette.success.main : theme.palette.text.secondary} />
+            ))}
+        </ListCard>
+      </Stack>
     </Box>
   );
 };

@@ -158,6 +158,9 @@ c, mi = api('POST', '/menu-ingredients', {'menuId': M, 'ingredientId': I, 'qtyPe
 check('레시피 등록', c, 200, None if c == 200 else mi)
 check('레시피 조회', api('GET', f'/menu-ingredients/menu/{M}', t=T)[0], 200)
 check('레시피 0 수량 거부', api('POST', '/menu-ingredients', {'menuId': M, 'ingredientId': I, 'qtyPerUnit': 0, 'unit': 'g'}, T)[0], 400)
+c, dr = api('POST', f'/menu-ingredients/menu/{M}/draft', {}, T)
+check('레시피 AI 초안 (Claude)', c, 200, None if c == 200 else dr)
+check('다른 매장 메뉴 레시피 초안 403', api('POST', '/menu-ingredients/menu/60001/draft', {}, T)[0], 403)
 
 # ── 판매·플래그·특이사항 ──
 for i in range(1, 36):

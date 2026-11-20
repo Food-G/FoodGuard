@@ -40,7 +40,7 @@ const typography: TypographyOptions = {
     fontWeight: 500,
   },
   body2: {
-    fontSize: pxToRem(12), // 0.75rem
+    fontSize: pxToRem(13), // 0.8125rem
     fontWeight: 500,
   },
   fontWeightLight: 400,

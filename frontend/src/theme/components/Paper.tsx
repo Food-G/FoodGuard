@@ -9,6 +9,9 @@ const Paper: Components<Omit<Theme, 'components'>>['MuiPaper'] = {
       flexDirection: 'column',
       backgroundColor: theme.palette.background.paper,
       borderRadius: theme.shape.borderRadius * 2,
+      border: 'none', // 연회색 바탕과의 대비로 구분 (테두리 없는 카드)
+    }),
+    outlined: ({ theme }) => ({
       border: `1px solid ${theme.palette.divider}`,
     }),
     elevation0: {

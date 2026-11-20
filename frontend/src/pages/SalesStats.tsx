@@ -1,12 +1,11 @@
 import { useEffect, useState, useCallback } from 'react';
-import {
-  Box, Typography, Paper, Stack, Button,
-  Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  Chip, CircularProgress, Alert, Divider,
-} from '@mui/material';
+import { Box, Typography, Paper, Stack, Chip, CircularProgress, Alert, useTheme } from '@mui/material';
+import * as echarts from 'echarts';
+import ReactEChart from '../components/base/ReactEChart';
 import { salesService } from '../services/salesService';
 import { storeService } from '../services/storeService';
 import IconifyIcon from '../components/base/IconifyIcon';
+import { localDate } from '../helpers/date';
 
 interface SaleRow {
   id: number;
@@ -25,27 +24,32 @@ interface DaySummary {
 
 type Period = 'today' | 'week' | 'month' | 'quarter';
 
-const PERIODS: { value: Period; label: string; icon: string }[] = [
-  { value: 'today',   label: '금일',   icon: 'mingcute:sun-line' },
-  { value: 'week',    label: '일주일', icon: 'mingcute:calendar-week-line' },
-  { value: 'month',   label: '한달',   icon: 'mingcute:calendar-month-line' },
-  { value: 'quarter', label: '분기',   icon: 'mingcute:calendar-2-line' },
+const PERIODS: { value: Period; label: string }[] = [
+  { value: 'today',   label: '오늘' },
+  { value: 'week',    label: '7일' },
+  { value: 'month',   label: '1개월' },
+  { value: 'quarter', label: '3개월' },
 ];
 
+const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
+
+// 로컬 날짜 기준 (UTC 로 자르면 한국 오전 9시 전에는 전날이 된다)
 const getDateRange = (period: Period): { start: string; end: string } => {
   const end = new Date();
   const start = new Date();
-  if (period === 'today')   { /* start = end = today */ }
-  else if (period === 'week')    start.setDate(end.getDate() - 6);
+  if (period === 'week')         start.setDate(end.getDate() - 6);
   else if (period === 'month')   start.setMonth(end.getMonth() - 1);
   else if (period === 'quarter') start.setMonth(end.getMonth() - 3);
-  return {
-    start: start.toISOString().split('T')[0],
-    end:   end.toISOString().split('T')[0],
-  };
+  return { start: localDate(start), end: localDate(end) };
+};
+
+const dateLabel = (iso: string) => {
+  const d = new Date(`${iso}T00:00:00`);
+  return `${d.getMonth() + 1}월 ${d.getDate()}일 (${WEEKDAYS[d.getDay()]})`;
 };
 
 const SalesStats = ({ user }: { user: any }) => {
+  const theme = useTheme();
   const [storeId, setStoreId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [sales, setSales] = useState<SaleRow[]>([]);
@@ -67,12 +71,13 @@ const SalesStats = ({ user }: { user: any }) => {
     const { start, end } = getDateRange(p);
     try {
       const data = await salesService.getByDateRange(storeId, start, end);
+      // 판매 응답의 menu 는 직렬화되지 않고 menuName·menuPrice·unitPrice(할인 판매가)로 온다
       setSales((data ?? []).map((item: any) => ({
         id: item.id,
         saleDate: item.saleDate,
-        menuName: item.menu?.menuName ?? '-',
+        menuName: item.menuName ?? '-',
         quantity: item.quantity,
-        totalPrice: item.menu ? item.menu.price * item.quantity : item.totalPrice ?? 0,
+        totalPrice: (item.unitPrice ?? item.menuPrice ?? 0) * item.quantity,
       })));
     } catch {
       setError('판매 데이터를 불러오지 못했습니다.');
@@ -103,148 +108,164 @@ const SalesStats = ({ user }: { user: any }) => {
   const grandCount = daySummaries.reduce((s, d) => s + d.count, 0);
   const { start, end } = getDateRange(period);
 
+  // 메뉴별 매출 순위
+  const byMenu = Object.values(sales.reduce<Record<string, { name: string; qty: number; total: number }>>((acc, r) => {
+    acc[r.menuName] = acc[r.menuName] ?? { name: r.menuName, qty: 0, total: 0 };
+    acc[r.menuName].qty += r.quantity;
+    acc[r.menuName].total += r.totalPrice;
+    return acc;
+  }, {})).sort((a, b) => b.total - a.total);
+
+  // 요일별 평균 매출 (Square 'DAY OF WEEK')
+  const weekdayTotals = WEEKDAYS.map((_, w) => {
+    const days = daySummaries.filter((d) => new Date(`${d.date}T00:00:00`).getDay() === w);
+    return days.length ? Math.round(days.reduce((s, d) => s + d.total, 0) / days.length) : 0;
+  });
+
+  const ascDays = [...daySummaries].reverse();
+  const trendOption = {
+    grid: { left: 8, right: 16, top: 24, bottom: 8, containLabel: true },
+    tooltip: { trigger: 'axis', valueFormatter: (v: number) => `₩${v.toLocaleString()}` },
+    xAxis: {
+      type: 'category', data: ascDays.map((d) => `${Number(d.date.slice(5, 7))}/${Number(d.date.slice(8))}`), boundaryGap: false,
+      axisTick: { show: false }, axisLine: { lineStyle: { color: theme.palette.divider } }, axisLabel: { color: theme.palette.text.secondary },
+    },
+    yAxis: {
+      type: 'value', axisLabel: { color: theme.palette.text.secondary, formatter: (v: number) => (v >= 10000 ? `${v / 10000}만` : v) },
+      splitLine: { lineStyle: { color: theme.palette.divider } },
+    },
+    series: [{
+      type: 'line', data: ascDays.map((d) => d.total), smooth: true, symbol: 'circle', symbolSize: 6,
+      lineStyle: { width: 2.5, color: theme.palette.primary.main },
+      itemStyle: { color: theme.palette.primary.main },
+      areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+        { offset: 0, color: 'rgba(31,77,58,0.18)' }, { offset: 1, color: 'rgba(31,77,58,0)' },
+      ]) },
+    }],
+  };
+  const best = Math.max(...weekdayTotals);
+  const weekdayOption = {
+    grid: { left: 8, right: 8, top: 16, bottom: 8, containLabel: true },
+    tooltip: { trigger: 'axis', valueFormatter: (v: number) => `₩${v.toLocaleString()}` },
+    xAxis: { type: 'category', data: WEEKDAYS, axisTick: { show: false }, axisLine: { show: false }, axisLabel: { color: theme.palette.text.secondary } },
+    yAxis: { type: 'value', show: false },
+    series: [{
+      type: 'bar', barWidth: '50%',
+      data: weekdayTotals.map((v) => ({ value: v, itemStyle: { color: v === best && v > 0 ? theme.palette.primary.main : theme.palette.divider, borderRadius: 6 } })),
+    }],
+  };
+
+  const rowSx = { borderTop: `1px solid ${theme.palette.divider}`, '&:first-of-type': { borderTop: 'none' } };
+
   return (
-    <Box sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
-      {/* 헤더 */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
-        <Box sx={{ width: 40, height: 40, borderRadius: 2.5, bgcolor: '#FFF3E0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <IconifyIcon icon="mingcute:chart-bar-fill" width={22} height={22} color="#FF9800" />
-        </Box>
+    <Stack gap={5}>
+      {/* 기간 선택 + 큰 숫자 */}
+      <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'flex-end' }} gap={3}>
         <Box>
-          <Typography fontWeight={800} fontSize={20} color="#1A1C1E">매출 통계</Typography>
-          <Typography fontSize={12} color="#44474E">기간별 판매 실적을 확인하세요</Typography>
+          <Typography color="text.secondary" fontSize={15} mb={1}>매출 · {start === end ? start : `${start} ~ ${end}`}</Typography>
+          <Typography fontSize={{ xs: 30, md: 36 }} fontWeight={700} lineHeight={1.2}>
+            {loading ? '-' : `₩${grandTotal.toLocaleString()}`}
+          </Typography>
+          {!loading && (
+            <Typography fontSize={15} color="text.secondary" mt={1}>
+              판매 {grandCount.toLocaleString()}개 · 영업 {daySummaries.length}일
+              {daySummaries.length > 1 && ` · 하루 평균 ₩${Math.round(grandTotal / daySummaries.length).toLocaleString()}`}
+            </Typography>
+          )}
         </Box>
-      </Box>
-
-      {/* 기간 선택 탭 */}
-      <Box sx={{ display: 'flex', gap: 1.5, mb: 3, flexWrap: 'wrap' }}>
-        {PERIODS.map((p) => {
-          const active = period === p.value;
-          return (
-            <Button
-              key={p.value}
-              onClick={() => handlePeriod(p.value)}
-              startIcon={<IconifyIcon icon={p.icon} width={16} height={16} color={active ? '#fff' : '#44474E'} />}
+        <Stack direction="row" gap={1} sx={{ bgcolor: 'background.paper', p: 1, borderRadius: 999 }}>
+          {PERIODS.map((p) => (
+            <Chip
+              key={p.value} label={p.label} onClick={() => handlePeriod(p.value)}
               sx={{
-                borderRadius: 99,
-                px: 2.5,
-                py: 0.8,
-                fontSize: 13,
-                fontWeight: 700,
-                textTransform: 'none',
-                bgcolor: active ? '#FF9800' : '#F4F6F8',
-                color: active ? '#fff' : '#44474E',
-                border: '1px solid',
-                borderColor: active ? '#FF9800' : '#E8EAF0',
-                boxShadow: active ? '0 4px 12px rgba(255,152,0,0.35)' : 'none',
-                '&:hover': { bgcolor: active ? '#FB8C00' : '#EAECEF' },
+                height: 34, borderRadius: 999, border: 'none', px: 1, fontWeight: period === p.value ? 700 : 500,
+                bgcolor: period === p.value ? 'text.primary' : 'transparent',
+                color: period === p.value ? 'common.white' : 'text.secondary',
+                '&:hover': { bgcolor: period === p.value ? 'text.primary' : 'background.default' },
+                '& .MuiChip-label': { fontSize: 14 },
               }}
-            >
-              {p.label}
-            </Button>
-          );
-        })}
-      </Box>
-
-      {error && <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>{error}</Alert>}
-
-      {/* 요약 카드 */}
-      <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>
-        {[
-          { label: '총 매출', value: `${grandTotal.toLocaleString()}원`, icon: 'mingcute:currency-won-line', color: '#FF9800' },
-          { label: '총 판매 건수', value: `${grandCount}건`, icon: 'mingcute:shopping-bag-line', color: '#1976D2' },
-          { label: '영업일', value: `${daySummaries.length}일`, icon: 'mingcute:calendar-2-line', color: '#1D9E75' },
-        ].map(({ label, value, icon, color }) => (
-          <Box key={label} sx={{ flex: 1, minWidth: 140, borderRadius: 3, bgcolor: '#fff', border: '1px solid #E8EAF0', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', p: 2.5, display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Box sx={{ width: 44, height: 44, borderRadius: 2.5, bgcolor: `${color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <IconifyIcon icon={icon} width={22} height={22} color={color} />
-            </Box>
-            <Box>
-              <Typography fontSize={20} fontWeight={800} color="#1A1C1E" lineHeight={1}>{loading ? '-' : value}</Typography>
-              <Typography fontSize={12} color="#44474E" fontWeight={500} sx={{ mt: 0.3 }}>{label}</Typography>
-            </Box>
-          </Box>
-        ))}
-      </Box>
-
-      {/* 조회 기간 표시 */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-        <IconifyIcon icon="mingcute:calendar-line" width={14} height={14} color="#8E9199" />
-        <Typography fontSize={12} color="#8E9199">{start} ~ {end}</Typography>
-      </Box>
-
-      {/* 결과 */}
-      {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}><CircularProgress sx={{ color: '#FF9800' }} /></Box>
-      ) : daySummaries.length === 0 ? (
-        <Paper sx={{ p: 6, textAlign: 'center', borderRadius: 3, border: '1px solid #E8EAF0' }}>
-          <IconifyIcon icon="mingcute:chart-bar-line" width={48} color="#C4C7CF" />
-          <Typography color="#8E9199" mt={2} fontWeight={600}>선택한 기간에 판매 내역이 없습니다.</Typography>
-        </Paper>
-      ) : (
-        <Stack gap={1.5}>
-          {daySummaries.map((day) => (
-            <Paper key={day.date} sx={{ borderRadius: 3, overflow: 'hidden', border: '1px solid #E8EAF0', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
-              <Stack
-                direction="row" alignItems="center" justifyContent="space-between"
-                px={2.5} py={1.75}
-                onClick={() => setExpanded(expanded === day.date ? null : day.date)}
-                sx={{ cursor: 'pointer', '&:hover': { bgcolor: '#FAFBFC' } }}
-              >
-                <Stack direction="row" alignItems="center" gap={2}>
-                  <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#FF9800', flexShrink: 0 }} />
-                  <Typography fontWeight={700} fontSize={14} color="#1A1C1E">{day.date}</Typography>
-                  <Chip label={`${day.items.length}종 · ${day.count}건`} size="small" variant="outlined" sx={{ fontSize: 11, height: 22 }} />
-                </Stack>
-                <Stack direction="row" alignItems="center" gap={2}>
-                  <Typography fontWeight={800} fontSize={16} color="#FF9800">
-                    {day.total.toLocaleString()}원
-                  </Typography>
-                  <IconifyIcon
-                    icon={expanded === day.date ? 'mingcute:up-line' : 'mingcute:down-line'}
-                    color="#8E9199" width={16}
-                  />
-                </Stack>
-              </Stack>
-
-              {expanded === day.date && (
-                <>
-                  <Divider />
-                  <TableContainer>
-                    <Table size="small">
-                      <TableHead>
-                        <TableRow sx={{ bgcolor: '#F8F9FA' }}>
-                          <TableCell sx={{ fontWeight: 700, fontSize: 12, color: '#44474E' }}>메뉴명</TableCell>
-                          <TableCell align="center" sx={{ fontWeight: 700, fontSize: 12, color: '#44474E' }}>수량</TableCell>
-                          <TableCell align="right" sx={{ fontWeight: 700, fontSize: 12, color: '#44474E' }}>금액</TableCell>
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {day.items.map((item) => (
-                          <TableRow key={item.id} hover>
-                            <TableCell sx={{ fontSize: 13 }}>{item.menuName}</TableCell>
-                            <TableCell align="center" sx={{ fontSize: 13 }}>{item.quantity}</TableCell>
-                            <TableCell align="right" sx={{ fontWeight: 600, fontSize: 13, color: '#FF9800' }}>
-                              {item.totalPrice.toLocaleString()}원
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                        <TableRow sx={{ bgcolor: '#FFF8F0' }}>
-                          <TableCell colSpan={2} sx={{ fontWeight: 800, fontSize: 13 }}>일 합계</TableCell>
-                          <TableCell align="right" sx={{ fontWeight: 800, color: '#FF9800', fontSize: 14 }}>
-                            {day.total.toLocaleString()}원
-                          </TableCell>
-                        </TableRow>
-                      </TableBody>
-                    </Table>
-                  </TableContainer>
-                </>
-              )}
-            </Paper>
+            />
           ))}
         </Stack>
+      </Stack>
+
+      {error && <Alert severity="error">{error}</Alert>}
+
+      {loading ? (
+        <Stack alignItems="center" py={10}><CircularProgress /></Stack>
+      ) : daySummaries.length === 0 ? (
+        <Paper sx={{ p: 8, alignItems: 'center' }}>
+          <IconifyIcon icon="mingcute:chart-bar-line" width={48} color={theme.palette.text.disabled} />
+          <Typography color="text.secondary" mt={2} fontWeight={600}>선택한 기간에 판매 내역이 없습니다.</Typography>
+        </Paper>
+      ) : (
+        <>
+          {daySummaries.length > 1 && (
+            <Box sx={{ display: 'grid', gap: 5, gridTemplateColumns: { xs: 'minmax(0, 1fr)', lg: 'minmax(0, 2fr) minmax(0, 1fr)' } }}>
+              <Paper sx={{ p: 5 }}>
+                <Typography fontSize={18} fontWeight={700} mb={2}>일별 매출 추이</Typography>
+                <ReactEChart echarts={echarts} option={trendOption} sx={{ height: 260 }} />
+              </Paper>
+              <Paper sx={{ p: 5 }}>
+                <Typography fontSize={18} fontWeight={700} mb={2}>요일별 평균 매출</Typography>
+                <ReactEChart echarts={echarts} option={weekdayOption} sx={{ height: 260 }} />
+              </Paper>
+            </Box>
+          )}
+
+          <Box sx={{ display: 'grid', gap: 5, gridTemplateColumns: { xs: 'minmax(0, 1fr)', lg: 'minmax(0, 1fr) minmax(0, 1fr)' }, alignItems: 'start' }}>
+            {/* 메뉴별 매출 순위 */}
+            <Paper sx={{ p: 5 }}>
+              <Typography fontSize={18} fontWeight={700} mb={2}>메뉴별 매출</Typography>
+              {byMenu.map((m, i) => (
+                <Box key={m.name} sx={{ py: 2.5, ...rowSx }}>
+                  <Stack direction="row" alignItems="center" gap={2}>
+                    <Typography fontWeight={700} fontSize={15} color="text.secondary" sx={{ width: 20 }}>{i + 1}</Typography>
+                    <Typography fontWeight={600} fontSize={15} sx={{ flex: 1, minWidth: 0 }} noWrap>{m.name}</Typography>
+                    <Typography fontSize={14} color="text.secondary">{m.qty.toLocaleString()}개</Typography>
+                    <Typography fontWeight={700} fontSize={15} sx={{ minWidth: 100, textAlign: 'right' }}>₩{m.total.toLocaleString()}</Typography>
+                  </Stack>
+                  <Box sx={{ ml: 5.5, mt: 1, height: 4, borderRadius: 2, bgcolor: 'background.default' }}>
+                    <Box sx={{ height: '100%', borderRadius: 2, bgcolor: i === 0 ? 'primary.main' : 'text.disabled', width: `${grandTotal ? (m.total / grandTotal) * 100 : 0}%` }} />
+                  </Box>
+                </Box>
+              ))}
+            </Paper>
+
+            {/* 날짜별 상세 (누르면 펼침) */}
+            <Paper sx={{ p: 5 }}>
+              <Typography fontSize={18} fontWeight={700} mb={2}>날짜별 상세</Typography>
+              {daySummaries.map((day) => (
+                <Box key={day.date} sx={rowSx}>
+                  <Stack
+                    direction="row" alignItems="center" gap={2} sx={{ py: 2.5, cursor: 'pointer' }}
+                    onClick={() => setExpanded(expanded === day.date ? null : day.date)}
+                  >
+                    <Box sx={{ flex: 1 }}>
+                      <Typography fontWeight={600} fontSize={15}>{dateLabel(day.date)}</Typography>
+                      <Typography variant="body2" color="text.secondary">{day.items.length}종 · {day.count.toLocaleString()}개</Typography>
+                    </Box>
+                    <Typography fontWeight={700} fontSize={15}>₩{day.total.toLocaleString()}</Typography>
+                    <IconifyIcon icon={expanded === day.date ? 'mingcute:up-line' : 'mingcute:down-line'} color={theme.palette.text.disabled} width={18} />
+                  </Stack>
+                  {expanded === day.date && (
+                    <Box sx={{ bgcolor: 'background.default', borderRadius: 3, px: 3, py: 1.5, mb: 2.5 }}>
+                      {day.items.map((item) => (
+                        <Stack key={item.id} direction="row" gap={2} sx={{ py: 1 }}>
+                          <Typography fontSize={14} sx={{ flex: 1, minWidth: 0 }} noWrap>{item.menuName}</Typography>
+                          <Typography fontSize={14} color="text.secondary">{item.quantity}개</Typography>
+                          <Typography fontSize={14} fontWeight={600} sx={{ minWidth: 90, textAlign: 'right' }}>₩{item.totalPrice.toLocaleString()}</Typography>
+                        </Stack>
+                      ))}
+                    </Box>
+                  )}
+                </Box>
+              ))}
+            </Paper>
+          </Box>
+        </>
       )}
-    </Box>
+    </Stack>
   );
 };
 
