@@ -157,7 +157,7 @@ const Topbar = ({ onLogout }: TopbarProps): ReactElement => {
         left: 0,
         width: '100%',
         paddingRight: '0 !important',
-        bgcolor: 'background.default',
+        bgcolor: 'background.paper',
         backgroundImage: 'none',
         boxShadow: 'none',
         // 테마 Paper 의 네 변 테두리·둥근 모서리 때문에 아래 구분선이 왼쪽 모서리에서 휘어 보여 직선 하단선만 남긴다
@@ -173,7 +173,7 @@ const Topbar = ({ onLogout }: TopbarProps): ReactElement => {
         alignItems="center"
         justifyContent="space-between"
         sx={{
-          bgcolor: 'background.default',
+          bgcolor: 'background.paper',
           height: 116,
           '& *:focus': { outline: 'none' },
         }}

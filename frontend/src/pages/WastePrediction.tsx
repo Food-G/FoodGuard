@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import {
-  Typography, Box, Paper, Button, CircularProgress, Stack, useTheme, Alert, Chip,
+  Typography, Box, Paper, Button, CircularProgress, Stack, useTheme, Alert,
   Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem,
 } from '@mui/material';
-import { DataGrid, GridColDef } from '@mui/x-data-grid';
+import * as echarts from 'echarts';
+import ReactEChart from '../components/base/ReactEChart';
 import { wastePredictionService } from '../services/wastePredictionService';
 import { donationService } from '../services/donationService';
 import IconifyIcon from '../components/base/IconifyIcon';
@@ -74,77 +75,45 @@ const WastePrediction = ({ user }: any) => {
     }
   };
 
-  const columns: GridColDef[] = [
-    { field: 'ingredientName', headerName: '식자재', flex: 1, minWidth: 120 },
-    {
-      field: 'currentQty', headerName: '현재 재고', width: 120, align: 'right', headerAlign: 'right',
-      renderCell: (p) => <Typography fontSize={13}>{p.value} <span style={{ color: '#999' }}>{p.row.unit}</span></Typography>,
-    },
-    {
-      field: 'expiryDate', headerName: '유통기한', width: 120,
-      renderCell: (p) => {
-        const days = p.row.daysUntilExpiry;
-        const color = days <= 3 ? 'error' : days <= 7 ? 'warning' : 'default';
-        return <Chip label={p.value} color={color} size="small" variant="outlined" sx={{ fontWeight: 600 }} />;
-      },
-    },
-    {
-      field: 'daysUntilExpiry', headerName: 'D-', width: 80, align: 'center', headerAlign: 'center',
-      renderCell: (p) => (
-        <Typography fontWeight={700} color={p.value <= 3 ? 'error.main' : p.value <= 7 ? 'warning.main' : 'text.primary'}>
-          D-{p.value}
-        </Typography>
-      ),
-    },
-    {
-      field: 'expectedConsumption', headerName: '소비 예상', width: 110, align: 'right', headerAlign: 'right',
-      renderCell: (p) => <Typography fontSize={13}>{p.value} <span style={{ color: '#999' }}>{p.row.unit}</span></Typography>,
-    },
-    {
-      field: 'plannedDonation', headerName: '기부 예정', width: 100, align: 'right', headerAlign: 'right',
-      renderCell: (p) => p.value > 0
-        ? <Typography fontSize={13} color="secondary.main">{p.value} <span style={{ color: '#999' }}>{p.row.unit}</span></Typography>
-        : '-',
-    },
-    {
-      field: 'wastePrediction', headerName: '폐기 예측량', width: 120, align: 'right', headerAlign: 'right',
-      renderCell: (p) => (
-        <Typography fontWeight={700} color={p.value > 0 ? 'error.main' : 'success.main'} fontSize={13}>
-          {p.value > 0 ? `+${p.value}` : p.value} <span style={{ color: '#999', fontWeight: 400 }}>{p.row.unit}</span>
-        </Typography>
-      ),
-    },
-    {
-      field: 'wasteRate', headerName: '폐기율', width: 90, align: 'center', headerAlign: 'center',
-      renderCell: (p) => (
-        <Chip
-          label={`${p.value}%`}
-          size="small"
-          color={p.value > 50 ? 'error' : p.value > 20 ? 'warning' : 'success'}
-          variant="filled"
-          sx={{ fontWeight: 700 }}
-        />
-      ),
-    },
-    {
-      field: 'actions', headerName: '기부', width: 110, sortable: false,
-      renderCell: (p) => p.row.wastePrediction > 0 ? (
-        <Button variant="contained" size="small" color="secondary"
-          startIcon={<IconifyIcon icon="mingcute:heart-fill" width={14} />}
-          onClick={() => setDonationTarget(p.row)}
-          sx={{ borderRadius: 2, fontSize: 11 }}>
-          기부 등록
-        </Button>
-      ) : null,
-    },
-  ];
-
   const wasteItems = rows.filter(r => r.wastePrediction > 0);
+  // 폐기 위험부터, 그다음 유통기한이 가까운 순
+  const sorted = [...rows].sort((a, b) =>
+    Number(b.wastePrediction > 0) - Number(a.wastePrediction > 0) || a.daysUntilExpiry - b.daysUntilExpiry);
+
+  const dayColor = (days: number) =>
+    days <= 3 ? theme.palette.error.main : days <= 7 ? theme.palette.warning.main : theme.palette.text.secondary;
+
+  // 유통기한까지 남은 기간별 식자재 수 (토스 도넛 + 범례 목록)
+  const groups = [
+    { label: '3일 이내', count: rows.filter(r => r.daysUntilExpiry <= 3).length, color: theme.palette.error.main },
+    { label: '4~7일', count: rows.filter(r => r.daysUntilExpiry > 3 && r.daysUntilExpiry <= 7).length, color: theme.palette.warning.main },
+    { label: '8일 이상', count: rows.filter(r => r.daysUntilExpiry > 7).length, color: '#C9D3CE' },
+  ];
+  const donutOption = {
+    tooltip: { trigger: 'item', formatter: '{b} {c}개' },
+    series: [{
+      type: 'pie', radius: ['62%', '86%'], label: { show: false }, emphasis: { scale: false },
+      itemStyle: { borderColor: theme.palette.background.paper, borderWidth: 3 },
+      data: groups.filter(g => g.count > 0).map(g => ({ name: g.label, value: g.count, itemStyle: { color: g.color } })),
+    }],
+  };
 
   return (
-    <Stack gap={3}>
-      {storeId && <ClearanceCard storeId={storeId} />}
-      <Stack direction="row" justifyContent="flex-end">
+    <Stack gap={5}>
+      {/* 큰 숫자 요약 + 기부 이력 */}
+      <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'flex-end' }} gap={3}>
+        <Box>
+          <Typography color="text.secondary" fontSize={15} mb={1}>폐기 위험 식자재</Typography>
+          <Typography fontSize={{ xs: 30, md: 36 }} fontWeight={700} lineHeight={1.2}
+            color={wasteItems.length ? 'error.main' : 'text.primary'}>
+            {loading ? '-' : `${wasteItems.length}개`}
+          </Typography>
+          <Typography fontSize={15} color="text.secondary" mt={1}>
+            {wasteItems.length
+              ? '유통기한 안에 다 쓰지 못할 것으로 보여요. 할인 판매나 기부로 줄여 보세요.'
+              : '지금 재고는 유통기한 안에 다 쓸 수 있을 것으로 보여요.'}
+          </Typography>
+        </Box>
         <Button variant="outlined" startIcon={<IconifyIcon icon="mingcute:history-line" width={16} />}
           href="/donations">
           기부 이력
@@ -154,50 +123,78 @@ const WastePrediction = ({ user }: any) => {
       <AlertMessages error={error} success={success}
         onClearError={() => setError('')} onClearSuccess={() => setSuccess('')} />
 
-      {/* 요약 카드 */}
-      {!loading && wasteItems.length > 0 && (
-        <Paper sx={{ p: 2.5, border: `1px solid ${theme.palette.error.light}`, borderRadius: 3, bgcolor: 'error.50' }}>
-          <Stack direction="row" gap={1} alignItems="center" mb={0.5}>
-            <IconifyIcon icon="mingcute:alert-fill" color={theme.palette.error.main} width={20} />
-            <Typography fontWeight={700} color="error.main">
-              {wasteItems.length}개 식재료 폐기 위험
-            </Typography>
-          </Stack>
-          <Typography variant="body2" color="text.secondary">
-            유통기한 내 소비 예측량보다 재고가 많습니다. 기부를 통해 환경을 보호하세요.
-          </Typography>
-        </Paper>
-      )}
+      {storeId && <ClearanceCard storeId={storeId} />}
 
-      <Paper sx={{ p: 3, border: `1px solid ${theme.palette.divider}`, borderRadius: 3 }}>
-        <Typography variant="h6" fontWeight={700} mb={2}>식재료별 폐기 예측</Typography>
-        <Box sx={{ height: 480 }}>
+      <Box sx={{ display: 'grid', gap: 5, gridTemplateColumns: { xs: 'minmax(0, 1fr)', lg: 'minmax(0, 1fr) 340px' }, alignItems: 'start' }}>
+        {/* 식자재 목록 (토스 목록 행) */}
+        <Paper sx={{ p: 5 }}>
+          <Typography fontSize={18} fontWeight={700} mb={2}>식자재별 폐기 예측</Typography>
           {loading ? (
-            <Stack alignItems="center" justifyContent="center" height="100%">
-              <CircularProgress />
-            </Stack>
+            <Stack alignItems="center" py={8}><CircularProgress /></Stack>
           ) : rows.length === 0 ? (
-            <Stack alignItems="center" justifyContent="center" height="100%" gap={1}>
+            <Stack alignItems="center" py={8} gap={1}>
               <IconifyIcon icon="mingcute:leaf-fill" color={theme.palette.success.main} width={48} />
-              <Typography color="text.secondary" fontWeight={600}>
-                유통기한이 설정된 재고가 없습니다.
-              </Typography>
+              <Typography color="text.secondary" fontWeight={600}>유통기한이 설정된 재고가 없습니다.</Typography>
               <Typography variant="body2" color="text.secondary">
                 발주 검수 시 유통기한을 입력하면 폐기 예측이 활성화됩니다.
               </Typography>
             </Stack>
-          ) : (
-            <DataGrid
-              rows={rows}
-              columns={columns}
-              disableRowSelectionOnClick
-              initialState={{ pagination: { paginationModel: { pageSize: 10 } } }}
-              pageSizeOptions={[10, 20]}
-              sx={{ border: 'none' }}
-            />
-          )}
-        </Box>
-      </Paper>
+          ) : sorted.map((r) => (
+            <Stack key={r.id} direction="row" alignItems="center" gap={3}
+              sx={{ py: 3, borderTop: `1px solid ${theme.palette.divider}`, '&:first-of-type': { borderTop: 'none' } }}>
+              <Box sx={{
+                width: 48, height: 48, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                bgcolor: 'background.default',
+              }}>
+                <Typography fontWeight={700} fontSize={14} sx={{ color: dayColor(r.daysUntilExpiry) }}>D-{r.daysUntilExpiry}</Typography>
+              </Box>
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Typography fontWeight={600} fontSize={15} noWrap>{r.ingredientName}</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  재고 {r.currentQty}{r.unit} · 소비 예상 {r.expectedConsumption}{r.unit}
+                  {r.plannedDonation > 0 && ` · 기부 예정 ${r.plannedDonation}${r.unit}`}
+                </Typography>
+              </Box>
+              <Box textAlign="right" sx={{ flexShrink: 0 }}>
+                {r.wastePrediction > 0 ? (
+                  <>
+                    <Typography fontWeight={700} fontSize={16} color="error.main">폐기 {r.wastePrediction}{r.unit}</Typography>
+                    <Typography variant="body2" color="text.secondary">폐기율 {r.wasteRate}%</Typography>
+                  </>
+                ) : (
+                  <Typography fontWeight={600} fontSize={15} color="success.main">다 쓸 수 있어요</Typography>
+                )}
+              </Box>
+              {r.wastePrediction > 0 && (
+                <Button size="small" color="secondary" onClick={() => setDonationTarget(r)} sx={{ flexShrink: 0 }}>
+                  기부
+                </Button>
+              )}
+            </Stack>
+          ))}
+        </Paper>
+
+        {/* 유통기한까지 남은 기간 */}
+        {rows.length > 0 && (
+          <Paper sx={{ p: 5 }}>
+            <Typography fontSize={18} fontWeight={700} mb={1}>유통기한까지 남은 기간</Typography>
+            <Box sx={{ position: 'relative' }}>
+              <ReactEChart echarts={echarts} option={donutOption} sx={{ height: 220 }} />
+              <Stack sx={{ position: 'absolute', inset: 0, pointerEvents: 'none' }} alignItems="center" justifyContent="center">
+                <Typography fontSize={26} fontWeight={700}>{rows.length}</Typography>
+                <Typography variant="body2" color="text.secondary">식자재</Typography>
+              </Stack>
+            </Box>
+            {groups.map((g) => (
+              <Stack key={g.label} direction="row" alignItems="center" gap={2} sx={{ py: 2 }}>
+                <Box sx={{ width: 12, height: 12, borderRadius: 1, bgcolor: g.color }} />
+                <Typography fontSize={15} sx={{ flex: 1 }}>{g.label}</Typography>
+                <Typography fontSize={15} fontWeight={700}>{g.count}개</Typography>
+              </Stack>
+            ))}
+          </Paper>
+        )}
+      </Box>
 
       {/* 기부 등록 다이얼로그 */}
       <Dialog open={!!donationTarget} onClose={() => setDonationTarget(null)} maxWidth="sm" fullWidth>

@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
   Typography, Box, Paper, Button, CircularProgress, Stack,
-  useTheme, Chip, Alert, Table, TableBody, TableCell,
-  TableContainer, TableHead, TableRow, TextField, IconButton, Popover,
+  useTheme, Chip, Alert, TextField, IconButton,
 } from '@mui/material';
 import IconifyIcon from '../components/base/IconifyIcon';
 import { api } from '../services/api';
@@ -22,9 +21,10 @@ const DAY_FIELDS = [
 const Ingredients = ({ user }: any) => {
   const theme = useTheme();
   const confirm = useConfirm();
-  const { storeId } = useMyStore(user);
+  const { storeId, storeLoading } = useMyStore(user);
 
   const [allIngredients, setAllIngredients] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
@@ -33,12 +33,11 @@ const Ingredients = ({ user }: any) => {
   const [ingForm, setIngForm] = useState({ name: '', unit: '' });
   const [editingIng, setEditingIng] = useState<any | null>(null);
   const [ingSubmitting, setIngSubmitting] = useState(false);
-  const [ingUnitAnchor, setIngUnitAnchor] = useState<HTMLElement | null>(null);
-  const [editUnitAnchor, setEditUnitAnchor] = useState<HTMLElement | null>(null);
 
   useEffect(() => {
     if (storeId) loadAllIngredients(storeId);
-  }, [storeId]);
+    else if (!storeLoading) setLoading(false);
+  }, [storeId, storeLoading]);
 
   const loadAllIngredients = async (sid: number) => {
     try {
@@ -46,6 +45,8 @@ const Ingredients = ({ user }: any) => {
       setAllIngredients(data ?? []);
     } catch {
       setError('식자재 목록을 불러오지 못했습니다.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -101,184 +102,149 @@ const Ingredients = ({ user }: any) => {
     }
   };
 
+  const rowSx = { borderTop: `1px solid ${theme.palette.divider}`, '&:first-of-type': { borderTop: 'none' } };
+  const unitPills = (value: string, onPick: (u: string) => void) => (
+    <Stack direction="row" gap={1}>
+      {UNIT_OPTIONS.map((u) => (
+        <Chip
+          key={u} label={u} onClick={() => onPick(u)}
+          sx={{
+            height: 36, minWidth: 52, borderRadius: 999, border: 'none', fontWeight: value === u ? 700 : 500,
+            bgcolor: value === u ? 'text.primary' : 'background.paper',
+            color: value === u ? 'common.white' : 'text.secondary',
+            '&:hover': { bgcolor: value === u ? 'text.primary' : 'divider' },
+            '& .MuiChip-label': { fontSize: 14 },
+          }}
+        />
+      ))}
+    </Stack>
+  );
+  const settingText = (ing: any) =>
+    `보관 ${ing.shelfLifeDays ? `${ing.shelfLifeDays}일` : '제한 없음'} · ${ing.leadTimeDays ?? 1}일 뒤 입고 · ${ing.orderCycleDays ?? 7}일마다`;
+
   return (
-    <Stack gap={4} sx={{ bgcolor: 'background.default' }}>
+    <Stack gap={5}>
+      {/* 큰 숫자 요약 + 버튼 */}
+      <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'flex-end' }} gap={3}>
+        <Box>
+          <Typography color="text.secondary" fontSize={15} mb={1}>등록된 식자재</Typography>
+          <Typography fontSize={{ xs: 30, md: 36 }} fontWeight={700} lineHeight={1.2}>
+            {loading ? '-' : `${allIngredients.length}개`}
+          </Typography>
+        </Box>
+        <Stack direction="row" gap={1.5}>
+          <Button variant="outlined" disabled={!storeId} onClick={() => setSuggestOpen(true)}
+            startIcon={<IconifyIcon icon="mingcute:sparkles-line" />}>
+            AI 설정 제안
+          </Button>
+          <Button startIcon={<IconifyIcon icon="mingcute:add-line" />}
+            onClick={() => { setShowIngForm((v) => !v); setEditingIng(null); }}>
+            식자재 등록
+          </Button>
+        </Stack>
+      </Stack>
+
       {error && <Alert severity="error" onClose={() => setError('')}>{error}</Alert>}
       {success && <Alert severity="success" onClose={() => setSuccess('')}>{success}</Alert>}
+      {storeId && (
+        <IngredientSuggestDialog open={suggestOpen} storeId={storeId} ingredients={allIngredients} onClose={() => setSuggestOpen(false)}
+          onSaved={() => { loadAllIngredients(storeId); setSuccess('확인한 설정을 저장했습니다.'); }} />
+      )}
 
-      <Paper sx={{ p: 3, border: `1px solid ${theme.palette.divider}`, borderRadius: 3 }}>
-        <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
-          <Typography variant="h6" fontWeight={700}>식자재 목록</Typography>
-          <Stack direction="row" gap={1}>
-            <Button size="small" variant="outlined" disabled={!storeId} onClick={() => setSuggestOpen(true)}
-              startIcon={<IconifyIcon icon="mingcute:sparkles-line" />}>
-              AI 설정 제안
-            </Button>
-            <Button
-              size="small" variant="outlined"
-              startIcon={<IconifyIcon icon="mingcute:add-line" />}
-              onClick={() => { setShowIngForm((v) => !v); setEditingIng(null); }}
-            >
-              식자재 등록
-            </Button>
-          </Stack>
-        </Stack>
-        {storeId && (
-          <IngredientSuggestDialog open={suggestOpen} storeId={storeId} ingredients={allIngredients} onClose={() => setSuggestOpen(false)}
-            onSaved={() => { loadAllIngredients(storeId); setSuccess('확인한 설정을 저장했습니다.'); }} />
-        )}
+      <Box sx={{ display: 'grid', gap: 5, gridTemplateColumns: { xs: 'minmax(0, 1fr)', lg: 'minmax(0, 1fr) 340px' }, alignItems: 'start' }}>
+        <Paper sx={{ p: 5 }}>
+          <Typography fontSize={18} fontWeight={700} mb={2}>식자재 목록</Typography>
 
-        {showIngForm && (
-          <Box component="form" onSubmit={handleCreateIngredient}
-            sx={{ p: 2, mb: 2, bgcolor: 'action.hover', borderRadius: 2 }}>
-            <Stack direction={{ xs: 'column', sm: 'row' }} gap={1.5} alignItems="center">
-              <TextField label="식자재명" size="small" required sx={{ flex: 2 }}
-                value={ingForm.name} onChange={(e) => setIngForm((p) => ({ ...p, name: e.target.value }))} />
-              <Button
-                size="small" variant="outlined"
-                endIcon={<IconifyIcon icon="mingcute:down-line" width={14} />}
-                onClick={(e) => setIngUnitAnchor(e.currentTarget)}
-                sx={{ minWidth: 100, justifyContent: 'space-between', color: ingForm.unit ? 'text.primary' : 'text.secondary' }}
-              >
-                {ingForm.unit || '단위 선택'}
-              </Button>
-              <Popover
-                open={Boolean(ingUnitAnchor)}
-                anchorEl={ingUnitAnchor}
-                onClose={() => setIngUnitAnchor(null)}
-                anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
-              >
-                <Box sx={{ p: 1.5, display: 'flex', gap: 0.75, flexWrap: 'wrap', maxWidth: 220 }}>
-                  {UNIT_OPTIONS.map((u) => (
-                    <Chip
-                      key={u} label={u} size="small" clickable
-                      color={ingForm.unit === u ? 'primary' : 'default'}
-                      variant={ingForm.unit === u ? 'filled' : 'outlined'}
-                      onClick={() => { setIngForm((p) => ({ ...p, unit: u })); setIngUnitAnchor(null); }}
-                      sx={{ fontWeight: ingForm.unit === u ? 700 : 400 }}
-                    />
-                  ))}
+          {/* 새 식자재 */}
+          {showIngForm && (
+            <Box component="form" onSubmit={handleCreateIngredient} sx={{ p: 4, mb: 3, bgcolor: 'background.default', borderRadius: 3 }}>
+              <Stack gap={2.5}>
+                <TextField label="식자재명" size="small" required fullWidth
+                  value={ingForm.name} onChange={(e) => setIngForm((p) => ({ ...p, name: e.target.value }))} />
+                <Stack direction="row" alignItems="center" gap={2} flexWrap="wrap">
+                  <Typography variant="body2" color="text.secondary">발주 단위</Typography>
+                  {unitPills(ingForm.unit, (u) => setIngForm((p) => ({ ...p, unit: u })))}
+                </Stack>
+                <Stack direction="row" gap={1.5} justifyContent="flex-end">
+                  <Button variant="text" onClick={() => setShowIngForm(false)}>취소</Button>
+                  <Button type="submit" disabled={ingSubmitting || !ingForm.unit}
+                    startIcon={ingSubmitting ? <CircularProgress size={14} color="inherit" /> : null}>
+                    등록
+                  </Button>
+                </Stack>
+              </Stack>
+            </Box>
+          )}
+
+          {loading ? (
+            <Stack alignItems="center" py={6}><CircularProgress /></Stack>
+          ) : allIngredients.length === 0 ? (
+            <Typography color="text.secondary" sx={{ py: 6, textAlign: 'center' }}>등록된 식자재가 없습니다.</Typography>
+          ) : allIngredients.map((ing) => (
+            <Box key={ing.id} sx={rowSx}>
+              <Stack direction="row" alignItems="center" gap={3} sx={{ py: 3 }}>
+                <Box sx={{ width: 40, height: 40, borderRadius: '50%', bgcolor: 'primary.light', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Typography fontWeight={700} color="primary.main" fontSize={15}>{ing.name?.slice(0, 1)}</Typography>
                 </Box>
-              </Popover>
-              <Button type="submit" variant="contained" size="medium" disabled={ingSubmitting || !ingForm.unit}
-                startIcon={ingSubmitting ? <CircularProgress size={14} color="inherit" /> : null}>
-                등록
-              </Button>
-              <Button size="medium" onClick={() => setShowIngForm(false)}>취소</Button>
-            </Stack>
-          </Box>
-        )}
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                  <Typography fontWeight={600} fontSize={15} noWrap>
+                    {ing.name} <Box component="span" color="text.secondary" fontWeight={500}>{ing.unit}</Box>
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" noWrap>{settingText(ing)}</Typography>
+                </Box>
+                <IconButton size="small" aria-label={`${ing.name} 수정`}
+                  onClick={() => { setEditingIng(editingIng?.id === ing.id ? null : { ...ing }); setShowIngForm(false); }}>
+                  <IconifyIcon icon="mingcute:edit-2-line" width={18} color={editingIng?.id === ing.id ? theme.palette.primary.main : theme.palette.text.disabled} />
+                </IconButton>
+                <IconButton size="small" aria-label={`${ing.name} 삭제`} onClick={() => handleDeleteIngredient(ing.id, ing.name)}>
+                  <IconifyIcon icon="mingcute:delete-2-line" width={18} color={theme.palette.text.disabled} />
+                </IconButton>
+              </Stack>
 
-        <TableContainer>
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>식자재명</TableCell>
-                <TableCell>단위</TableCell>
-                <TableCell>발주 설정 (보관기한 · 입고 · 주기)</TableCell>
-                <TableCell align="center" width={120}>관리</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {allIngredients.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={4}>
-                    <Typography variant="body2" color="text.secondary" sx={{ py: 1 }}>
-                      등록된 식자재가 없습니다.
-                    </Typography>
-                  </TableCell>
-                </TableRow>
-              ) : allIngredients.map((ing) => (
-                <TableRow key={ing.id} hover>
-                  {editingIng?.id === ing.id ? (
-                    <>
-                      <TableCell>
-                        <TextField size="small" value={editingIng.name} sx={{ width: 140 }}
-                          onChange={(e) => setEditingIng((p: any) => ({ ...p, name: e.target.value }))} />
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          size="small" variant="outlined"
-                          endIcon={<IconifyIcon icon="mingcute:down-line" width={14} />}
-                          onClick={(e) => setEditUnitAnchor(e.currentTarget)}
-                          sx={{ minWidth: 90, justifyContent: 'space-between', color: editingIng.unit ? 'text.primary' : 'text.secondary' }}
-                        >
-                          {editingIng.unit || '단위'}
-                        </Button>
-                        <Popover
-                          open={Boolean(editUnitAnchor)}
-                          anchorEl={editUnitAnchor}
-                          onClose={() => setEditUnitAnchor(null)}
-                          anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
-                        >
-                          <Box sx={{ p: 1.5, display: 'flex', gap: 0.75, flexWrap: 'wrap', maxWidth: 220 }}>
-                            {UNIT_OPTIONS.map((u) => (
-                              <Chip
-                                key={u} label={u} size="small" clickable
-                                color={editingIng.unit === u ? 'primary' : 'default'}
-                                variant={editingIng.unit === u ? 'filled' : 'outlined'}
-                                onClick={() => { setEditingIng((p: any) => ({ ...p, unit: u })); setEditUnitAnchor(null); }}
-                                sx={{ fontWeight: editingIng.unit === u ? 700 : 400 }}
-                              />
-                            ))}
-                          </Box>
-                        </Popover>
-                      </TableCell>
-                      <TableCell>
-                        <Stack direction="row" gap={1}>
-                          {DAY_FIELDS.map(({ key, label, min, placeholder }) => (
-                            <TextField
-                              key={key} label={label} size="small" type="number" placeholder={placeholder}
-                              InputLabelProps={{ shrink: true }} inputProps={{ min }} sx={{ width: 96 }}
-                              value={editingIng[key] ?? ''}
-                              onChange={(e) => setEditingIng((p: any) => ({ ...p, [key]: e.target.value }))}
-                            />
-                          ))}
-                        </Stack>
-                      </TableCell>
-                      <TableCell align="center">
-                        <Stack direction="row" gap={0.5} justifyContent="center">
-                          <Button size="small" variant="contained" disabled={ingSubmitting}
-                            onClick={handleUpdateIngredient}>저장</Button>
-                          <Button size="small" onClick={() => setEditingIng(null)}>취소</Button>
-                        </Stack>
-                      </TableCell>
-                    </>
-                  ) : (
-                    <>
-                      <TableCell><Typography variant="body2" fontWeight={600}>{ing.name}</Typography></TableCell>
-                      <TableCell>{ing.unit}</TableCell>
-                      <TableCell>
-                        <Typography variant="body2" color="text.secondary">
-                          보관 {ing.shelfLifeDays ? `${ing.shelfLifeDays}일` : '제한 없음'}
-                          {' · '}{ing.leadTimeDays ?? 1}일 뒤 입고
-                          {' · '}{ing.orderCycleDays ?? 7}일마다
-                        </Typography>
-                      </TableCell>
-                      <TableCell align="center">
-                        <Stack direction="row" gap={0.5} justifyContent="center">
-                          <IconButton size="small" color="primary"
-                            onClick={() => { setEditingIng({ ...ing }); setShowIngForm(false); }}>
-                            <IconifyIcon icon="mingcute:edit-2-line" width={17} />
-                          </IconButton>
-                          <IconButton size="small" color="error"
-                            onClick={() => handleDeleteIngredient(ing.id, ing.name)}>
-                            <IconifyIcon icon="mingcute:delete-2-line" width={17} />
-                          </IconButton>
-                        </Stack>
-                      </TableCell>
-                    </>
-                  )}
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1.5 }}>
-          자동 발주는 식자재마다 "입고 전 기간 + 다음 입고까지" 수요만 주문하고, 보관기한을 넘는 날의 수요는 다음 발주로 미룹니다.
-          비워 두면 다음날 입고, 7일마다 입고, 보관기한 제한 없음으로 계산합니다.
-        </Typography>
-      </Paper>
+              {/* 수정 (행 아래로 펼침) */}
+              {editingIng?.id === ing.id && (
+                <Box component="form" onSubmit={handleUpdateIngredient} sx={{ p: 4, mb: 3, bgcolor: 'background.default', borderRadius: 3 }}>
+                  <Stack gap={2.5}>
+                    <Stack direction={{ xs: 'column', sm: 'row' }} gap={2} alignItems={{ sm: 'center' }}>
+                      <TextField size="small" label="식자재명" value={editingIng.name} sx={{ flex: 1 }}
+                        onChange={(e) => setEditingIng((p: any) => ({ ...p, name: e.target.value }))} />
+                      {unitPills(editingIng.unit, (u) => setEditingIng((p: any) => ({ ...p, unit: u })))}
+                    </Stack>
+                    <Stack direction="row" gap={1.5}>
+                      {DAY_FIELDS.map(({ key, label, min, placeholder }) => (
+                        <TextField
+                          key={key} label={label} size="small" type="number" placeholder={placeholder}
+                          InputLabelProps={{ shrink: true }} inputProps={{ min }} sx={{ flex: 1 }}
+                          value={editingIng[key] ?? ''}
+                          onChange={(e) => setEditingIng((p: any) => ({ ...p, [key]: e.target.value }))}
+                        />
+                      ))}
+                    </Stack>
+                    <Stack direction="row" gap={1.5} justifyContent="flex-end">
+                      <Button variant="text" onClick={() => setEditingIng(null)}>취소</Button>
+                      <Button type="submit" disabled={ingSubmitting}>저장</Button>
+                    </Stack>
+                  </Stack>
+                </Box>
+              )}
+            </Box>
+          ))}
+        </Paper>
+
+        {/* 발주 설정 안내 */}
+        <Paper sx={{ p: 5, gap: 2 }}>
+          <Stack direction="row" alignItems="center" gap={1.5}>
+            <IconifyIcon icon="mingcute:information-line" width={20} color={theme.palette.primary.main} />
+            <Typography fontSize={16} fontWeight={700}>발주 설정이란?</Typography>
+          </Stack>
+          <Typography variant="body2" color="text.secondary" lineHeight={1.7}>
+            자동 발주는 식자재마다 "입고 전 기간 + 다음 입고까지" 수요만 주문하고, 보관기한을 넘는 날의 수요는 다음 발주로 미룹니다.
+          </Typography>
+          <Typography variant="body2" color="text.secondary" lineHeight={1.7}>
+            비워 두면 다음날 입고, 7일마다 입고, 보관기한 제한 없음으로 계산합니다. 잘 모르겠으면 "AI 설정 제안"을 눌러 보세요.
+          </Typography>
+        </Paper>
+      </Box>
     </Stack>
   );
 };

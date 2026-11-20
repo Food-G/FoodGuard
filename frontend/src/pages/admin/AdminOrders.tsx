@@ -2,10 +2,9 @@ import { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
   Typography, Paper, Button, CircularProgress, Chip,
-  Stack, useTheme, Box, Tab, Tabs,
+  Stack, useTheme, Box,
   Dialog, DialogTitle, DialogContent, DialogActions, TextField,
 } from '@mui/material';
-import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { orderService } from '../../services/orderService';
 import IconifyIcon from '../../components/base/IconifyIcon';
 import QrCodeDisplay from '../../components/QrCodeDisplay';
@@ -21,58 +20,15 @@ const STATUS_LABEL: Record<string, string> = {
   CANCELLED: '취소됨',
   REJECTED: '거절됨',
 };
-const STATUS_COLOR: Record<string, any> = {
-  REQUESTED: 'warning',
-  APPROVED: 'info',
-  HQ_SENT: 'primary',
-  DRIVER_RECEIVED: 'secondary',
-  DONE: 'success',
-  CANCELLED: 'default',
-  REJECTED: 'error',
-};
 
-// status → { 완료된 단계 수, 현재 활성 단계 }
-const STAGE_MAP: Record<string, { done: number; active: number }> = {
-  REQUESTED:       { done: 0, active: 0 },
-  APPROVED:        { done: 0, active: 1 },
-  HQ_SENT:         { done: 1, active: 2 },
-  DRIVER_RECEIVED: { done: 2, active: 3 },
-  DONE:            { done: 3, active: 0 },
-};
-
-const StepBadge = ({ n, done, active }: { n: number; done: number; active: number }) => {
-  const isDone = n <= done;
-  const isActive = n === active;
-  return (
-    <Box sx={{
-      width: 26, height: 26, borderRadius: '50%',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      bgcolor: isDone ? 'success.main' : isActive ? 'primary.main' : 'grey.200',
-      color: isDone || isActive ? 'white' : 'text.disabled',
-      fontSize: 11, fontWeight: 800, flexShrink: 0,
-      boxShadow: isActive ? '0 0 0 3px rgba(25,118,210,0.25)' : 'none',
-    }}>
-      {isDone ? <IconifyIcon icon="mingcute:check-fill" width={13} /> : n}
-    </Box>
-  );
-};
-
-const StepProgress = ({ status }: { status: string }) => {
-  const { done, active } = STAGE_MAP[status] ?? { done: 0, active: 0 };
-  return (
-    <Stack direction="row" gap={0.5} alignItems="center">
-      {[1, 2, 3].map((n, i) => (
-        <Stack key={n} direction="row" alignItems="center" gap={0.5}>
-          <StepBadge n={n} done={done} active={active} />
-          {i < 2 && (
-            <Box sx={{ width: 14, height: 2, bgcolor: n <= done ? 'success.main' : 'grey.300', borderRadius: 1 }} />
-          )}
-        </Stack>
-      ))}
-    </Stack>
-  );
-};
-
+// 진행 단계 (mine: 본사가 처리할 단계)
+const STAGES = [
+  { status: 'REQUESTED',       label: '승인 대기',     who: '본사 승인',       mine: true },
+  { status: 'APPROVED',        label: '발송 필요',     who: '본사 발송 검수',  mine: true },
+  { status: 'HQ_SENT',         label: '기사 수령 대기', who: '배달기사 검수',   mine: false },
+  { status: 'DRIVER_RECEIVED', label: '점주 검수 대기', who: '가맹점주 검수',   mine: false },
+];
+const PAGE = 30;
 const ACTIVE_STATUSES = new Set(['REQUESTED', 'APPROVED', 'HQ_SENT', 'DRIVER_RECEIVED']);
 const DONE_STATUSES   = new Set(['CANCELLED', 'REJECTED']); // DONE은 표시 안 함 (자동 소멸)
 
@@ -176,279 +132,181 @@ const AdminOrders = () => {
     setSuccess('완료된 발주 목록이 초기화되었습니다.');
   };
 
-  const activeColumns: GridColDef[] = [
-    { field: 'orderedAt', headerName: '발주 일시', width: 170 },
-    { field: 'name', headerName: '식자재', flex: 1, minWidth: 130 },
-    {
-      field: 'quantity', headerName: '수량', width: 100, align: 'right', headerAlign: 'right',
-      renderCell: (p) => (
-        <Typography fontWeight={600} fontSize={14}>
-          {p.value} <span style={{ color: '#999', fontWeight: 400 }}>{p.row.unit}</span>
-        </Typography>
-      ),
-    },
-    {
-      field: 'steps', headerName: '진행 단계', width: 160,
-      renderCell: (p) => <StepProgress status={p.row.status} />,
-      sortable: false,
-    },
-    {
-      field: 'status', headerName: '현재 상태', width: 160,
-      renderCell: (p) => (
-        <Chip
-          label={STATUS_LABEL[p.value] ?? p.value}
-          color={STATUS_COLOR[p.value] ?? 'default'}
-          size="small" variant="filled" sx={{ fontWeight: 700, fontSize: 11 }}
-        />
-      ),
-    },
-    {
-      field: 'actions', headerName: '처리', width: 210, sortable: false,
-      renderCell: (p) => {
-        const { status, id } = p.row;
-        if (status === 'REQUESTED') return (
-          <Stack direction="row" gap={0.5}>
-            <Button variant="contained" size="small" onClick={() => handleApprove(id)} sx={{ borderRadius: 2, fontSize: 12 }}>
-              승인
-            </Button>
-            <Button variant="outlined" color="error" size="small" onClick={() => handleReject(id)} sx={{ borderRadius: 2, fontSize: 12 }}>
-              거절
-            </Button>
-          </Stack>
-        );
-        if (status === 'APPROVED') return (
-          <Button variant="contained" color="success" size="small"
-            onClick={() => setHqSendTarget(id)} sx={{ borderRadius: 2, fontSize: 12 }}>
-            발송 검수완료 →
-          </Button>
-        );
-        if (status === 'HQ_SENT') {
-          const driverUrl = p.row.deliveryGroupToken
-            ? `${window.location.origin}/driver/group/${p.row.deliveryGroupToken}`
-            : null;
-          return driverUrl ? (
-            <Button variant="contained" color="secondary" size="small"
-              onClick={() => { navigator.clipboard.writeText(driverUrl); setSuccess('드라이버 링크가 복사되었습니다.'); }}
-              sx={{ borderRadius: 2, fontSize: 11 }}>
-              링크 복사
-            </Button>
-          ) : null;
-        }
-        if (status === 'DRIVER_RECEIVED') return (
-          <Chip label="가맹점주 검수 대기 중" size="small" variant="outlined" color="warning" sx={{ fontWeight: 600 }} />
-        );
-        return null;
-      },
-    },
-  ];
+  const [stage, setStage] = useState<string | null>(null);
+  const [shown, setShown] = useState(PAGE);
 
-  const doneColumns: GridColDef[] = [
-    { field: 'orderedAt', headerName: '발주 일시', width: 180 },
-    { field: 'name', headerName: '식자재', flex: 1, minWidth: 160 },
-    {
-      field: 'quantity', headerName: '수량', width: 120, align: 'right', headerAlign: 'right',
-      renderCell: (p) => (
-        <Typography fontWeight={600} fontSize={14}>
-          {p.value} <span style={{ color: '#999', fontWeight: 400 }}>{p.row.unit}</span>
-        </Typography>
-      ),
-    },
-    {
-      field: 'status', headerName: '처리 결과', width: 150,
-      renderCell: (p) => (
-        <Chip
-          label={STATUS_LABEL[p.value] ?? p.value}
-          color={STATUS_COLOR[p.value] ?? 'default'}
-          size="small" variant="filled" sx={{ fontWeight: 700 }}
-        />
-      ),
-    },
-  ];
+  const filterStoreName = searchParams.get('storeName');
+  const actionCount = activeRows.filter(r => r.status === 'REQUESTED' || r.status === 'APPROVED').length;
+  const listRows = (tab === 0 ? activeRows : doneRows).filter(r => tab === 1 || !stage || r.status === stage);
+  const rowSx = { borderTop: `1px solid ${theme.palette.divider}`, '&:first-of-type': { borderTop: 'none' } };
+
+  const pendingByStore = Object.values(
+    allRows
+      .filter(r => r.status === 'REQUESTED')
+      .reduce<Record<number, { storeId: number; storeName: string; count: number }>>((acc, r) => {
+        if (!acc[r.storeId]) acc[r.storeId] = { storeId: r.storeId, storeName: r.storeName, count: 0 };
+        acc[r.storeId].count += 1;
+        return acc;
+      }, {})
+  );
+
+  const pill = (label: string, selected: boolean, onClick: () => void) => (
+    <Chip
+      key={label} label={label} onClick={onClick}
+      sx={{
+        height: 34, borderRadius: 999, border: 'none', fontWeight: selected ? 700 : 500,
+        bgcolor: selected ? 'text.primary' : 'background.paper',
+        color: selected ? 'common.white' : 'text.secondary',
+        '&:hover': { bgcolor: selected ? 'text.primary' : 'divider' },
+        '& .MuiChip-label': { fontSize: 14 },
+      }}
+    />
+  );
+
+  // 행 오른쪽 처리 버튼 (상태별)
+  const actions = (r: any) => {
+    if (r.status === 'REQUESTED') return (
+      <Stack direction="row" gap={1}>
+        <Button size="small" variant="text" color="error" onClick={() => handleReject(r.id)}>거절</Button>
+        <Button size="small" onClick={() => handleApprove(r.id)}>승인</Button>
+      </Stack>
+    );
+    if (r.status === 'APPROVED') return (
+      <Button size="small" onClick={() => setHqSendTarget(r.id)}>발송 검수</Button>
+    );
+    if (r.status === 'HQ_SENT' && r.deliveryGroupToken) {
+      const driverUrl = `${window.location.origin}/driver/group/${r.deliveryGroupToken}`;
+      return (
+        <Button size="small" variant="outlined" startIcon={<IconifyIcon icon="mingcute:link-line" width={16} />}
+          onClick={() => { navigator.clipboard.writeText(driverUrl); setSuccess('드라이버 링크가 복사되었습니다.'); }}>
+          기사 링크
+        </Button>
+      );
+    }
+    return null;
+  };
 
   return (
-    <Stack gap={3} sx={{ bgcolor: 'background.default' }}>
-      {filterStoreId && (
-        <Stack direction="row" justifyContent="flex-end">
-          <Button
-            variant="outlined" size="small"
-            startIcon={<IconifyIcon icon="mingcute:arrow-left-line" width={14} />}
-            onClick={() => navigate('/admin/orders')}
-          >
+    <Stack gap={5}>
+      {/* 큰 숫자 요약 */}
+      <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'flex-end' }} gap={3}>
+        <Box>
+          <Typography color="text.secondary" fontSize={15} mb={1}>
+            {filterStoreId ? `${filterStoreName ?? '선택한 가맹점'} · ` : ''}본사가 처리할 발주
+          </Typography>
+          <Typography fontSize={{ xs: 30, md: 36 }} fontWeight={700} lineHeight={1.2}>
+            {loading ? '-' : `${actionCount}건`}
+          </Typography>
+        </Box>
+        {filterStoreId && (
+          <Button variant="outlined" startIcon={<IconifyIcon icon="mingcute:arrow-left-line" width={16} />}
+            onClick={() => navigate('/admin/orders')}>
             전체 발주 보기
           </Button>
-        </Stack>
-      )}
+        )}
+      </Stack>
 
       <AlertMessages error={error} success={success}
         onClearError={() => setError('')} onClearSuccess={() => setSuccess('')} />
 
-      {/* 승인 대기 중인 가맹점 요약 */}
-      {!filterStoreId && (() => {
-        const pendingByStore = Object.values(
-          allRows
-            .filter(r => r.status === 'REQUESTED')
-            .reduce<Record<number, { storeId: number; storeName: string; count: number }>>((acc, r) => {
-              if (!acc[r.storeId]) acc[r.storeId] = { storeId: r.storeId, storeName: r.storeName, count: 0 };
-              acc[r.storeId].count += 1;
-              return acc;
-            }, {})
-        );
-        if (pendingByStore.length === 0) return null;
-        return (
-          <Paper sx={{ p: 2.5, border: `1px solid ${theme.palette.warning.light}`, borderRadius: 3, bgcolor: 'warning.50' }}>
-            <Stack direction="row" alignItems="center" gap={1} mb={1.5}>
-              <IconifyIcon icon="mingcute:alert-fill" color={theme.palette.warning.main} width={18} />
-              <Typography variant="subtitle2" fontWeight={700} color="warning.dark">
-                승인 대기 중인 가맹점 ({pendingByStore.length}곳)
+      {/* 단계별 건수 (누르면 그 단계만) */}
+      <Box sx={{ display: 'grid', gap: 3, gridTemplateColumns: { xs: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' } }}>
+        {STAGES.map((s, i) => {
+          const count = activeRows.filter(r => r.status === s.status).length;
+          const selected = stage === s.status;
+          return (
+            <Paper
+              key={s.status} onClick={() => { setTab(0); setStage(selected ? null : s.status); setShown(PAGE); }}
+              sx={{
+                p: 4, cursor: 'pointer', outline: selected ? `2px solid ${theme.palette.primary.main}` : 'none',
+                '&:hover': { boxShadow: '0 4px 16px rgba(0,0,0,0.06)' },
+              }}
+            >
+              <Typography variant="body2" color="text.secondary" mb={1}>{i + 1}. {s.label}</Typography>
+              <Typography fontSize={26} fontWeight={700} color={s.mine && count > 0 ? 'primary.main' : 'text.primary'}>
+                {count}<Box component="span" fontSize={15} fontWeight={600} color="text.secondary" ml={0.5}>건</Box>
               </Typography>
-            </Stack>
-            <Stack direction="row" flexWrap="wrap" gap={1}>
-              {pendingByStore.map(s => (
-                <Chip
-                  key={s.storeId}
-                  label={`${s.storeName}  ${s.count}건`}
-                  color="warning"
-                  variant="filled"
-                  clickable
-                  onClick={() => navigate(`/admin/orders?storeId=${s.storeId}&storeName=${encodeURIComponent(s.storeName)}`)}
-                  sx={{ fontWeight: 700, fontSize: 13 }}
-                />
-              ))}
-            </Stack>
-          </Paper>
-        );
-      })()}
+              <Typography variant="body2" color="text.disabled">{s.who}</Typography>
+            </Paper>
+          );
+        })}
+      </Box>
 
-      {/* 3단계 흐름 안내 */}
-      <Paper sx={{ p: 2.5, border: `1px solid ${theme.palette.divider}`, borderRadius: 3 }}>
-        <Typography variant="subtitle2" color="text.secondary" mb={1.5} fontWeight={700}>
-          검수 책임 흐름
-        </Typography>
-        <Stack direction="row" gap={1} alignItems="stretch" flexWrap="wrap">
-          {[
-            {
-              n: 1, label: '본사 발송 검수완료', desc: '발주 승인 후 발송 처리',
-              color: 'primary.main', bg: 'primary.50',
-              statuses: ['REQUESTED', 'APPROVED'],
-            },
-            {
-              n: 2, label: '배달기사 수령 검수완료', desc: '배달기사가 제품 확인 후 처리',
-              color: 'success.main', bg: 'success.50',
-              statuses: ['HQ_SENT'],
-            },
-            {
-              n: 3, label: '가맹점주 수령 검수완료', desc: '가맹점주가 제품 확인 후 처리',
-              color: 'warning.main', bg: 'warning.50',
-              statuses: ['DRIVER_RECEIVED'],
-            },
-          ].map((item, i) => {
-            const count = allRows.filter(r => item.statuses.includes(r.status)).length;
-            return (
-              <Stack key={item.n} direction="row" alignItems="center" gap={1} sx={{ flex: 1, minWidth: 220 }}>
-                <Box sx={{ flex: 1, px: 2, py: 1.5, bgcolor: 'action.hover', borderRadius: 2, border: `1px solid ${theme.palette.divider}` }}>
-                  <Stack direction="row" justifyContent="space-between" alignItems="center">
-                    <Typography variant="caption" color={item.color} fontWeight={800}>
-                      [{item.n}단계] {item.label}
-                    </Typography>
-                    {count > 0 && (
-                      <Chip label={`${count}건`} size="small" color="error" sx={{ height: 18, fontSize: 10, fontWeight: 700 }} />
-                    )}
-                  </Stack>
-                  <Typography variant="caption" display="block" color="text.secondary" mt={0.3}>
-                    {item.desc}
-                  </Typography>
-                </Box>
-                {i < 2 && <Typography color="text.disabled" fontSize={20} sx={{ flexShrink: 0 }}>→</Typography>}
-              </Stack>
-            );
-          })}
+      {/* 승인 대기 가맹점 */}
+      {!filterStoreId && pendingByStore.length > 0 && (
+        <Stack direction="row" alignItems="center" gap={1.5} flexWrap="wrap">
+          <Typography variant="body2" color="text.secondary" fontWeight={600}>승인 대기 가맹점</Typography>
+          {pendingByStore.map(s => pill(`${s.storeName} ${s.count}건`, false,
+            () => navigate(`/admin/orders?storeId=${s.storeId}&storeName=${encodeURIComponent(s.storeName)}`)))}
         </Stack>
-      </Paper>
+      )}
 
-      {/* 탭 */}
-      <Paper sx={{ border: `1px solid ${theme.palette.divider}`, borderRadius: 3, overflow: 'hidden' }}>
-        <Box sx={{ borderBottom: `1px solid ${theme.palette.divider}`, px: 2 }}>
-          <Tabs value={tab} onChange={(_, v) => setTab(v)}>
-            <Tab
-              label={
-                <Stack direction="row" gap={1} alignItems="center">
-                  진행 중 발주
-                  {activeRows.length > 0 && (
-                    <Chip label={activeRows.length} size="small" color="primary" sx={{ height: 18, fontSize: 10 }} />
-                  )}
-                </Stack>
-              }
-            />
-            <Tab
-              label={
-                <Stack direction="row" gap={1} alignItems="center">
-                  완료된 발주
-                  {doneRows.length > 0 && (
-                    <Chip label={doneRows.length} size="small" color="default" sx={{ height: 18, fontSize: 10 }} />
-                  )}
-                </Stack>
-              }
-            />
-          </Tabs>
-        </Box>
-
-        <Box sx={{ p: 2 }}>
+      <Paper sx={{ p: 5 }}>
+        <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2} gap={2} flexWrap="wrap">
+          <Stack direction="row" gap={1} sx={{ bgcolor: 'background.default', p: 0.75, borderRadius: 999 }}>
+            {pill(`진행 중 ${activeRows.length}`, tab === 0, () => { setTab(0); setShown(PAGE); })}
+            {pill(`취소·거절 ${doneRows.length}`, tab === 1, () => { setTab(1); setShown(PAGE); })}
+          </Stack>
           {tab === 1 && doneRows.length > 0 && (
-            <Stack direction="row" justifyContent="flex-end" mb={1.5}>
-              <Button
-                size="small" variant="outlined" color="error"
-                startIcon={<IconifyIcon icon="mingcute:delete-2-line" />}
-                onClick={handleClearCompleted}
-              >
-                목록 초기화
-              </Button>
-            </Stack>
+            <Button size="small" variant="text" color="error" startIcon={<IconifyIcon icon="mingcute:delete-2-line" />} onClick={handleClearCompleted}>
+              목록 정리
+            </Button>
           )}
+          {tab === 0 && stage && (
+            <Button size="small" variant="text" onClick={() => setStage(null)}>단계 필터 해제</Button>
+          )}
+        </Stack>
 
-          <Box sx={{ height: 520 }}>
-            {loading ? (
-              <Stack alignItems="center" justifyContent="center" height="100%">
-                <CircularProgress />
-              </Stack>
-            ) : tab === 0 ? (
-              activeRows.length === 0 ? (
-                <Stack alignItems="center" justifyContent="center" height="100%" gap={1}>
-                  <IconifyIcon icon="mingcute:check-circle-fill" color={theme.palette.success.main} width={48} />
-                  <Typography color="text.secondary" fontWeight={600}>처리 대기 중인 발주가 없습니다.</Typography>
-                </Stack>
-              ) : (
-                <DataGrid
-                  rows={activeRows}
-                  columns={activeColumns}
-                  disableRowSelectionOnClick
-                  initialState={{ pagination: { paginationModel: { pageSize: 10 } } }}
-                  pageSizeOptions={[10, 20]}
-                  sx={{ border: 'none', '& .MuiDataGrid-cell': { alignItems: 'center' } }}
-                />
-              )
-            ) : (
-              doneRows.length === 0 ? (
-                <Stack alignItems="center" justifyContent="center" height="100%" gap={1}>
-                  <Typography color="text.secondary" fontWeight={600}>완료된 발주가 없습니다.</Typography>
-                </Stack>
-              ) : (
-                <DataGrid
-                  rows={doneRows}
-                  columns={doneColumns}
-                  disableRowSelectionOnClick
-                  initialState={{ pagination: { paginationModel: { pageSize: 10 } } }}
-                  pageSizeOptions={[10, 20]}
-                  sx={{ border: 'none' }}
-                />
-              )
+        {loading ? (
+          <Stack alignItems="center" py={8}><CircularProgress /></Stack>
+        ) : listRows.length === 0 ? (
+          <Stack alignItems="center" py={8} gap={1}>
+            {tab === 0 && <IconifyIcon icon="mingcute:check-circle-fill" color={theme.palette.success.main} width={44} />}
+            <Typography color="text.secondary" fontWeight={600}>
+              {tab === 0 ? '처리 대기 중인 발주가 없습니다.' : '취소·거절된 발주가 없습니다.'}
+            </Typography>
+          </Stack>
+        ) : (
+          <>
+            {listRows.slice(0, shown).map((r) => {
+              const step = STAGES.findIndex(s => s.status === r.status);
+              return (
+                <Box key={r.id} sx={{ py: 3.5, ...rowSx }}>
+                  <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ sm: 'center' }} gap={2}>
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                      <Typography fontWeight={600} fontSize={15} noWrap>
+                        {r.storeName} · {r.name} <Box component="span" fontWeight={700}>{r.quantity}{r.unit}</Box>
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">{r.orderedAt}</Typography>
+                    </Box>
+                    <Typography fontWeight={700} fontSize={14} sx={{ whiteSpace: 'nowrap' }}
+                      color={r.status === 'REJECTED' ? 'error.main' : STAGES[step]?.mine ? 'primary.main' : 'text.secondary'}>
+                      {STATUS_LABEL[r.status] ?? r.status}
+                    </Typography>
+                    {actions(r)}
+                  </Stack>
+                  {step >= 0 && (
+                    <Stack direction="row" gap={0.75} mt={2}>
+                      {STAGES.map((s, i) => (
+                        <Box key={s.status} sx={{ flex: 1, height: 4, borderRadius: 2, bgcolor: i <= step ? 'primary.main' : 'divider' }} />
+                      ))}
+                    </Stack>
+                  )}
+                </Box>
+              );
+            })}
+            {listRows.length > shown && (
+              <Button variant="outlined" fullWidth onClick={() => setShown(shown + PAGE)}>
+                {Math.min(PAGE, listRows.length - shown)}건 더 보기
+              </Button>
             )}
-          </Box>
-        </Box>
+          </>
+        )}
       </Paper>
 
       {/* 유통기한 입력 다이얼로그 */}
       <Dialog open={hqSendTarget !== null} onClose={() => { setHqSendTarget(null); setExpiryDate(''); }} maxWidth="xs" fullWidth>
-        <DialogTitle>발송 검수 완료</DialogTitle>
+        <DialogTitle fontWeight={700}>발송 검수 완료</DialogTitle>
         <DialogContent>
           <Stack gap={2} pt={1}>
             <Typography variant="body2" color="text.secondary">
@@ -465,11 +323,9 @@ const AdminOrders = () => {
             />
           </Stack>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => { setHqSendTarget(null); setExpiryDate(''); }}>취소</Button>
-          <Button variant="contained" color="success" onClick={handleHqSendConfirm}>
-            발송 검수완료
-          </Button>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button variant="text" onClick={() => { setHqSendTarget(null); setExpiryDate(''); }}>취소</Button>
+          <Button onClick={handleHqSendConfirm}>발송 검수완료</Button>
         </DialogActions>
       </Dialog>
 

@@ -13,16 +13,16 @@ const TableCell: Components<Omit<Theme, 'components'>>['MuiTableCell'] = {
       borderBottomColor: theme.palette.divider,
     }),
     head: ({ theme }) => ({
-      fontSize: theme.typography.subtitle1.fontSize,
-      fontWeight: theme.typography.subtitle1.fontWeight,
-      color: theme.palette.common.black,
-      lineHeight: '24.2px',
+      fontSize: theme.typography.pxToRem(13),
+      fontWeight: 600,
+      color: theme.palette.text.secondary,
+      lineHeight: '20px',
     }),
     body: ({ theme }) => ({
-      fontSize: theme.typography.body1.fontSize,
+      fontSize: theme.typography.pxToRem(15),
       fontWeight: theme.typography.body1.fontWeight,
-      color: theme.palette.common.black,
-      lineHeight: '19.36px',
+      color: theme.palette.text.primary,
+      lineHeight: '20px',
     }),
   },
 };

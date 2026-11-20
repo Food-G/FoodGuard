@@ -113,7 +113,8 @@ ai-service/
     ├── explain.py               # /api/explain/order — 발주 추천 근거 설명 (숫자는 바꾸지 않음)
     ├── events.py                # /api/events/parse — 점주 특이사항 메모 → 유형·증감 배율 (claude)
     ├── ingest.py                # /api/ingest/* — POS 파일·거래명세서 사진 → 미리보기 (저장은 백엔드, 점주 확인 후)
-    └── agents.py                # /api/agents/* — 식자재 설정 제안, 발주 참모, 본사 주간 리포트, 점주 질문 답변
+    ├── agents.py                # /api/agents/* — 식자재 설정 제안, 발주 참모, 본사 주간 리포트, 점주 질문 답변
+    └── recipes.py               # /api/recipes/draft — 메뉴명 → 매장 식자재 1개당 사용량 초안 (claude, 저장은 점주 확인 후)
 ```
 
 ### AI 예측 흐름

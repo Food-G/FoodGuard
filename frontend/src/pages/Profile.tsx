@@ -205,7 +205,7 @@ const Profile = () => {
               color={roleLabel[role]?.color ?? 'default'}
               variant="outlined"
               size="medium"
-              icon={<IconifyIcon icon="mingcute:user-crown-line" />}
+              icon={<IconifyIcon icon="mingcute:user-star-line" />}
             />
           </Box>
         </Stack>
