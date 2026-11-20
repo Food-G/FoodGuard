@@ -59,7 +59,9 @@
 - **배포**: AWS EC2(t3.small)에 docker compose 로 실제 배포했고 거기서 나온 문제 3건 수정 (`e42d4ac`: ai-service `.venv` 이미지 포함, claude 로그인 볼륨 권한, 프론트 헬스체크 IPv6)
 - **프론트 의존성**: vite 6.4.6, `@typescript-eslint` 8.73 → `npm audit` 0건. ESLint 8.57 flat config 로 ts/tsx 도 검사
 - **미사용 코드**: `pages/admin/AdminDashboard.tsx` 는 10/30 정리에서 지웠다가 11/06 프론트 복원으로 되살아나 11/20 다시 삭제 (`59ad3a0`). 백엔드 `GET /api/sales/all-stores/weekly-summary` 는 이제 프론트 호출처가 없다 (`qa_smoke.py` 만 점검, 지울지 결정 필요)
-- **배포 전 필수**: 운영 DB(`ddl-auto=none`)에 `backend/src/main/resources/db/2026-11-20_staff_pos.sql`, `2026-11-20_reservation.sql` 실행 (`docs/DEPLOY.md` 스키마 절). 실행 여부는 기록에 없으니 확인할 것
+- **배포 전 필수**: 운영 DB(`ddl-auto=none`)에 `backend/src/main/resources/db/2026-11-20_staff_pos.sql`, `2026-11-20_reservation.sql` 실행 (`docs/DEPLOY.md` 스키마 절)
+  - 공유 TiDB(`foodguard`): 2026-11-20 확인, 5개 테이블 모두 있음 (`EMPLOYEE`·`EMPLOYEE_SCHEDULE`·`ATTENDANCE`·`POS_TABLE` 은 11/13 개발 bootRun 으로 이미 생성, `RESERVATION` 은 11/20 SQL 로 생성). 컬럼은 SQL 과 일치
+  - EC2 운영 서버가 다른 DB 를 쓰면 그쪽은 따로 확인할 것. 예약 API 실제 동작(`qa_smoke.py`)은 아직 미확인
 - `qa_smoke.py` 에 직원·스케줄·출퇴근·주간 급여·좌석·예약·오늘 매출 항목 추가 (`ef4b8a6`, `9a149f9`). 추가 후 전체 실행은 아직 안 했다
 
 ### 배포 전 남은 것 (2026-10-30 점검, PROJECT_STATUS 13절)
