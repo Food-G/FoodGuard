@@ -223,6 +223,27 @@ class InventoryLedgerTest {
         assertTrue(rows.stream().allMatch(t -> "SALE".equals(t.getReason()) && t.getRefId() == 77L));
     }
 
+    @Test
+    void pastDateSaleIsHistoryAndLeavesStockAlone() {
+        Menu menu = new Menu();
+        menu.setId(100L);
+        MenuIngredientRepository miRepo = mock(MenuIngredientRepository.class);
+        when(miRepo.findByMenuId(100L)).thenReturn(List.of(recipe(onion, "0.05", "kg", "0")));
+        StoreRepository storeRepo = mock(StoreRepository.class);
+        when(storeRepo.findById(60006L)).thenReturn(Optional.of(store));
+        MenuRepository menuRepo = mock(MenuRepository.class);
+        when(menuRepo.findById(100L)).thenReturn(Optional.of(menu));
+        SalesDataRepository salesRepo = mock(SalesDataRepository.class);
+        when(salesRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        stock(10.0);
+
+        new SalesDataService(salesRepo, storeRepo, menuRepo, miRepo, invRepo, ledger)
+                .create(60006L, 100L, 4, LocalDate.now().minusDays(3));
+
+        verify(salesRepo).save(any());
+        verify(txnRepo, never()).save(any());
+    }
+
     private static MenuIngredient recipe(Ingredient ing, String qty, String unit, String tol) {
         MenuIngredient mi = new MenuIngredient();
         mi.setIngredient(ing);

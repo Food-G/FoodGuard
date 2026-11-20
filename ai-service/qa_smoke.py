@@ -73,7 +73,8 @@ def cleanup():
     ul = ','.join(map(str, users))
     with engine.begin() as c:
         c.execute(text(f"DELETE FROM MENU_INGREDIENT WHERE menu_id IN (SELECT menu_id FROM MENU WHERE store_id IN ({sl}))"))
-        for t in ('RESERVATION', 'EMPLOYEE_SCHEDULE', 'ATTENDANCE', 'EMPLOYEE', 'POS_TABLE','menu_discount', 'STORE_EVENT_NOTE', 'SALES_DAY_FLAG', 'WASTE_RECORD', 'DONATION_RECORD', 'NOTIFICATION', 'PREDICTION_RESULT', 'SALES_DATA', 'ORDER_REQUEST', 'INVENTORY', 'INGREDIENT', 'MENU'):
+        # 재고 원장·입고 로트·예측 이력·에이전트 기록도 매장 단위로 쌓인다 (junho 병합으로 생긴 테이블)
+        for t in ('INVENTORY_TXN', 'INVENTORY_LOT', 'PREDICTION_LOG', 'AGENT_PROPOSAL', 'AGENT_RUN', 'RESERVATION', 'EMPLOYEE_SCHEDULE', 'ATTENDANCE', 'EMPLOYEE', 'POS_TABLE','menu_discount', 'STORE_EVENT_NOTE', 'SALES_DAY_FLAG', 'WASTE_RECORD', 'DONATION_RECORD', 'NOTIFICATION', 'PREDICTION_RESULT', 'SALES_DATA', 'ORDER_REQUEST', 'INVENTORY', 'INGREDIENT', 'MENU'):
             n = c.execute(text(f"DELETE FROM {t} WHERE store_id IN ({sl})")).rowcount
             print(' ', t, n)
         c.execute(text(f"DELETE FROM STORE WHERE store_id IN ({sl})"))
@@ -348,7 +349,8 @@ c, ts_ = api('GET', f'/sales/{S}/today-summary', t=T)
 check('오늘 매출 요약', c, 200, None if c == 200 else ts_)
 if c == 200:
     yq = 20 + (today - timedelta(days=1)).weekday() * 3
-    check('오늘 매출 = POS 할인가 (2개 12000)', (ts_['quantity'], ts_['revenue']), [(2, 12000)])
+    # POS 할인가 2개 12000 중 1개를 위의 판매 수정으로 취소했다
+    check('오늘 매출 = POS 할인가 (판매 수정 후 1개 6000)', (ts_['quantity'], ts_['revenue']), [(1, 6000)])
     check('어제 매출 = 정가 (unit_price 없음)', (ts_['prevQuantity'], ts_['prevRevenue']), [(yq, yq * 8000)])
 c, emp = api('POST', '/employees', {'storeId': S, 'name': 'QA알바', 'phone': '010', 'hourlyWage': 10030, 'pin': '1234'}, T)
 check('직원 등록', c, 200, None if c == 200 else emp)

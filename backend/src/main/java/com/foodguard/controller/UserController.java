@@ -1,6 +1,7 @@
 package com.foodguard.controller;
 
 import com.foodguard.entity.User;
+import com.foodguard.security.AuthUser;
 import com.foodguard.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -18,21 +19,21 @@ public class UserController {
     private final UserService userService;
 
     @GetMapping("/me")
-    public ResponseEntity<Map<String, Object>> getMyProfile(@AuthenticationPrincipal String email) {
-        return ResponseEntity.ok(profile(userService.getByEmail(email)));
+    public ResponseEntity<Map<String, Object>> getMyProfile(@AuthenticationPrincipal AuthUser user) {
+        return ResponseEntity.ok(profile(userService.getByEmail(user.email())));
     }
 
     @PutMapping("/me")
-    public ResponseEntity<Map<String, Object>> updateProfile(@AuthenticationPrincipal String email,
+    public ResponseEntity<Map<String, Object>> updateProfile(@AuthenticationPrincipal AuthUser user,
                                                              @RequestBody Map<String, Object> body) {
         Object userName = body.get("userName");
-        return ResponseEntity.ok(profile(userService.updateUserName(email, userName != null ? userName.toString() : null)));
+        return ResponseEntity.ok(profile(userService.updateUserName(user.email(), userName != null ? userName.toString() : null)));
     }
 
     @PutMapping("/me/password")
-    public ResponseEntity<Map<String, String>> changePassword(@AuthenticationPrincipal String email,
+    public ResponseEntity<Map<String, String>> changePassword(@AuthenticationPrincipal AuthUser user,
                                                               @RequestBody Map<String, Object> body) {
-        userService.changePassword(email, String.valueOf(body.get("oldPassword")), String.valueOf(body.get("newPassword")));
+        userService.changePassword(user.email(), String.valueOf(body.get("oldPassword")), String.valueOf(body.get("newPassword")));
         return ResponseEntity.ok(Map.of("message", "비밀번호 변경 완료"));
     }
 

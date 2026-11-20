@@ -53,8 +53,10 @@ public class SalesDataService {
         sales.setSaleDate(saleDate);
         SalesData saved = salesDataRepository.save(sales);
 
-        // 매출 발생 → 레시피 기반 식자재 소모량 자동 차감
-        deductIngredients(store, menu.getId(), quantity, saved.getId());
+        // 오늘 판매(POS)만 레시피대로 재고를 줄인다. 지난 날짜 입력은 이력 기록이라 지금 재고와 무관하다
+        if (saleDate.isEqual(LocalDate.now())) {
+            deductIngredients(store, menu.getId(), quantity, saved.getId());
+        }
         return saved;
     }
 
