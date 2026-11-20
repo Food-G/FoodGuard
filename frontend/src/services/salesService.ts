@@ -16,9 +16,6 @@ export const salesService = {
   getWeeklySummary: async (storeId: number) => {
     return api.get(`/sales/${storeId}/weekly-summary`);
   },
-  getAllStoreWeeklySummary: async () => {
-    return api.get('/sales/all-stores/weekly-summary');
-  },
   // 휴무·품절 기록 (AI 학습에서 판매량을 수요로 쓰지 않을 날)
   getFlags: async (storeId: number) => {
     return api.get(`/sales-flags/${storeId}`);

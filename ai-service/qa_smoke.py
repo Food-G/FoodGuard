@@ -73,7 +73,7 @@ def cleanup():
     ul = ','.join(map(str, users))
     with engine.begin() as c:
         c.execute(text(f"DELETE FROM MENU_INGREDIENT WHERE menu_id IN (SELECT menu_id FROM MENU WHERE store_id IN ({sl}))"))
-        for t in ('ATTENDANCE', 'EMPLOYEE_SCHEDULE', 'EMPLOYEE', 'POS_TABLE', 'menu_discount', 'STORE_EVENT_NOTE', 'SALES_DAY_FLAG', 'WASTE_RECORD', 'DONATION_RECORD', 'NOTIFICATION', 'PREDICTION_RESULT', 'SALES_DATA', 'ORDER_REQUEST', 'INVENTORY', 'INGREDIENT', 'MENU'):
+        for t in ('RESERVATION', 'EMPLOYEE_SCHEDULE', 'ATTENDANCE', 'EMPLOYEE', 'POS_TABLE','menu_discount', 'STORE_EVENT_NOTE', 'SALES_DAY_FLAG', 'WASTE_RECORD', 'DONATION_RECORD', 'NOTIFICATION', 'PREDICTION_RESULT', 'SALES_DATA', 'ORDER_REQUEST', 'INVENTORY', 'INGREDIENT', 'MENU'):
             n = c.execute(text(f"DELETE FROM {t} WHERE store_id IN ({sl})")).rowcount
             print(' ', t, n)
         c.execute(text(f"DELETE FROM STORE WHERE store_id IN ({sl})"))
@@ -189,39 +189,6 @@ check('특이사항 빈 메모 거부', api('POST', '/event-notes', {'storeId': 
 if c == 200:
     check('특이사항 삭제', api('DELETE', f"/event-notes/{note['id']}", t=T)[0], [200, 204])
 
-# ── 오늘 매출 요약·직원·출퇴근·POS 좌석 ──
-c, summ = api('GET', f'/sales/{S}/today-summary', t=T)
-check('오늘 매출 요약', c, 200, None if c == 200 else summ)
-y = today - timedelta(days=1)
-check('오늘 매출 요약: 어제 판매 수량', summ.get('prevQuantity') if c == 200 else None, 20 + y.weekday() * 3)
-check('다른 매장 매출 요약 403', api('GET', '/sales/60004/today-summary', t=T)[0], 403)
-c, emp = api('POST', '/employees', {'storeId': S, 'name': 'QA직원', 'hourlyWage': 10030, 'pin': '4821'}, T)
-check('직원 등록', c, 200, None if c == 200 else emp)
-check('직원 응답에 PIN 없음', isinstance(emp, dict) and 'pin' in emp, False)
-check('직원 등록: PIN 없으면 거부', api('POST', '/employees', {'storeId': S, 'name': 'x', 'hourlyWage': 10030}, T)[0], 400)
-check('직원 등록: 같은 PIN 거부', api('POST', '/employees', {'storeId': S, 'name': 'x', 'hourlyWage': 10030, 'pin': '4821'}, T)[0], 400)
-check('다른 매장에 직원 등록 403', api('POST', '/employees', {'storeId': 60004, 'name': 'x', 'hourlyWage': 1, 'pin': '1111'}, T)[0], 403)
-check('직원 목록', len(api('GET', f'/employees/{S}', t=T)[1]), 1)
-c, sc = api('POST', '/employee-schedules', {'storeId': S, 'employeeId': emp['id'], 'weekday': 1, 'startTime': '09:00', 'endTime': '18:00'}, T)
-check('근무 스케줄 등록', c, 200, None if c == 200 else sc)
-check('근무 스케줄: 끝이 시작보다 빠르면 거부', api('POST', '/employee-schedules', {'storeId': S, 'employeeId': emp['id'], 'weekday': 1, 'startTime': '18:00', 'endTime': '09:00'}, T)[0], 400)
-if c == 200:
-    check('근무 스케줄 삭제', api('DELETE', f"/employee-schedules/{sc['id']}", t=T)[0], [200, 204])
-check('출퇴근: 틀린 PIN 거부', api('POST', '/attendance/clock', {'storeId': S, 'pin': '0000'}, T)[0], 400)
-c, ci = api('POST', '/attendance/clock', {'storeId': S, 'pin': '4821'}, T)
-check('출근 기록', ci.get('action') if c == 200 else c, 'IN')
-c, co = api('POST', '/attendance/clock', {'storeId': S, 'pin': '4821'}, T)
-check('퇴근 기록', co.get('action') if c == 200 else c, 'OUT')
-check('출퇴근 기록 조회', len(api('GET', f'/attendance/{S}?start={today}&end={today}', t=T)[1]), 1)
-check('주휴수당 계산', api('GET', f'/attendance/{S}/weekly-pay?weekStart={today - timedelta(days=today.weekday())}', t=T)[0], 200)
-check('직원 퇴사 처리', api('PUT', f"/employees/{emp['id']}", {'active': False}, T)[0], 200)
-check('퇴사 직원 PIN 거부', api('POST', '/attendance/clock', {'storeId': S, 'pin': '4821'}, T)[0], 400)
-c, tb = api('PUT', f'/pos-tables/{S}', [{'name': '1번', 'x': 10, 'y': 10, 'w': 120, 'h': 90, 'seats': 4}], T)
-check('POS 좌석 배치 저장', c, 200, None if c == 200 else tb)
-check('POS 좌석 배치 조회', len(api('GET', f'/pos-tables/{S}', t=T)[1]), 1)
-check('POS 좌석 0석 거부', api('PUT', f'/pos-tables/{S}', [{'name': 'x', 'x': 0, 'y': 0, 'w': 1, 'h': 1, 'seats': 0}], T)[0], 400)
-check('다른 매장 좌석 배치 403', api('PUT', '/pos-tables/60004', [], T)[0], 403)
-
 # ── 예측 ──
 start = time.time()
 c, pr = api('POST', f'/predictions/{S}/trigger', t=T)
@@ -298,6 +265,63 @@ check('POS 결제 금액 = 할인가', co.get('total') if c == 200 else c, 12000
 check('POS 재고 차감', [round(float(x['currentQty']), 2) for x in api('GET', f'/inventory/{S}', t=T)[1] if x['ingredient']['id'] == I], [[2.8]])
 check('POS 빈 결제 거부', api('POST', f'/pos/{S}/checkout', [], T)[0], 400)
 
+# ── 오늘 매출·직원·출퇴근·POS 좌석 ──
+c, ts_ = api('GET', f'/sales/{S}/today-summary', t=T)
+check('오늘 매출 요약', c, 200, None if c == 200 else ts_)
+if c == 200:
+    yq = 20 + (today - timedelta(days=1)).weekday() * 3
+    check('오늘 매출 = POS 할인가 (2개 12000)', (ts_['quantity'], ts_['revenue']), (2, 12000))
+    check('어제 매출 = 정가 (unit_price 없음)', (ts_['prevQuantity'], ts_['prevRevenue']), (yq, yq * 8000))
+c, emp = api('POST', '/employees', {'storeId': S, 'name': 'QA알바', 'phone': '010', 'hourlyWage': 10030, 'pin': '1234'}, T)
+check('직원 등록', c, 200, None if c == 200 else emp)
+E = emp['id']
+check('직원 응답에 PIN 없음', 'pin' in emp, False, emp if 'pin' in emp else None)
+check('직원: 같은 PIN 거부', api('POST', '/employees', {'storeId': S, 'name': 'QA2', 'hourlyWage': 10030, 'pin': '1234'}, T)[0], 400)
+check('직원: PIN 형식 거부', api('POST', '/employees', {'storeId': S, 'name': 'QA2', 'hourlyWage': 10030, 'pin': '12a'}, T)[0], 400)
+check('직원: 시급 0 거부', api('POST', '/employees', {'storeId': S, 'name': 'QA2', 'hourlyWage': 0, 'pin': '5678'}, T)[0], 400)
+check('직원: 다른 매장 등록 403', api('POST', '/employees', {'storeId': 60004, 'name': 'x', 'hourlyWage': 1, 'pin': '0000'}, T)[0], 403)
+check('직원 목록', len(api('GET', f'/employees/{S}', t=T)[1]), 1)
+c, sc = api('POST', '/employee-schedules', {'storeId': S, 'employeeId': E, 'weekday': 1, 'startTime': '09:00', 'endTime': '13:00'}, T)
+check('근무 스케줄 등록', c, 200, None if c == 200 else sc)
+check('스케줄: 종료가 시작보다 빠름 거부', api('POST', '/employee-schedules', {'storeId': S, 'employeeId': E, 'weekday': 1, 'startTime': '13:00', 'endTime': '09:00'}, T)[0], 400)
+check('스케줄 조회', len(api('GET', f'/employee-schedules/{S}', t=T)[1]), 1)
+if c == 200:
+    check('스케줄 삭제', api('DELETE', f"/employee-schedules/{sc['id']}", t=T)[0], 200)
+c, ck = api('POST', '/attendance/clock', {'storeId': S, 'pin': '1234'}, T)
+check('PIN 출근', ck.get('action') if c == 200 else c, 'IN', None if c == 200 else ck)
+c, ck = api('POST', '/attendance/clock', {'storeId': S, 'pin': '1234'}, T)
+check('PIN 퇴근', ck.get('action') if c == 200 else c, 'OUT', None if c == 200 else ck)
+check('틀린 PIN 거부', api('POST', '/attendance/clock', {'storeId': S, 'pin': '9999'}, T)[0], 400)
+week = today - timedelta(days=today.weekday())
+c, att = api('GET', f'/attendance/{S}?start={today}&end={today}', t=T)
+check('출퇴근 기록 1건', len(att) if c == 200 else c, 1)
+if c == 200 and att:
+    A = att[0]['id']
+    check('출퇴근 수정: 퇴근이 출근보다 빠름 거부', api('PUT', f'/attendance/{A}', {'clockIn': f'{week}T09:00', 'clockOut': f'{week}T08:00'}, T)[0], 400)
+    check('출퇴근 수정 (20시간)', api('PUT', f'/attendance/{A}', {'clockIn': f'{week}T09:00', 'clockOut': f'{week + timedelta(days=1)}T05:00'}, T)[0], 200)
+    c, pay = api('GET', f'/attendance/{S}/weekly-pay?weekStart={week}', t=T)
+    row = next((p for p in pay if p['employeeId'] == E), {}) if c == 200 else {}
+    # 20시간 ≥ 15시간 → 주휴수당 = 20/40 × 8 × 10030
+    check('주간 급여·주휴수당', (row.get('workedMinutes'), row.get('basePay'), row.get('holidayPay')), (1200, 200600, 40120), row or pay)
+check('직원 퇴사 처리', api('PUT', f'/employees/{E}', {'active': False}, T)[0], 200)
+check('퇴사 직원 PIN 거부', api('POST', '/attendance/clock', {'storeId': S, 'pin': '1234'}, T)[0], 400)
+layout = [{'name': 'T1', 'x': 0, 'y': 0, 'w': 100, 'h': 80, 'seats': 4}, {'name': 'T2', 'x': 120, 'y': 0, 'w': 100, 'h': 80, 'seats': 2}]
+check('POS 좌석 배치 저장', api('PUT', f'/pos-tables/{S}', layout, T)[0], 200)
+check('POS 좌석 배치 다시 저장하면 교체', [t['seats'] for t in api('PUT', f'/pos-tables/{S}', layout[:1], T)[1]], [4])
+check('POS 좌석 배치 조회', [(t['name'], t['seats']) for t in api('GET', f'/pos-tables/{S}', t=T)[1]], [('T1', 4)])
+check('POS 좌석 0 거부', api('PUT', f'/pos-tables/{S}', [{'name': 'T', 'x': 0, 'y': 0, 'w': 1, 'h': 1, 'seats': 0}], T)[0], 400)
+
+# ── 예약 ──
+c, rs = api('POST', '/reservations', {'storeId': S, 'customerName': 'QA손님', 'phone': '010', 'reservationDate': today.isoformat(), 'reservationTime': '18:30', 'guests': 4, 'note': '창가'}, T)
+check('예약 등록', rs.get('status') if c == 200 else c, 'RESERVED', None if c == 200 else rs)
+check('예약: 인원 0 거부', api('POST', '/reservations', {'storeId': S, 'customerName': 'x', 'reservationDate': today.isoformat(), 'reservationTime': '18:00', 'guests': 0}, T)[0], 400)
+check('예약: 이름 없음 거부', api('POST', '/reservations', {'storeId': S, 'customerName': ' ', 'reservationDate': today.isoformat(), 'reservationTime': '18:00', 'guests': 2}, T)[0], 400)
+check('예약: 다른 매장 등록 403', api('POST', '/reservations', {'storeId': 60004, 'customerName': 'x', 'reservationDate': today.isoformat(), 'reservationTime': '18:00', 'guests': 2}, T)[0], 403)
+check('예약 조회', [r['customerName'] for r in api('GET', f'/reservations/{S}', t=T)[1]], [['QA손님']])
+if c == 200:
+    check('예약 방문완료', api('PUT', f"/reservations/{rs['id']}/status", {'status': 'VISITED'}, T)[1].get('status'), 'VISITED')
+    check('예약: 잘못된 상태 거부', api('PUT', f"/reservations/{rs['id']}/status", {'status': 'DONE'}, T)[0], 400)
+
 # ── 알림·AI 입력·본사 ──
 c, n = api('POST', '/notifications', {'storeId': S, 'message': 'qa', 'type': 'STOCK'}, T)
 check('알림 생성', c, 200)
@@ -320,7 +344,8 @@ check('주간 리포트 (Claude)', api('POST', '/stats/hq/weekly-report', {}, H)
 check('점주 통계 403', api('GET', '/stats/hq', t=T)[0], 403)
 
 # ── 권한 교차 ──
-for path, m in [(f'/sales/60004', 'GET'), ('/inventory/60004', 'GET'), ('/orders/60004', 'GET'), ('/predictions/60004', 'GET'), ('/watchdog/60004', 'GET'), ('/donations/store/60004', 'GET'), ('/waste-prediction/60004', 'GET'), ('/event-notes/60004', 'GET'), ('/notifications/60004/unread', 'GET'), ('/ingredients?storeId=60004', 'GET')]:
+for path, m in [(f'/sales/60004', 'GET'), ('/inventory/60004', 'GET'), ('/orders/60004', 'GET'), ('/predictions/60004', 'GET'), ('/watchdog/60004', 'GET'), ('/donations/store/60004', 'GET'), ('/waste-prediction/60004', 'GET'), ('/event-notes/60004', 'GET'), ('/notifications/60004/unread', 'GET'), ('/ingredients?storeId=60004', 'GET'),
+                ('/sales/60004/today-summary', 'GET'), ('/employees/60004', 'GET'), ('/employee-schedules/60004', 'GET'), (f'/attendance/60004?start={today}&end={today}', 'GET'), (f'/attendance/60004/weekly-pay?weekStart={today}', 'GET'), ('/pos-tables/60004', 'GET'), ('/reservations/60004', 'GET')]:
     check(f'다른 매장 {path} 403', api(m, path, t=T)[0], 403)
 check('다른 매장 전체 재고 삭제 403', api('DELETE', '/inventory/store/60004', t=T)[0], 403)
 c = api('GET', '/stores/my/' + str(uid))[0]

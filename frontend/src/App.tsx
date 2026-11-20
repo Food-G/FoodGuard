@@ -140,7 +140,7 @@ function App() {
 
             <Route path="/reservations" element={
               <ProtectedRoute role="OWNER">
-                <Reservations />
+                <Reservations user={user} />
               </ProtectedRoute>
             } />
 

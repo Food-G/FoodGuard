@@ -53,7 +53,6 @@ public class SalesDataService {
                 .findByStoreIdAndSaleDateBetweenAndIsDeletedFalse(storeId, start, end);
     }
 
-    // 전 가맹점 최근 7일 매출 {storeId: 매출액} (본사 대시보드)
     // 대시보드 KPI: 오늘·어제 판매 수량과 매출(할인 판매는 실제 판매가, 본사 통계와 같은 계산). 판매가 없는 날은 0
     public Map<String, Object> getTodaySummary(Long storeId) {
         LocalDate today = LocalDate.now();
@@ -72,6 +71,7 @@ public class SalesDataService {
         return result;
     }
 
+    // 전 가맹점 최근 7일 매출 {storeId: 매출액} (본사 대시보드)
     public Map<Long, Long> getAllStoreWeeklySummary() {
         LocalDate today = LocalDate.now();
         Map<Long, Long> result = new LinkedHashMap<>();

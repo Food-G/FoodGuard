@@ -1,6 +1,6 @@
 # FoodGuard 인계 문서 — 다른 PC·새 세션에서 이어서 하기
 
-> 작성 2026-10-28 · 기준 브랜치 `jihwan` (origin: `Food-G/Test-Repository`)
+> 작성 2026-10-28 · 갱신 2026-11-20 · 기준 브랜치 `jihwan` (`hyeon` 과 같은 커밋, origin: `Food-G/FoodGuard`)
 > Claude Code 는 이전 대화·세션 기록·로컬 메모리를 보지 못한다. 이어서 할 때 필요한 맥락은 이 문서,
 > `CLAUDE.md`(자동 로드), `ai-service/PROJECT_STATUS.md`(근거·수치 상세) 세 곳에 둔다.
 > 새 세션 시작 프롬프트 예: **"CLAUDE.md 와 docs/HANDOFF.md 를 읽고 남은 작업 1번부터 진행해줘"**
@@ -51,20 +51,33 @@
 - LSTM·Prophet: 데이터 규모상 이득이 작다는 것이 M5·Montero-Manso & Hyndman 결론. 넣는다면 베이스라인으로만
 - 상권 데이터: 행정동·분기 단위라 일 단위 메뉴 예측 기여가 작음
 
+### hyeon 병합·직원·예약 (2026-11-13 ~ 11-20)
+
+- **hyeon → jihwan 병합** (`6e548ef`): 직원 관리·PIN 출퇴근·주휴수당(`/staff`, `/clock`), POS 좌석 수·배치 저장, 홈 화면, 예약·매출 통계, 대시보드 오늘 매출 요약(`/api/sales/{storeId}/today-summary`). 병합하면서 오늘 매출을 `COALESCE(unit_price, 메뉴 가격)` 으로 바꿔 할인 판매가 반영됨
+- **예약** (`9a149f9`): `RESERVATION` 테이블, `GET /api/reservations/{storeId}`·`POST /api/reservations`·`PUT /api/reservations/{id}/status`. 예약 화면·대시보드의 예시 데이터 제거
+- **대시보드 개선** (`8f62cfd`, `9788c9d`): 오늘 요약 KPI 실데이터, 빈 상태 문구, 어제 대비, 오른쪽 요약 카드(예약·내일 예측 TOP 3·폐기 임박 TOP 3), 반응형
+- **배포**: AWS EC2(t3.small)에 docker compose 로 실제 배포했고 거기서 나온 문제 3건 수정 (`e42d4ac`: ai-service `.venv` 이미지 포함, claude 로그인 볼륨 권한, 프론트 헬스체크 IPv6)
+- **프론트 의존성**: vite 6.4.6, `@typescript-eslint` 8.73 → `npm audit` 0건. ESLint 8.57 flat config 로 ts/tsx 도 검사
+- **미사용 코드**: `pages/admin/AdminDashboard.tsx` 는 10/30 정리에서 지웠다가 11/06 프론트 복원으로 되살아나 11/20 다시 삭제 (`59ad3a0`). 백엔드 `GET /api/sales/all-stores/weekly-summary` 는 이제 프론트 호출처가 없다 (`qa_smoke.py` 만 점검, 지울지 결정 필요)
+- **배포 전 필수**: 운영 DB(`ddl-auto=none`)에 `backend/src/main/resources/db/2026-11-20_staff_pos.sql`, `2026-11-20_reservation.sql` 실행 (`docs/DEPLOY.md` 스키마 절)
+  - 공유 TiDB(`foodguard`): 2026-11-20 확인, 5개 테이블 모두 있음 (`EMPLOYEE`·`EMPLOYEE_SCHEDULE`·`ATTENDANCE`·`POS_TABLE` 은 11/13 개발 bootRun 으로 이미 생성, `RESERVATION` 은 11/20 SQL 로 생성). 컬럼은 SQL 과 일치
+  - EC2 운영 서버가 다른 DB 를 쓰면 그쪽은 따로 확인할 것. 예약 API 실제 동작(`qa_smoke.py`)은 아직 미확인
+- `qa_smoke.py` 에 직원·스케줄·출퇴근·주간 급여·좌석·예약·오늘 매출 항목 추가 (`ef4b8a6`, `9a149f9`). 추가 후 전체 실행은 아직 안 했다
+
 ### 배포 전 남은 것 (2026-10-30 점검, PROJECT_STATUS 13절)
 
 - 완료: 권한 검사(본사 전용 경로, 매장 소유 검사, 회원가입 HQ 차단), 주간 ±10% 지표. 매출 계획 기능은 만들었다가 팀 판단으로 뺐다 (빈 `SALES_TARGET` 테이블만 공유 DB 에 남음)
 - 2026-10-30 bootRun 으로 확인: 권한 점검 19/19 (점주→다른 매장 403, 본사 전용 403/200, HQ 회원가입 400). 본사·점주 화면 전체를 실제 계정으로 눌러 보는 확인은 아직
 - AI 서비스(8000): 127.0.0.1 바인딩·CORS 제거·내부 키 완료 (2026-11-06, PROJECT_STATUS 17절). 운영에서는 양쪽 `.env` 에 같은 키(`INTERNAL_API_KEY`, `AI_INTERNAL_KEY`)를 넣는다
 - 운영 설정: `SPRING_PROFILES_ACTIVE=prod` (`application-prod.properties`, `APP_CORS_ALLOWED_ORIGINS` 필요). `ddl-auto=none`. `validate` 는 공유 DB 의 대문자 `STORE`·`USER` 때문에 실패한다 (17절)
-- 배포 구성(EC2·Docker·HTTPS)이 없다. 계획서의 "CI/CD 자동 배포"는 CI 만 있음
+- 배포 구성: Docker compose + Caddy(HTTPS), 절차는 `docs/DEPLOY.md`. 2026-11-13 EC2 배포 확인. 계획서의 "CI/CD 자동 배포"는 CI 만 있음 (배포는 수동)
 - 예측 요청 한 번에 약 25초(백엔드 동기 호출, 타임아웃 60초). 매장이 늘면 비동기·캐시 필요
 - 공용 식자재(`store_id` 없음)는 아무 점주나 수정 가능 — 본사 전용으로 할지 결정
 
 ### 전 기능 점검·배포 준비 (2026-11-06, PROJECT_STATUS 20절)
 
 - `python qa_smoke.py run` (ai-service): 133개 항목 전 기능 점검, 끝나면 `python qa_smoke.py cleanup`
-- 배포 절차는 `docs/DEPLOY.md`. Docker 구성은 이 PC 에 docker 가 없어 실행해 보지 않았다
+- 배포 절차는 `docs/DEPLOY.md`. Docker 구성은 2026-11-13 EC2 에서 실행 확인 (`e42d4ac`)
 - 다른 PC: `pip install -r requirements.txt`, `npm install --legacy-peer-deps` 다시 실행 (React Router 7, ECharts 6 등)
 
 ### 임박 식자재 할인 소진 (2026-11-06, PROJECT_STATUS 19절)
@@ -123,10 +136,11 @@
 
 | 확인 | 명령 (위치) | 기대값 |
 |---|---|---|
-| AI 단위 테스트 | `python -m pytest tests` (ai-service) | 57 passed |
-| 백엔드 단위 테스트 | `gradlew.bat test --tests "com.foodguard.service.*" --tests "com.foodguard.security.*"` (backend) | BUILD SUCCESSFUL (32개) |
-| 전 기능 점검 | `python qa_smoke.py run` (ai-service, 서버 3개 필요, 약 2분) | 133개 통과 |
+| AI 단위 테스트 | `python -m pytest tests` (ai-service) | 57 passed (2026-11-20) |
+| 백엔드 단위 테스트 | `gradlew.bat test --tests "com.foodguard.service.*" --tests "com.foodguard.security.*"` (backend) | BUILD SUCCESSFUL (41개, 2026-11-20) |
+| 전 기능 점검 | `python qa_smoke.py run` (ai-service, 서버 3개 필요, 약 2분) | 133개 통과 (11/06 기준. 11/20 항목 추가 후 미측정) |
 | 프론트 타입체크 | `npx tsc --noEmit` (frontend) | 오류 0 |
+| 프론트 빌드·lint | `npm run build`, `npx eslint src` (frontend) | 빌드 통과, lint 오류 0·경고 11 (2026-11-20) |
 | DB 백테스트 | `python backtest.py --db --step 7` (ai-service) | 1,765 평가일, 글로벌 모델 wMAPE **9.2%** / MASE **0.900**, 요일 평균(4주) 9.9% / 0.952, 식자재 7일 커버리지 **56.2%** (평균 잉여율 4.4%, 부족률 3.0%) |
 | 합성 백테스트 | `python backtest.py --synthetic` (ai-service) | 글로벌 모델 14.8% / 0.817 |
 | DB 모델 비교 | `python backtest.py --db --step 7 --compare` (ai-service, 약 15분, requirements-experiment.txt) | XGBoost 9.2% / 0.902, Prophet 9.7% / 0.965, LSTM 12.6% / 1.490 |
@@ -140,7 +154,7 @@
 
 ## 6. 새 PC 설정 (Windows 기준, 이 PC: Python 3.11.0 · JDK 17.0.12 · Node 20)
 
-1. `git clone https://github.com/Food-G/Test-Repository.git` → `git checkout jihwan`
+1. `git clone https://github.com/Food-G/FoodGuard.git` → `git checkout jihwan`
 2. 비밀값 파일 두 개는 git 에 없다. USB·비밀번호 관리자 등 안전한 경로로 옮기거나 새로 만든다 (메신저·채팅으로 보내지 않기). 형식은 각 `.env.example`
    - `backend/.env`: `DB_PASSWORD`, `JWT_SECRET`
    - `ai-service/.env`: `DB_URL`, `DB_SSL`, `KMA_API_KEY`
