@@ -16,21 +16,24 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class IngredientWithoutStoreIdTest extends IntegrationTest {
 
     @Test
-    void ownerListsOwnAndSharedIngredientsButNotOtherStores() throws Exception {
+    void ownerSeesOnlyIngredientsTheirStoreOwnsOrUses() throws Exception {
         User owner = user("OWNER");
         Store mine = store(owner);
         Store other = store(user("OWNER"));
-        Ingredient shared = ingredient("kg", null);
         Ingredient own = ingredient("kg", null);
         own.setStore(mine);
         ingredients.save(own);
         Ingredient foreign = ingredient("kg", null);
         foreign.setStore(other);
         ingredients.save(foreign);
+        // 매장이 빈 기존 식자재: 내 레시피에 쓰인 것 / 다른 매장 재고에만 있는 것
+        Ingredient sharedUsed = ingredient("kg", null);
+        recipe(menu(mine), sharedUsed, 100, "g");
+        Ingredient sharedOthers = ingredient("kg", null);
+        stock(other, sharedOthers, 5);
 
         getAs(owner, "/api/ingredients").andExpect(status().isOk())
-                .andExpect(jsonPath("$[*].id", hasItems(shared.getId().intValue(), own.getId().intValue())))
-                .andExpect(jsonPath("$[*].id", not(hasItem(foreign.getId().intValue()))));
+                .andExpect(jsonPath("$[*].id", containsInAnyOrder(own.getId().intValue(), sharedUsed.getId().intValue())));
     }
 
     @Test

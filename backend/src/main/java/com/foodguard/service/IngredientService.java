@@ -57,7 +57,7 @@ public class IngredientService {
         return ingredientRepository.save(ingredient);
     }
 
-    // storeId 없이 부르는 화면용: 점주는 자기 매장들 + 공용 식자재, 본사는 전체
+    // storeId 없이 부르는 화면용: 점주는 자기 매장들이 쓰는 식자재만, 본사는 전체
     @Transactional(readOnly = true)
     public List<Ingredient> getVisible() {
         AuthUser user = storeAccess.currentUser();
@@ -65,9 +65,6 @@ public class IngredientService {
         java.util.Map<Long, Ingredient> byId = new java.util.LinkedHashMap<>();
         for (Store store : storeRepository.findByUserId(user.id())) {
             for (Ingredient i : ingredientRepository.findByStoreIdIncludingLegacy(store.getId())) byId.putIfAbsent(i.getId(), i);
-        }
-        if (byId.isEmpty()) {
-            for (Ingredient i : ingredientRepository.findAll()) if (i.getStore() == null) byId.put(i.getId(), i);
         }
         return new java.util.ArrayList<>(byId.values());
     }
