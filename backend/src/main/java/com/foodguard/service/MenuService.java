@@ -16,8 +16,14 @@ public class MenuService {
     private final MenuRepository menuRepository;
     private final StoreRepository storeRepository;
 
+    private static void validate(String menuName, Integer price) {
+        if (menuName == null || menuName.isBlank()) throw new RuntimeException("메뉴 이름을 입력해 주세요.");
+        if (price == null || price < 0) throw new RuntimeException("가격은 0원 이상이어야 합니다.");
+    }
+
     // 메뉴 등록
     public Menu create(Long storeId, String menuName, Integer price, String category) {
+        validate(menuName, price);
         Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new RuntimeException("가맹점을 찾을 수 없습니다."));
         Menu menu = new Menu();
@@ -35,6 +41,7 @@ public class MenuService {
 
     // 메뉴 수정
     public Menu update(Long menuId, String menuName, Integer price, String category) {
+        validate(menuName, price);
         Menu menu = menuRepository.findById(menuId)
                 .orElseThrow(() -> new RuntimeException("메뉴를 찾을 수 없습니다."));
         menu.setMenuName(menuName);

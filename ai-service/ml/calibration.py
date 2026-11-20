@@ -114,7 +114,7 @@ def safety_factor(series: dict[SeriesKey, pd.DataFrame], recipes: Recipes) -> fl
     scores: list[float] = []
     for origin, sids in calibration_origins(series, store_ids).items():
         past = {k: df[df["ds"] <= origin] for k, df in series.items()}
-        model = DemandPredictor().fit({k: df for k, df in past.items() if len(df) > 0})
+        model = DemandPredictor().fit({k: df for k, df in past.items() if len(df) > 0}, with_scores=False)
         if not model.is_trained:
             continue
         for sid in sids:

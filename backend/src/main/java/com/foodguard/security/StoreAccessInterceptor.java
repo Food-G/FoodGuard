@@ -22,7 +22,6 @@ public class StoreAccessInterceptor implements HandlerInterceptor {
 
     // 경로 패턴 → {id}(또는 {menuId}) 가 가리키는 엔티티
     static final Map<String, String> ID_ENTITY = Map.ofEntries(
-            entry("/api/inventory/{id}", "Inventory"),
             entry("/api/menus/{id}", "Menu"),
             entry("/api/menu-ingredients/{id}", "MenuIngredient"),
             entry("/api/menu-ingredients/menu/{menuId}", "Menu"),
@@ -31,12 +30,11 @@ public class StoreAccessInterceptor implements HandlerInterceptor {
             entry("/api/notifications/{id}/read", "Notification"),
             entry("/api/orders/{id}", "OrderRequest"),
             entry("/api/orders/{id}/driver-receive", "OrderRequest"),
-            entry("/api/orders/{id}/owner-receive", "OrderRequest"),
             entry("/api/orders/{id}/hq-send", "OrderRequest"),
             entry("/api/orders/{id}/status", "OrderRequest"),
-            entry("/api/sales/{id}", "SalesData"),
             entry("/api/sales-flags/{id}", "SalesDayFlag"),
             entry("/api/event-notes/{id}", "StoreEventNote"),
+            entry("/api/discounts/{id}", "MenuDiscount"),
             entry("/api/donations/{id}/complete", "DonationRecord"),
             entry("/api/donations/{id}/cancel", "DonationRecord")
     );

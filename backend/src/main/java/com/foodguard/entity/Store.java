@@ -1,11 +1,14 @@
 package com.foodguard.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import java.time.LocalDateTime;
 
+// 지연 로딩 프록시로 응답에 실려도 JSON 변환이 실패하지 않게 한다
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 @Entity
 @Table(name = "STORE")
 @Getter @Setter

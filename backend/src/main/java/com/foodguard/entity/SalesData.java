@@ -1,6 +1,7 @@
 package com.foodguard.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -33,6 +34,13 @@ public class SalesData {
     @Column(nullable = false)
     private Integer quantity;
 
+    // POS 결제 때 실제 판 가격과 할인율. 비어 있으면(POS 도입 전, 직접 입력) 메뉴 현재 가격으로 계산한다
+    @Column(name = "unit_price")
+    private Integer unitPrice;
+
+    @Column(name = "discount_pct")
+    private Integer discountPct;
+
     @Column(name = "is_deleted", nullable = false)
     private boolean isDeleted = false;
 
@@ -44,5 +52,21 @@ public class SalesData {
     
     public void setIsDeleted(boolean isDeleted) {
         this.isDeleted = isDeleted;
+    }
+
+    // menu 는 직렬화하지 않으므로 판매 내역 화면에 필요한 메뉴 정보만 내려준다
+    @JsonProperty("menuId")
+    public Long getMenuId() {
+        return menu != null ? menu.getId() : null;
+    }
+
+    @JsonProperty("menuName")
+    public String getMenuName() {
+        return menu != null ? menu.getMenuName() : null;
+    }
+
+    @JsonProperty("menuPrice")
+    public Integer getMenuPrice() {
+        return menu != null ? menu.getPrice() : null;
     }
 }

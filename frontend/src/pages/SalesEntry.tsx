@@ -9,6 +9,7 @@ import { menuService } from '../services/menuService';
 import { storeService } from '../services/storeService';
 import IconifyIcon from '../components/base/IconifyIcon';
 import EventNoteCard from '../components/EventNoteCard';
+import SalesImportDialog from '../components/agent/SalesImportDialog';
 
 const SalesEntry = ({ user }: any) => {
   const theme = useTheme();
@@ -20,6 +21,7 @@ const SalesEntry = ({ user }: any) => {
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
   const [flags, setFlags] = useState<any[]>([]);
+  const [importOpen, setImportOpen] = useState(false);
   const [flagForm, setFlagForm] = useState({ flagType: 'SOLD_OUT', menuId: '', flagDate: new Date().toISOString().split('T')[0] });
 
   const loadFlags = async (sid: number) => {
@@ -35,9 +37,9 @@ const SalesEntry = ({ user }: any) => {
       const sales = await salesService.getByStore(sid);
       setRows(sales.map((item: any) => ({
         id: item.id,
-        menuName: item.menu?.menuName ?? '-',
+        menuName: item.menuName ?? '-',
         quantity: item.quantity,
-        totalPrice: item.menu ? item.menu.price * item.quantity : 0,
+        totalPrice: (item.unitPrice ?? item.menuPrice ?? 0) * item.quantity,
         saleDate: item.saleDate,
       })));
     } catch (err) {
@@ -173,6 +175,10 @@ const SalesEntry = ({ user }: any) => {
               <Button type="submit" fullWidth variant="contained" size="large" startIcon={<IconifyIcon icon="mingcute:save-line" />} sx={{ borderRadius: 3 }}>
                 매출 기록 저장
               </Button>
+              <Button fullWidth variant="outlined" startIcon={<IconifyIcon icon="mingcute:file-upload-line" />} sx={{ borderRadius: 3 }}
+                disabled={!storeId} onClick={() => setImportOpen(true)}>
+                POS 파일로 등록 (AI)
+              </Button>
             </Stack>
           </Paper>
 
@@ -286,6 +292,10 @@ const SalesEntry = ({ user }: any) => {
           </Paper>
         </Grid>
       </Grid>
+      {storeId && (
+        <SalesImportDialog open={importOpen} storeId={storeId} menus={menus} onClose={() => setImportOpen(false)}
+          onSaved={() => { loadSales(storeId); setSuccess('판매 파일을 등록했습니다.'); }} />
+      )}
     </Stack>
   );
 };

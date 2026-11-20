@@ -1,5 +1,0 @@
-name: New Environment
-values:
-  - key: http
-    value: ''
-    enabled: true

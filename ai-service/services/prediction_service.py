@@ -74,24 +74,6 @@ def predict_and_save_store(db: Session, store_id: int) -> dict:
     }
 
 
-def predict_and_save_menu(
-    db: Session,
-    store_id: int,
-    menu_id: int,
-    forecast_df: Optional[pd.DataFrame] = None,
-) -> list[dict]:
-    """
-    특정 메뉴 예측 수행 후 DB 저장.
-    forecast_df 미제공 시 내부에서 직접 예보 API를 호출한다.
-    반환: prediction dict list
-    """
-    if forecast_df is None:
-        forecast_df = fetch_forecast_weather(
-            get_store_region(db, store_id), settings.KMA_API_KEY, days=settings.PREDICTION_DAYS
-        )
-    return _predict_and_save(db, train_global_model(db), store_id, menu_id, forecast_df)
-
-
 def _predict_and_save(
     db: Session,
     predictor: DemandPredictor,

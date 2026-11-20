@@ -1,7 +1,4 @@
 import { ReactElement, ReactNode } from 'react';
-
-export const drawerOpenWidth = 240;
-export const drawerCloseWidth = 110;
 import { Box, Toolbar } from '@mui/material';
 import Topbar from './Topbar/Topbar';
 import Footer from './Footer/Footer';

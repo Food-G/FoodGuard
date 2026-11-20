@@ -26,8 +26,9 @@ public class AuthController {
         try {
             String token = userService.login(request);
             return ResponseEntity.ok(token);
-        } catch (Exception e) {
-            String errorMessage = e.getMessage() != null ? e.getMessage() : e.toString();
-            return ResponseEntity.status(401).body(errorMessage);
+        } catch (RuntimeException e) {
+            // UserService 의 안내 문구만 보여 준다. DB 오류 등은 GlobalExceptionHandler 로
+            if (e.getClass() != RuntimeException.class) throw e;
+            return ResponseEntity.status(401).body(e.getMessage());
         }    }
 }

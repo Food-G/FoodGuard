@@ -18,7 +18,7 @@ jobs:
           cache: pip
           cache-dependency-path: ai-service/requirements*.txt
       - run: pip install -r requirements-dev.txt
-      # 테스트는 합성 데이터만 사용하고 database.py를 import하지 않음. .env가 없어도 config.py 기본값으로 동작.
+      # 테스트는 합성 데이터만 사용하고 DB 에 접속하지 않음. .env가 없어도 config.py 기본값으로 동작.
       - run: python -m pytest tests
       # 발주 참모(fgcli/planner.py) 판단 로직 단위 테스트 — 네트워크 없음, requests 만 필요
       - run: python -m unittest fgcli.test_planner
@@ -56,3 +56,13 @@ jobs:
       # @mui/system@^9 가 @mui/x-data-grid@7 의 peer 범위(^5||^6||^7)와 충돌해 plain `npm ci`는 ERESOLVE로 실패함.
       - run: npm ci --legacy-peer-deps
       - run: npx tsc --noEmit
+      - run: npm run build
+
+  # 배포 이미지가 빌드되는지 확인 (실행은 하지 않음)
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t foodguard-backend backend
+      - run: docker build -t foodguard-ai ai-service
+      - run: docker build -t foodguard-frontend frontend

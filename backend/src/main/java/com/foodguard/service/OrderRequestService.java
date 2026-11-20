@@ -24,10 +24,12 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -43,9 +45,13 @@ public class OrderRequestService {
     private final ObjectMapper objectMapper;
     private final NotificationService notificationService;
 
+    static final Set<String> ORDER_STATUSES = Set.of("REQUESTED", "APPROVED", "REJECTED", "HQ_SENT", "DRIVER_RECEIVED", "IN_DELIVERY", "DELIVERED", "DONE", "CANCELLED");
+    private static final Set<String> FINAL_STATUSES = Set.of("DONE", "CANCELLED", "REJECTED");
+
     // 발주 요청 생성 (점주 직접 입력) — 그 시점의 AI 추천량을 함께 남긴다
     @Transactional
     public OrderRequest create(Long storeId, Long ingredientId, Double quantity) {
+        if (quantity == null || quantity <= 0) throw new RuntimeException("발주 수량은 0보다 커야 합니다.");
         return create(storeId, ingredientId, quantity, null, "MANUAL");
     }
 
@@ -68,6 +74,10 @@ public class OrderRequestService {
         }
 
         OrderRequest order = new OrderRequest();
+        // 공용 식자재(store 없음)이거나 이 매장 식자재만
+        if (ingredient.getStore() != null && !ingredient.getStore().getId().equals(storeId)) {
+            throw new RuntimeException("이 가맹점의 식자재가 아닙니다.");
+        }
         order.setStore(store);
         order.setIngredient(ingredient);
         order.setOrderedQty(BigDecimal.valueOf(quantity));
@@ -100,8 +110,12 @@ public class OrderRequestService {
     // 발주 상태 변경 — DONE 전환 시 재고 자동 반영
     @Transactional
     public OrderRequest updateStatus(Long id, String status) {
+        if (!ORDER_STATUSES.contains(status)) throw new RuntimeException("알 수 없는 발주 상태입니다: " + status);
         OrderRequest order = getById(id);
         String prev = order.getStatus();
+        if (FINAL_STATUSES.contains(prev) && !prev.equals(status)) {
+            throw new RuntimeException("완료·취소된 발주의 상태는 바꿀 수 없습니다.");
+        }
         order.setStatus(status);
 
         if ("APPROVED".equals(status) && !"APPROVED".equals(prev)) {
@@ -226,7 +240,7 @@ public class OrderRequestService {
         List<Map<String, Object>> result = new ArrayList<>();
         for (Map.Entry<Long, Double> entry : required.entrySet()) {
             Long ingId = entry.getKey();
-            double req = round1(entry.getValue());
+            double req = round1(Math.max(entry.getValue(), carryOverFloor(ingredients.get(ingId), pointRequired.get(ingId))));
             double cur = round1(stock.getOrDefault(ingId, 0.0));
             double alreadyOrdered = round1(pending.getOrDefault(ingId, 0.0));
             double orderQty = round1(Math.max(0, req - cur - alreadyOrdered));
@@ -265,6 +279,16 @@ public class OrderRequestService {
         int cycle = ingredient.getOrderCycleDays() != null ? ingredient.getOrderCycleDays() : DEFAULT_ORDER_CYCLE_DAYS;
         int usable = ingredient.getShelfLifeDays() != null ? Math.min(cycle, ingredient.getShelfLifeDays()) : cycle;
         return lead - 1 + usable;
+    }
+
+    // 보관기한이 발주 주기보다 길면 남은 재고가 다음 발주에서 차감되어 버려지지 않으므로 품절 쪽으로 더 둔다.
+    // 발주 시뮬레이션으로 정한 값 (ai-service simulate_orders.CARRY_OVER_BUFFER, PROJECT_STATUS 17절). 보관기한을 모르면 적용하지 않는다
+    private static final double CARRY_OVER_BUFFER = 1.2;
+
+    private static double carryOverFloor(Ingredient ingredient, double pointQty) {
+        int cycle = ingredient.getOrderCycleDays() != null ? ingredient.getOrderCycleDays() : DEFAULT_ORDER_CYCLE_DAYS;
+        boolean carries = ingredient.getShelfLifeDays() != null && ingredient.getShelfLifeDays() > cycle;
+        return carries ? pointQty * CARRY_OVER_BUFFER : 0;
     }
 
     // ── 3단계 검수 흐름 ─────────────────────────────────────────────────────────
@@ -345,38 +369,6 @@ public class OrderRequestService {
         }
     }
 
-    // URL QR 토큰 직접 처리 (네이티브 카메라 스캔용)
-    @Transactional
-    public Map<String, Object> processQrScanByToken(String token) {
-        OrderRequest order = orderRequestRepository.findByQrToken(token)
-                .orElseThrow(() -> new RuntimeException("유효하지 않은 QR 코드입니다."));
-
-        String previousStatus = order.getStatus();
-        if ("HQ_SENT".equals(order.getStatus())) {
-            order.setStatus("DRIVER_RECEIVED");
-            order.setDriverReceivedAt(LocalDateTime.now());
-            orderRequestRepository.save(order);
-        } else if ("DRIVER_RECEIVED".equals(order.getStatus())) {
-            order.setStatus("DONE");
-            order.setOwnerReceivedAt(LocalDateTime.now());
-            orderRequestRepository.save(order);
-            applyInventory(order);
-        } else {
-            throw new RuntimeException("이미 처리됐거나 처리할 수 없는 상태입니다. 현재 상태: " + order.getStatus());
-        }
-
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("orderId", order.getId());
-        result.put("previousStatus", previousStatus);
-        result.put("newStatus", order.getStatus());
-        result.put("ingredientName", order.getIngredient().getName());
-        result.put("quantity", order.getOrderedQty());
-        result.put("unit", order.getIngredient().getUnit());
-        result.put("storeName", order.getStore().getStoreName());
-        result.put("expiryDate", order.getExpiryDate());
-        return result;
-    }
-
     // 배달기사 전용 QR 스캔 — HQ_SENT→DRIVER_RECEIVED만 처리 (중복 스캔 안전)
     @Transactional
     public Map<String, Object> driverQrScan(String token) {
@@ -448,33 +440,6 @@ public class OrderRequestService {
         return orderRequestRepository.save(order);
     }
 
-    // 3단계: 가맹점주 수령 확인 (DRIVER_RECEIVED → DONE + 재고 자동 반영)
-    @Transactional
-    public OrderRequest ownerReceive(Long id) {
-        OrderRequest order = getById(id);
-        if (!"DRIVER_RECEIVED".equals(order.getStatus())) {
-            throw new RuntimeException("배달기사가 수령 확인한 발주만 처리할 수 있습니다.");
-        }
-        order.setStatus("DONE");
-        order.setOwnerReceivedAt(LocalDateTime.now());
-        orderRequestRepository.save(order);
-        applyInventory(order);
-        return order;
-    }
-
-    // 2단계 그룹: 배달기사 수령 확인 (HQ_SENT → DRIVER_RECEIVED)
-    @Transactional
-    public void driverReceiveGroup(String groupToken) {
-        List<OrderRequest> orders = orderRequestRepository.findByDeliveryGroupToken(groupToken);
-        for (OrderRequest o : orders) {
-            if ("HQ_SENT".equals(o.getStatus())) {
-                o.setStatus("DRIVER_RECEIVED");
-                o.setDriverReceivedAt(LocalDateTime.now());
-                orderRequestRepository.save(o);
-            }
-        }
-    }
-
     // 그룹 배송 시작 — APPROVED → IN_DELIVERY
     @Transactional
     public void startGroupDelivery(String groupToken) {
@@ -527,6 +492,25 @@ public class OrderRequestService {
             Long ingId = ((Number) rec.get("ingredientId")).longValue();
             Double qty = ((Number) rec.get("orderQty")).doubleValue();
             ids.add(create(storeId, ingId, qty, qty, "AUTO").getId());
+        }
+        return ids;
+    }
+
+    // 발주 참모 화면에서 점주가 승인한 수량으로 발주. 검토 뒤 추천에서 빠진 식자재가 있으면 다시 검토하게 한다
+    @Transactional
+    public List<Long> agentOrder(Long storeId, List<Map<String, Object>> items) {
+        Map<Long, Double> current = new HashMap<>();
+        for (Map<String, Object> rec : recommend(storeId)) {
+            current.put(((Number) rec.get("ingredientId")).longValue(), ((Number) rec.get("orderQty")).doubleValue());
+        }
+        List<Long> ids = new ArrayList<>();
+        for (Map<String, Object> item : items) {
+            Long ingId = Long.valueOf(item.get("ingredientId").toString());
+            double qty = Double.parseDouble(item.get("quantity").toString());
+            if (qty <= 0) continue;
+            Double recommended = current.get(ingId);
+            if (recommended == null) throw new RuntimeException("검토 뒤 재고·발주가 바뀌었습니다. 다시 검토해 주세요.");
+            ids.add(create(storeId, ingId, qty, recommended, "AGENT").getId());
         }
         return ids;
     }

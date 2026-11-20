@@ -75,6 +75,15 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 ### 권한 (백엔드)
 점주는 자기 매장만, 본사(HQ_ADMIN)는 전체. 본사 전용 경로는 `SecurityConfig`, 매장 소유 검사는 `security/StoreAccess*`(경로·본문의 storeId·userId·menuId·엔티티 id). 엔티티 `{id}` 경로를 새로 만들면 `StoreAccessInterceptor.ID_ENTITY`에 추가한다. 회원가입은 점주만.
 
+### 운영 에이전트 (ai-service/PROJECT_STATUS.md 18절)
+숫자는 코드가 정하고 Claude 는 판단·문장만 쓴다. 쓰기는 점주 확인 후. 응답은 코드로 다시 검사한다 (`routers/agents.py`). 재고·데이터 감시(`WatchdogService`)는 규칙만 쓴다.
+
+### 임박 식자재 할인 (PROJECT_STATUS 19절)
+할인율은 점주가 메뉴별로 입력한다 (`MENU_DISCOUNT`). POS 결제(`DiscountService.checkout`)가 서버 계산 가격으로 판매를 기록하고(`SALES_DATA.unit_price·discount_pct`) 레시피대로 재고를 줄인다. 매출은 `COALESCE(unit_price, 메뉴 가격)`.
+
+### 배포·점검
+절차는 `docs/DEPLOY.md`. 전 기능 점검은 `ai-service` 에서 `python qa_smoke.py run` 후 `cleanup` (시험 계정·매장을 실제 DB 에 만들고 지운다). API 를 바꾸면 항목을 추가한다.
+
 ### 실행 순서
 1. AI Service (`ai-service/start.bat`)
 2. Backend (`backend/gradlew.bat bootRun`)
@@ -103,6 +112,8 @@ ai-service/
     ├── training.py              # /api/train/*
     ├── explain.py               # /api/explain/order — 발주 추천 근거 설명 (숫자는 바꾸지 않음)
     ├── events.py                # /api/events/parse — 점주 특이사항 메모 → 유형·증감 배율 (claude)
+    ├── ingest.py                # /api/ingest/* — POS 파일·거래명세서 사진 → 미리보기 (저장은 백엔드, 점주 확인 후)
+    ├── agents.py                # /api/agents/* — 식자재 설정 제안, 발주 참모, 본사 주간 리포트, 점주 질문 답변
     └── recipes.py               # /api/recipes/draft — 메뉴명 → 매장 식자재 1개당 사용량 초안 (claude, 저장은 점주 확인 후)
 ```
 
@@ -122,6 +133,7 @@ POST /api/predict/store/{id}
 - `STORE` — 읽기 (region 컬럼으로 날씨 좌표 조회)
 - `SALES_DAY_FLAG` — 읽기 (휴무·품절 기록: 휴무일은 학습 제외·예측 0, 품절일은 학습 정답에서 제외)
 - `STORE_EVENT_NOTE` — 읽기 (점주 특이사항을 claude 가 바꾼 증감 배율 → `event_lift` 피처. 학습 이력에 특이사항 날이 있을 때만 사용, 예측에 직접 곱하지 않음)
+- `SALES_DATA.discount_pct` — 읽기 (할인 판매일은 학습 정답에서 빼고 lag 는 평소값으로. PROJECT_STATUS 19절)
 - `PREDICTION_RESULT` — 쓰기 (예측 결과 저장)
 
 ### 모델 전략 (글로벌 모델, `ml/demand_predictor.py`)
@@ -139,12 +151,12 @@ lag 피처(`lag_7`, `lag_14`)는 행 위치가 아니라 **달력 기준 같은 
 
 부분 입력일: 매장 전체 판매량이 직전 28영업일 중앙값의 40% 미만인 날은 수요가 아니라 입력 누락으로 보고 휴무처럼 뺀다 (`data_service.partial_entry_dates`).
 
-신뢰도(confidence)는 R² 대신 **wMAPE** 기반: `clip(100 - wMAPE, 15, 95)`. 예측일이 멀수록 하루당 1.5% 감소 (최소 15%).
+신뢰도(confidence)는 R² 대신 **wMAPE** 기반 (매장별 최근 28영업일 시간순 평가): `clip(100 - wMAPE, 15, 95)`. 예측일이 멀수록 하루당 1.5% 감소 (최소 15%).
 
 ### 안전재고 (recommended_order_qty)
 품절비용 vs 폐기비용의 뉴스벤더 모델(critical fractile)로 목표 분위수를 정한다. 원가 데이터가 DB에 없어 `COST_RATIO=0.4`(판매가의 40%)로 근사, critical fractile = `1 - COST_RATIO = 0.6`.
 분위수는 메뉴·일자가 아니라 **식자재 7일 사용량 기준으로 한 번만** 적용한다 (`ml/calibration.py`, split conformal): 최근 4주 시점을 재학습해 식자재 `실제/예측` 사용량 비율의 0.6 분위수(`safety_factor`)를 구하고 `recommended_order_qty = 점추정 × safety_factor`. 백엔드 `recommend()`가 레시피로 합산하면 식자재 단위 분위수가 된다. 자세한 배경은 `ai-service/PROJECT_STATUS.md` 5절·10절 P1-2.
-백엔드는 식자재마다 `리드타임 − 1 + min(발주 주기, 보관기한)`일 안의 추천량만 발주한다 (`INGREDIENT.shelf_life_days·lead_time_days·order_cycle_days`, 비면 7일치. 10절 P1-3).
+백엔드는 식자재마다 `리드타임 − 1 + min(발주 주기, 보관기한)`일 안의 추천량만 발주한다 (`INGREDIENT.shelf_life_days·lead_time_days·order_cycle_days`, 비면 7일치. 10절 P1-3). 보관기한 > 발주 주기면 남은 재고가 이월되므로 필요량 ≥ 점추정 × 1.2 (17절).
 
 ### 날씨 피처 (6개)
 `temp_max`, `temp_min`, `precipitation`, `is_rainy`, `is_hot`, `is_cold`
@@ -154,10 +166,12 @@ lag 피처(`lag_7`, `lag_14`)는 행 위치가 아니라 **달력 기준 같은 
 # ai-service/.env
 DB_URL=mysql+pymysql://...
 KMA_API_KEY=기상청_공공데이터_API_키
+INTERNAL_API_KEY=...   # 운영 필수, 백엔드 AI_INTERNAL_KEY 와 같은 값. 비우면 검사 안 함
 
 # backend/.env (application.properties 가 spring.config.import 로 읽음, 커밋 금지)
 DB_PASSWORD=...
 JWT_SECRET=...
+AI_INTERNAL_KEY=...    # 운영 필수
 ```
 
 ---

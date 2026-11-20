@@ -52,3 +52,9 @@
 | I-38 | 발주 참모(fgagent)가 만든 발주가 `POST /api/orders`로 들어가 jihwan 추천 적용률 집계에서 점주 수동 발주(MANUAL)로 분류됨. 에이전트 발주를 구분하려면 백엔드에 출처(예: AGENT) 지정 필요 | `fgagent/executor.py:50-52`, jihwan `ORDER_REQUEST.order_source` | 중 | 열림 |
 | I-39 | `agent-assets/` 01~06 문서는 junho 백엔드 기준. README 차이표와 04 §1 발주 산식만 jihwan 기준으로 고침. 나머지(도메인 모델, API 목록, 모델 카드, 데이터 현황, 판매 시 재고 차감 등) 전면 갱신 필요 | `agent-assets/README.md` 머리말 | 하 | 열림 |
 | I-40 | 발주 참모 실제 연동(로그인 → 관찰 → 발주안 → Claude 검토 → 승인 → 발주) 미검증. DB 접속 정보와 에이전트 계정(`FOODGUARD_OWNER_EMAIL/PASSWORD`, `ai-service/.env`) 필요 | I-12 | 중 | 열림 (DB 대기) |
+
+## 2026-11-06 처리 (`ai-service/PROJECT_STATUS.md` 17절)
+
+- 해결: I-06(신뢰도 시간순), I-26(AI 내부 키·CORS), I-27(prod 프로필), I-36(유휴 연결)
+- 부분 해결: I-25(이월 안전재고. 원가 가정은 여전히 사람 결정), I-29(학습 약 25초 → 약 20초, 비동기는 안 함), I-07(운영 정확도를 `PREDICTION_RESULT` 로 집계. 재예측 스냅샷은 아직 없음)
+- 새 문제 I-41: prod `validate` 불가. 공유 DB 의 `STORE`·`USER` 대문자 때문. 소문자 변경은 공유 DB DDL 이라 사람 결정 필요

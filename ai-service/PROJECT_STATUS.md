@@ -323,7 +323,7 @@ DB (49개 메뉴, 258개 시점, 1,765 평가일 — 11절과 같은 평가셋):
 - **가게 등록**: `/store` 라우트가 커밋 `61f0aa7` 에서 빠져 `StoreRegister` 화면에 갈 수 없었다. 라우트 복구 + 점주 타일 홈에 "가게 등록" 타일 추가
 - 사이드바(`layouts/main-layout/Sidebar`)는 `61f0aa7` 부터 레이아웃에서 그려지지 않는다 (이동은 타일 홈과 상단 로고). 사이드바 메뉴 목록도 맞춰 고쳤지만 화면에는 보이지 않는다
 - 브라우저 확인 (2026-10-29, 검증용 계정): 본사 타일 → 발주 관리(진행 중 48건 실데이터), 통계 페이지 월별 매출 차트, 프로필 API·비밀번호 변경
-- 남은 정리 대상 (쓰는 곳 없음, 지우지 않음): `layouts/main-layout/Sidebar`, `pages/admin/AdminDashboard.tsx`, `pages/Profile.tsx`, `pages/SalesStats.tsx` (라우트 없음), `salesService.getTodaySummary·getWeeklySummary` (백엔드 API 없음)
+- 남은 정리 대상 (쓰는 곳 없음, 지우지 않음 → 16절에서 `getTodaySummary·getWeeklySummary` 를 뺀 나머지 삭제): `layouts/main-layout/Sidebar`, `pages/admin/AdminDashboard.tsx`, `pages/Profile.tsx`, `pages/SalesStats.tsx` (라우트 없음), `salesService.getTodaySummary·getWeeklySummary` (백엔드 API 없음)
 
 ## 13. 계획서 대비 보완 · 권한 검사 (2026-10-30)
 
@@ -402,3 +402,231 @@ XGBoost 는 데이터에 없는 일(단체 예약, 주변 행사, 태풍 예보)
 - **한계**: 실제 DB 에는 아직 특이사항이 없어 실데이터 효과는 측정하지 못했다. 과거 특이사항 날이 매장당 10일 안팎 쌓인 뒤 `backtest.py --db` 에 events 를 넣어 다시 확인해야 한다 (지금 `--db` 백테스트는 특이사항을 넣지 않으므로 기존 수치 그대로). 미래 날짜 메모만 있으면 학습 행에 특이사항 날이 없어 피처를 쓰지 않는다
 - 실제 CLI 변환 예: "토요일 점심 단체 예약 30명"(평소 150) → RESERVATION ×1.2, "근처 대학교 축제 3일째" → LOCAL_EVENT ×1.3, "태풍 예보로 손님 적을 듯" → WEATHER ×0.6, "그냥 평범한 날" → OTHER ×1.0. 호출당 3~10초
 - 테스트: `tests/test_events.py` (특이사항 없을 때 피처셋 그대로, 학습된 피처가 예정된 특이사항 날 예측을 올림, 배율 범위 제한·오류 처리)
+
+## 16. 불필요 코드·파일 검사 (2026-10-30)
+
+`.claude/agents/` 의 dead-code-scout(수색) → dead-code-verifier(반박, 주장만 받음) → dead-code-final-reviewer(확정·보류 재확인) 3단계로 검사했다. 다음 검사는 이 절을 기준으로 아래 "다음 검사 대상"과 새로 바뀐 부분만 본다. "최종 확정" 항목은 2026-10-30 에 모두 지웠다 (그로 인해 쓰이지 않게 된 import·필드·서비스 메서드, `StoreAccessInterceptor` 의 `/api/inventory/{id}`·`/api/orders/{id}/owner-receive`·`/api/sales/{id}` 항목, `predict_and_save_menu` 포함). `.idea/`·`.claude/settings.local.json` 은 추적만 해제하고 로컬 파일은 남겼다.
+
+### 최종 확정 (삭제 완료)
+- 프론트 파일: `layouts/main-layout/Sidebar/`(Sidebar·NavItem), `pages/admin/AdminDashboard.tsx`, `pages/Profile.tsx`, `pages/SalesStats.tsx`, `routes/paths.ts`, `components/base/Image.tsx`, `helpers/format-functions.ts`·`string-avatar.ts`, `src/index.css`·`App.css`, `theme/styles/swiper.ts`(+ `CssBaseline.tsx:6,36`), 이미지 `assets/{hero.png,react.svg,vite.svg}`·`public/{homepage.png,homepage_2.png,icons.svg}`, `main-layout/index.tsx` 의 `drawerOpenWidth/drawerCloseWidth` export
+- 프론트 서비스 메서드: `authService.isLoggedIn`, `inventoryService.create/update/delete`, `orderService.scanQrByToken/driverReceiveGroup/ownerReceive/recommend`, `salesService.delete`, `storeService.delete`
+- 프론트 의존성: `@mui/icons-material`, `swiper`, `vite-tsconfig-paths`, `simplebar-react`(Sidebar 삭제 후). 지울 때 `package-lock.json` 도 갱신 (CI 가 `npm ci --legacy-peer-deps`)
+- `frontend/README.md`: 지우지 않고 프로젝트 설명 + 템플릿 출처(Nickelfox)로 교체
+- 백엔드 엔드포인트(+ 그 컨트롤러에서만 쓰는 서비스 메서드): `GET /api/orders/scan`, `POST /api/orders/{id}/owner-receive`, `POST /api/delivery/group/{token}/driver-receive`, `POST /api/inventory`, `PUT/DELETE /api/inventory/{id}`, `DELETE /api/sales/{id}`, `DELETE /api/stores/{id}`, `GET /api/waste-records/{storeId}`. `owner-receive` 는 `StoreAccessInterceptor:33`·`StoreAccessTest:88` 같이 수정. **`SecurityConfig:37` 의 `/api/orders/scan` permitAll 은 남긴다** (POST 를 공개 페이지 `DeliveryDriverGroup.tsx:50` 이 씀)
+- 백엔드: `dto/SaleRequest.java`·`SaleResponse.java`, 미사용 import(`OrderRequestController` Inventory, `OrderRequest` JsonIgnore, `PredictionService` PredictionResult), `PredictionService.salesDataRepository` 필드(+ import), `backend/postman/` 빈 파일 3개
+- AI 서비스: `database.py` 의 `text`·`class Base`(+ `DeclarativeBase` import), `data_service.py` 의 `datetime` import·`get_store_sales_last_n_days`, `POST /api/predict/store/{id}/menu/{menu_id}`(+ `SingleMenuPredictionResponse`)
+- 저장소: 커밋된 루트 `node_modules/`(@google/generative-ai, 깨진 `.package-lock.json`), `sample/` 전체, 커밋된 `.idea/` 4개, `.claude/settings.local.json`, 루트 `기상청_단기예보_조회서비스`(0바이트), `.gitignore` 에 `node_modules/`·`.gradle/`·`.claude/settings.local.json` 추가. 디스크만: 루트 미추적 `node_modules/*`, 루트 `*.log` 6개. 참고: `hyeon-backup` 의 d639525 가 같은 정리를 담고 있음(루트 package.json 추가분 제외)
+
+### 사용자 확인 필요
+- 팀원 브랜치 머지 여부에 달림 (junho·feat/security-agent·jhy 가 사용): `salesService.getTodaySummary·getWeeklySummary`, `getByDateRange`, `getAllStoreWeeklySummary`, `menuService.update`, `orderService.driverReceive`, `PUT /api/menus/{id}`, `POST /api/orders/{id}/driver-receive`, `GET /api/sales/{storeId}/range`
+- junho `DEV_ROADMAP.md` 계획과 겹침: `wastePredictionService.summary`·`GET /api/waste-prediction/{id}/summary`(AG-2), `POST /api/notifications`(에이전트 알림)
+- `frontend/eslint.config.js`: eslint 8.57.1 과 맞지 않아 `npm run lint` 실패. 되살릴지(TS 용 설정) 버릴지(설정·lint 스크립트·eslint 관련 의존성 삭제). `@typescript-eslint/*` 도 이 결정을 따름
+- `backend/src/main/resources/db/schema.sql`: 실행 안 되고 엔티티와 다르지만 팀 포트폴리오가 설계 산출물로 인용. 갱신/이동/삭제
+- `backend/.postman/resources.yaml`: jihwan 의 Postman 워크스페이스 연결 설정
+- `GET /api/predict/store/{id}`: 코드 호출 없음, 수동 점검용으로 남길지
+- 비밀값: 예전 DB 비밀번호·JWT secret 리터럴이 git 이력과 origin/dev·dev2·junho·feat/security-agent 에 남아 있고 지금 값과 같다. 교체 담당·시점, 이력 정리 여부
+
+### 기각 (쓰임)
+`GET /api/orders/recommend/{storeId}`(HANDOFF 확인 절차, fgcli), `@mui/system`(x-data-grid peer, 대신 ^9 → 범위 내 버전 조정 필요), `GET /api/sales/all-stores/weekly-summary`(fgcli), `POST /api/train/store/{id}`(운영 절차), `uml/`(지우지 않고 junho 의 2026-09-11 수정본으로 갱신)
+
+### 다음 검사 대상 (이번에 확정하지 않음)
+- 로컬 브랜치(hyeon-backup·hyeon-remote-backup·jhy·jihwan)와 stash 4개
+- `theme/styles/simplebar.ts`·`CssBaseline.tsx:4,35` (Sidebar 삭제 후 대상 없는 스타일)
+- 이 문서 82행 재학습 경로 오기(실제 `/api/train/store/{store_id}`), 291행 복구 근거(본사 대시보드는 라우트 없음)
+- `react-leaflet` 로컬 설치(5.0.0)와 lock(4.2.1) 불일치
+- junho·feat/security-agent 가 루트 로그 4개와 `.claude/settings.local.json` 을 아직 추적 — 머지 시 다시 들어옴
+- TSX 내부 죽은 분기, Java 와일드카드·리플렉션 참조, 실험 스크립트(backtest·compare_models·simulate_orders) 필요성은 보지 않음
+
+## 17. 분석 문서 잔여 항목 고도화 (2026-11-06)
+
+분석 문서(계획서 대비 진척 분석)와 코드를 다시 대조해 남은 것 중 사람의 결정 없이 할 수 있는 것을 처리했다.
+
+### 이월 안전재고 (`CARRY_OVER_BUFFER = 1.2`, 11절 "짧은 주기에서 관행 규칙이 낫다"의 후속)
+
+원인은 예측이 아니라 안전재고 크기였다. 보관기한이 발주 주기보다 길면 남은 재고가 다음 발주에서 차감되어 버려지지 않아, 과잉의 실제 비용이 단일 기간 뉴스벤더 가정보다 작다. 그래서 이 조건일 때만 식자재 필요량을 `max(conformal 추천량, 점추정 × 1.2)` 로 한다 (`OrderRequestService.carryOverFloor`, `simulate_orders.py`). 보관기한이 비었거나 주기 이하면 그대로다. **지금은 `INGREDIENT` 값이 비어 있어 운영 발주량이 바뀌지 않는다. 식자재 설정을 넣어야 효과가 난다.**
+
+DB 시뮬레이션 (`simulate_orders.py --db`, 레시피 있는 매장 3곳, 매장×식자재 36개. 폐기율 / 품절률 / 비용 지수, 낮을수록 좋음):
+
+| 시나리오 | 이월 | FoodGuard (이번) | conformal 보정만 (이전) | 관행 ×1.1 | 관행 ×1.2 |
+|---|---|---|---|---|---|
+| 주 1회 · 보관 7일 | 없음 | 4.7 / 11.0 / **21.2** | 같음 | 9.7 / 9.6 / 24.1 | 18.2 / 9.0 / 31.8 |
+| 3일마다 · 보관 3일 | 없음 | 5.2 / 7.8 / **16.8** | 같음 | 10.2 / 6.1 / 19.4 | 18.7 / 5.2 / 26.6 |
+| 3일마다 · 보관 4일 | 있음 | 1.6 / 4.9 / **8.9** | 0.8 / 7.8 / 12.5 | 0.8 / 6.2 / 10.1 | 1.2 / 5.2 / 9.0 |
+| 2일마다 · 보관 3일 | 있음 | 1.3 / 3.9 / 7.1 | 0.4 / 6.8 / 10.6 | 0.7 / 4.7 / 7.7 | 1.0 / 3.7 / **6.6** |
+| 주 1회 · 보관 14일 | 있음 | 0.4 / 7.4 / **11.4** | 0.1 / 10.9 / 16.5 | 0.3 / 8.9 / 13.7 | 0.6 / 7.4 / 11.7 |
+
+- 5개 시나리오 중 4개에서 비용이 가장 낮다. 2일 주기만 관행 ×1.2 가 낫다 (7.1 vs 6.6). 합성 매장(`--synthetic`)도 이월 시나리오에서 비용이 줄었다 (5.0→3.5, 6.1→1.7, 4.8→1.1)
+- **한계: 1.2 는 같은 데이터로 고른 값이다.** ×1.1~×1.3 구간은 비용 차이가 작아(3일 주기 8.9~9.9) 값에 민감하지 않지만, 표본 밖 검증은 아니다. 시나리오 평균의 품절률은 매장 60004(계단식 데모 데이터)가 끌어올린다
+- 이월 조건에서는 품절을 줄이는 대신 폐기가 늘어난다 (3일 주기 0.8%→1.6%). 폐기율만 떼어 보고하지 않는다
+- 기각한 변형 (비용 변화가 없거나 더 나빴다): 목표 분위수만 0.7~0.9 로 올리기(0.85 에서 3일 주기 10.4, 0.9 는 꼬리값 때문에 악화), 책임 기간별 conformal 창, 기한 안에 쓸 수 있는 재고만 차감
+
+### 신뢰도를 시간순으로 (분석 문서 이슈 6)
+
+`KFold(5)` 대신 매장마다 마지막 28영업일을 떼고 그 앞으로 학습한 오차율을 쓴다 (`DemandPredictor._holdout_scores`, Bergmeir et al. 2018). 매장마다 기간이 달라 다른 매장의 같은 날짜는 학습에 남는다. 현재 데이터에서 메뉴 54개 평균 신뢰도 84.6. 모델 학습 횟수가 줄어 학습 1회 약 19.8초 (날씨 조회 포함, 이전 약 25초). `with_scores=False` 면 신뢰도를 재지 않는다 (보정·백테스트용, 예측값은 같음을 테스트로 확인).
+
+회귀 확인: `backtest.py --db --step 7` 9.2% / MASE 0.900 (인계 문서의 이전 기준값 0.902 와 소수 셋째 자리 차이. 같은 모델로 예측값 불변을 테스트로 확인), 주간 ±10% 87.2%, 합성 14.8% / 0.817.
+
+### 날씨 피처 기여도 (`backtest.py --db --weather`, Badorf & Hoberg 2020)
+
+| 방법 | 전체 wMAPE | 비·폭염·한파 날 | 그 외 날 |
+|---|---|---|---|
+| 날씨 없음 | 9.16% | 9.91% | 8.71% |
+| 실측 날씨 (예보가 완벽할 때의 상한) | 9.15% | 9.91% | 8.70% |
+
+**날씨는 현재 데이터에서 정확도를 거의 높이지 않는다.** 실측값을 그대로 줘도 0.01%p 다. 판매 이력이 날씨에 반응하지 않는 데모 데이터라서일 가능성이 크고, 실제 매장에서 효과가 없다는 뜻은 아니다. 계획서의 "외부 변수 가중치 튜닝으로 정확도 고도화"를 보고서에 성과로 쓰면 안 된다.
+
+### 운영 예측 정확도 (`GET /api/stats/hq` 의 `forecastAccuracy`, 본사 통계 화면)
+
+저장된 예측과 실제 판매를 비교한다 (입력 있는 날만, 휴무·품절일 제외, 주간 지표는 7일 모두 비교된 주만). `xgb_global*` 모델만 잰다: 예전 모델(`rf_*`, 2026-05~06) 989건은 wMAPE 69.6% 로 예측이 실제의 절반 수준이었고, 이 기록이 현재 모델 성적으로 보이면 안 된다. 현재 모델의 지난 날짜 예측은 아직 0건이라 화면은 "판매가 입력되면 보여 준다"로 나온다. 예측을 돌린 뒤 판매가 입력되는 운영이 시작되어야 값이 생긴다. 스키마 변경이 없다.
+
+### 배포 설정 (deploy_checklist 1-1, 1-2, 2-1)
+
+- AI 서비스: `127.0.0.1` 바인딩, CORS 제거, `X-Internal-Key` 검사(`INTERNAL_API_KEY`, 비우면 검사 안 함 = 로컬 개발), `/health` 만 공개, `pool_recycle=180`
+- 백엔드: RestTemplate 이 `AI_INTERNAL_KEY` 를 헤더로 보냄, Hikari `max-lifetime` 3분·`keepalive` 1분, CORS·WebSocket 출처를 설정값으로, `application-prod.properties`
+- prod 프로필은 `ddl-auto=none` 이다. `validate` 로 띄워 봤더니 `missing table [store]` 로 실패했다: 공유 DB 의 `STORE`·`USER` 만 대문자인데 Spring 네이밍이 소문자로 바꾸고 Hibernate 가 대소문자를 구분해 찾는다. 테이블 이름을 소문자로 바꾸면(공유 DB DDL) `validate` 로 올릴 수 있다
+- 검증 (로컬, 임시 키, DB 는 읽기만): 키 없는 AI 호출 401, 백엔드 경유 설명 호출 200, 운영 출처 CORS 허용·개발 출처 403, 8001 은 127.0.0.1 만 LISTEN, SQL 로그 0줄
+- 아직 없음: Docker·EC2·HTTPS. 이 PC 에 docker 가 없어 검증할 수 없어 만들지 않았다
+
+## 18. 운영 에이전트 6종 (2026-11-06)
+
+공통 원칙: 숫자는 코드가 정하고 Claude 는 판단·문장만 쓴다. 쓰기는 점주가 확인한 뒤에만 한다. Claude 응답은 코드가 다시 검사한다 (없는 id 제거, 범위 제한, 발주량 증가 금지, 답변 숫자 대조). 공유 DB 스키마 변경 없음. Claude 는 도구 없이 호출한다 (`--tools ""`).
+
+| 기능 | 화면 | 백엔드 | AI 서비스 | Claude 역할 |
+|---|---|---|---|---|
+| POS 판매 파일 | 판매 입력 "POS 파일로 등록" | `POST /api/ingest/{storeId}/sales/preview·commit` | `/api/ingest/sales-file`, `services/table_import.py` | 열 의미 판단(처음 15행), 메뉴명 매칭. 날짜·수량은 코드가 파일에서 읽음 |
+| 거래명세서 사진 | 재고 현황 "거래명세서로 입고" | `POST /api/ingest/{storeId}/invoice/preview·commit` | `/api/ingest/invoice` | 사진에서 품목 읽기 |
+| 식자재 설정 제안 | 식자재 관리 "AI 설정 제안" | `POST /api/ingredients/suggest/{storeId}` | `/api/agents/ingredient-settings` | 보관기한 등 추정. 발주 이력이 충분하면 주기·입고 기간은 실제 값 |
+| 발주 참모 | 식자재 발주 "AI 발주 참모" | `POST /api/orders/recommend/{storeId}/review`, `POST /api/orders/agent/{storeId}` | `/api/agents/order-review` | 승인·감량·보류 판단 (늘릴 수 없음) |
+| 재고·데이터 감시 | 재고 현황 점검 카드 | `GET /api/watchdog/{storeId}`, `WatchdogScheduler` | 없음 | **쓰지 않음.** 규칙이라 결과가 재현된다 |
+| 본사 주간 리포트 | 통계 분석 "AI 주간 리포트" | `POST /api/stats/hq/weekly-report` | `/api/agents/hq-weekly` | 코드가 집계·표시한 이상에 문장·가설만 |
+| 점주 질문 답변 | "AI 운영 비서" 타일 `/assistant` | `POST /api/assistant/{storeId}/ask` | `/api/agents/assistant` | 이 매장 데이터로만 답변, 없는 숫자는 경고 |
+
+### 설계 메모
+
+- 이미지 입력은 `claude -p --input-format stream-json` 으로만 넘어간다 (`claude_cli.run_structured_image`)
+- 판매 저장은 같은 날짜·메뉴가 이미 있으면 건너뛴다 (같은 파일을 두 번 올려도 판매가 두 배가 되지 않음). 다른 매장 메뉴·미래 날짜는 거부
+- 명세서 입고는 재고에 더한다. **QR 검수로 입고한 발주를 다시 올리면 두 번 더해진다** (화면에 경고). 단위가 다르면 환산하지 않고 표시만 한다
+- 공용 식자재에 같은 이름이 있다 (`양상추` 2개). 그대로 넘기면 Claude 가 애매하다고 비워서, 이 매장 재고에 있는 쪽을 넘긴다
+- 발주 주기는 최대 7일, 보관기한 이하로 제한한다. 예측이 7일치라 주기가 길면 그 사이 품절이 난다
+- 보관기한 제안은 Claude 의 일반 상식 추정이다. 공식 자료 RAG 는 아직 없고 출처를 지어내지 않게 했다. 그래서 체크 기본값이 꺼져 있다
+- 설정을 저장하면 이월 안전재고(17절)가 켜진다. 데모 매장 제안 29개 중 26개가 보관기한 > 주기다
+- `AGENT` 발주는 수량을 안 고쳤을 때만 추천 적용으로 센다 (`StatsService`). `order_source` 는 문자열 컬럼이라 스키마 변경 없음
+- 감시 알림은 개발 PC 가 공유 DB 에 쌓지 않게 `app.watchdog.enabled=true`(prod)일 때만 매일 7시에 만든다. 조회 API 는 저장하지 않는다
+
+### 실제 Claude 로 확인한 것 (창신버거 60004, 저장은 호출하지 않음)
+
+| 항목 | 결과 |
+|---|---|
+| POS 파일 | 안내행·합계·세트 표기·CP949 (10.2초), 영어 헤더·시각·금액 열이 수량 앞 (3.2초), 날짜 열 없음·비고에 지시 문구 (3.1초): 수량·날짜 모두 맞음, 지시 무시. 합계·콜라는 미매칭. 판매 파일이 아니면 400 |
+| 거래명세서 | 합성 사진 3품목의 수량·단위·유통기한 모두 맞음 (5.3초, 약 $0.018). 없는 식자재는 비움, 단위 차이 표시 |
+| 설정 제안 | 29개 27.7초. 주기 최대 7, 주기 > 보관 0건 |
+| 발주 참모 | 데모 DB 는 추천 0건이라 AI 호출 없이 경고만. 표본 데이터 직접 호출: 양상추 폐기 경고에서 "기존 재고를 빼면 오히려 부족할 수 있다"를 짚어 냄 |
+| 감시 | 입력 지연 1, 묵은 발주 5, 설정 누락 1 |
+| 주간 리포트 | 실데이터 플래그 0건 (7일 안에 판매가 있는 매장이 1곳뿐). 표본 4개 매장: 플래그 3개만 다루고 입력 없음은 누락부터 의심, 숫자 불일치 0 |
+| 질문 답변 | 부족 품목, 판매 예측, 유통기한, 발주 현황, 재고에 숫자 불일치 0. 내일 예측이 없으면 없다고 답함. 프롬프트 공개·다른 매장·날씨 질문은 거절 |
+| 권한 | 다른 매장 질문·파일 403, 점주의 본사 리포트 403 |
+
+### 확인하지 못한 것
+
+- 저장(`commit`, `orders/agent`)은 API 로 실제 실행해 확인했다 (19절). 발주 참모 화면의 항목 카드와 승인 버튼은 데모 DB 추천이 0건이라 빈 상태만 봤다
+- 추출 정확도·채택률·추천 적용률은 표본이 적어 수치로 낼 수 없다. 실제 POS 파일과 명세서로 재면 보고서에 쓸 수 있다
+- 대화창 화면은 미리보기 창이 숨겨진 상태에서 전환 효과가 멈춰 반투명으로 찍혔다. 내용은 표시되는 것을 확인했다
+
+## 19. 임박 식자재 할인 소진 (2026-11-06)
+
+유통기한이 임박해 남을 식자재를 메뉴 할인으로 소진한다. 폐기 예측 화면 위 "임박 식자재 할인 소진" 카드.
+
+**흐름**: 재고 + 예측 사용량 + 기부 예정 → 후보 계산(코드) → (선택) Claude 가 우선순위 문장 정리 → **점주가 메뉴별 할인율 입력** → 기한까지 POS 에 할인가 적용 → 결제 때 할인가로 판매 기록·레시피대로 재고 차감.
+
+- 할인율은 점주가 정한다. 판매 반응 데이터가 없어 시스템이 추천하지 않고, Claude 에도 제안하지 말라고 했다. 데이터가 쌓이면 탄력성 분석으로 추천을 검토할 수 있다
+- 판매가의 60% 를 넘는 할인은 원가 추정치(`COST_RATIO` 0.4) 밑이라 화면에 경고만 한다. 막지는 않는다 (폐기보다 나을 수 있음)
+- 가격은 서버가 다시 계산한다. 화면이 보낸 가격을 믿지 않는다 (`DiscountService.checkout`)
+
+**스키마 (백엔드 재시작 때 `ddl-auto=update` 로 추가)**: `MENU_DISCOUNT` 새 테이블, `SALES_DATA.unit_price·discount_pct` (비어 있으면 일반 가격). prod 는 `ddl-auto=none` 이므로 직접 적용해야 한다.
+
+**각 기능 반영**
+
+| 기능 | 반영 |
+|---|---|
+| POS | 할인가 표시, 영수증은 서버 계산값. **`menu.menuId`(없는 필드)를 쓰던 버그 수정**: 메뉴가 구분되지 않고 결제가 실패했다 |
+| 재고 | POS 결제 때 레시피대로 차감. 파일 일괄 등록·직접 입력·과거 판매는 차감하지 않는다. 재고 행이 없는 식자재는 건너뛰고, 음수는 점검 카드가 알린다 |
+| 발주 추천·폐기 예측·감시 | 재고가 줄어 자동 반영. **POS 를 쓰면 할인과 무관하게 발주 추천이 늘어난다** (이전에는 판매해도 재고가 안 줄었다) |
+| 매출·통계 | `COALESCE(unit_price, 메뉴 가격)`. 본사 통계에 할인 판매 수량·매출·할인액 |
+| 수요 예측 | 아래 |
+| 주간 리포트·점주 비서 | `discountedQuantity`, `activeDiscounts` 를 입력에 추가 |
+
+**수요 예측: 할인일을 평소 수요로 학습하지 않는다** (`build_daily_calendar` 의 `discounted_dates`). 할인일은 학습 정답·보정에서 빼고, lag 계산용 값은 직전 같은 요일 평균으로 바꾼다. `python backtest.py --discount` (합성, 할인 없는 날의 평소 수요 평가):
+
+| 시드 | 방법 | wMAPE | 전체 편향 | 최근 14일 할인한 메뉴 편향 |
+|---|---|---|---|---|
+| 11 | 할인이 없었던 경우 | 12.9% | -0.0% | +0.2% |
+| | 그대로 학습 | 13.9% | +2.3% | +6.0% |
+| | 운영 처리 | 12.8% | +0.4% | +0.8% |
+| 12 | 할인이 없었던 경우 | 14.0% | -0.8% | -0.4% |
+| | 그대로 학습 | 15.1% | +1.9% | +5.4% |
+| | 운영 처리 | 14.1% | -0.3% | +0.4% |
+| 13 | 할인이 없었던 경우 | 12.2% | -0.3% | -1.4% |
+| | 그대로 학습 | 12.8% | +0.8% | +4.3% |
+| | 운영 처리 | 12.3% | -0.9% | -1.7% |
+
+그대로 두면 최근 할인한 메뉴의 예측이 4~6% 부풀어 소진하려던 식자재를 다시 많이 발주하게 된다. 운영 처리는 오차와 편향이 할인이 없었던 경우와 비슷하다. 예측은 평소 수요만 내므로 **할인 중의 판매 증가는 예측하지 않는다.**
+
+**실제 확인 (2026-11-06, 창신버거 60004, 공유 DB)**
+
+시험 데이터를 만들어 실제 화면·API 로 실행한 뒤 지웠고, 재고(수량·유통기한·수정 시각)와 판매·발주·할인·알림 건수가 시험 전 기록과 일치함을 대조했다.
+
+| 경로 | 결과 |
+|---|---|
+| 명세서 입고 저장 | 양상추 +30kg, 유통기한 반영. 다른 매장 403 |
+| 후보·AI 정리 | 남을 양 32.3kg, 메뉴별 필요 판매량 계산. AI 는 할인율을 제안하지 않음. 입력에 없는 숫자 1건은 경고로 표시됨 |
+| 할인 적용 | 치즈버거 30% → 5,250원. 95% 거부, 다른 매장 403. 끝내기 204, 남의 할인 403 |
+| POS 화면·결제 | 할인가 표시, 치즈버거 2 + 스파이시버거 1 = 18,500원 결제 성공, 영수증 표시 |
+| 판매 기록·재고 | 단가·할인율 저장, 할인 없는 메뉴는 정가. 재고 7종 차감량이 레시피 계산과 일치 |
+| 매출·통계 | 합계 +18,500원, 할인 수량 2·매출 10,500·할인액 4,500 |
+| 비서·주간 리포트 | 비서가 할인 메뉴·가격·종료일을 정확히 답함, 리포트 입력에 할인 수량 반영 |
+| 예측 입력 | 할인 메뉴: `sold_out`=1, y 는 판매 120 대신 평소값 23. 할인 없는 메뉴: 120 그대로 |
+| 판매 파일 저장 (18절) | 신규 1건 저장, 중복은 건너뜀, 다른 매장 메뉴 거부 |
+| 발주 참모 (18절) | 재고를 임시로 0 으로 낮춰 추천 7건 생성. 검토·승인 동작, `AGENT` 발주 저장. 그대로 승인 1건만 적용으로 집계 (50%) |
+
+**아직 모르는 것**: 합성 실험의 탄력성(1~3)은 가정이고, 실제 할인 효과와 폐기 감소는 운영 기록이 쌓여야 잴 수 있다. 소량 판매만 있는 날은 부분 입력일로 빠져 학습에 쓰이지 않는다.
+
+## 20. 전 기능 점검·배포 준비 (2026-11-06)
+
+`qa_smoke.py`: 시험 계정·매장을 새로 만들어 실제 API·DB·Claude 로 133개 항목을 점검한다. 운영 모드(`prod` jar, 내부 키, 운영 빌드 프론트)에서 **133개 통과, 서버 ERROR 로그 0건**. 시험 데이터는 지웠고 창신버거 재고·판매·발주 건수가 기록과 일치한다. 프론트 화면 15개를 운영 빌드에서 열어 오류 없음을 확인했다.
+
+### 찾아서 고친 결함
+
+| 심각도 | 문제 | 수정 |
+|---|---|---|
+| 치명 | **새 매장에서 식자재 조회·저장, 레시피 등록·조회, 발주 내역이 실패** (지연 로딩 프록시 JSON 변환). 공용 식자재만 쓰는 데모 매장에서는 안 드러났다 | `Store·Menu·Ingredient·User` 에 `@JsonIgnoreProperties`, `Ingredient.store` 숨김 |
+| 치명 | POS 결제 불가 (`menu.menuId`, 19절) | `menu.id` |
+| 높음 | 없는 발주 상태값이 저장되어 발주가 멈춤, 완료·취소 발주 상태 변경 가능 | 상태값 검사, 완료 상태 변경 차단 |
+| 높음 | 본사 통계 툴팁에 저장형 XSS (점주 입력 매장 이름이 HTML 로 그려짐) | 이스케이프 |
+| 높음 | 완료된 기부를 취소할 수 있어 재고와 기록이 어긋남 | 진행 예정만 취소 |
+| 높음 | 만료·위조 토큰에 403 → 화면은 로그인 상태인데 모든 API 실패 | 401 + 프론트 로그인 이동, 만료 토큰 인식 |
+| 높음 | 사용자 오류 메시지에 SQL·내부 예외 노출 (로그인 포함) | 예외 처리기 재작성. 내부 내용은 로그에만 |
+| 높음 | Claude·학습 API 호출 제한 없음 (비용), 로그인 무차별 대입 | 사용자당 분당 20회, 계정별 실패 10회 10분 차단, nginx IP 제한 |
+| 중 | 로그인 문구로 이메일 존재 여부 노출 | 문구 통일 |
+| 중 | 가입 때 빈 이메일·형식 오류·짧은 비밀번호 허용 | 검사. 비밀번호 8자 이상 |
+| 중 | 음수 가격·판매·발주, 사용량 0 레시피, 재고보다 많은 폐기, 미래 판매, 다른 매장 식자재로 발주·레시피 | 입력 검사 |
+| 중 | 예측 실패를 HTTP 200 으로 반환, 같은 매장 중복 실행 | 오류로 반환, 중복 차단 |
+| 중 | 판매 파일 분석이 Claude 2회면 60초 타임아웃 넘김 | 120초 |
+| 중 | 번들 2.7MB 단일 파일 | 화면별 분할 (큰 묶음 mui 675KB) |
+
+### 의존성
+
+취약점 스캔 결과 npm 0건, pip 0건 (`npm audit --omit=dev`, `pip-audit`). React Router 7, ECharts 6, cryptography 50, requests 2.33, python-dotenv 1.2.2 로 올렸다. 치명 1건(websocket-driver) 포함. **Java 의존성은 스캔 도구가 없어 확인하지 못했다** (Spring Boot 3.5.13).
+
+### 배포 구성 (`docs/DEPLOY.md`)
+
+`docker-compose.yml` (Caddy HTTPS → nginx → Spring Boot → FastAPI 내부 전용), Dockerfile 3개, `.dockerignore`, `.env.prod.example`, `GET /api/health`, CI 에 운영 빌드·이미지 빌드 추가.
+
+**확인하지 못한 것**
+- **Docker 이미지·compose·nginx·Caddy 는 실행해 보지 않았다.** 이 PC 에 docker 가 없다. CI 의 docker job 이 빌드까지는 확인하지만, 서버에서 처음 띄울 때 점검이 필요하다. 운영 모드 시험은 jar + vite preview 로 했다
+- 컨테이너 안 claude CLI 로그인 절차
+- 많은 사용자의 동시 접속 부하
+- 발주 참모 화면의 항목 카드 (데모 DB 추천 0건)
+
+### 사람이 해야 할 일
+
+JWT 시크릿 새로 생성, TiDB 접속 IP 제한, 서버·도메인 준비, `junho` 브랜치의 평문 비밀번호 정리, Claude 를 API 키 방식으로 바꿀지 결정 (시제품은 CLI).

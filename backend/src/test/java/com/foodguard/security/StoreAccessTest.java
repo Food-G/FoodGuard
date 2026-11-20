@@ -85,7 +85,7 @@ class StoreAccessTest {
 
         MockHttpServletRequest byId = new MockHttpServletRequest();
         byId.setAttribute(HandlerMapping.URI_TEMPLATE_VARIABLES_ATTRIBUTE, Map.of("id", "42"));
-        byId.setAttribute(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE, "/api/orders/{id}/owner-receive");
+        byId.setAttribute(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE, "/api/orders/{id}/hq-send");
         interceptor.preHandle(byId, null, null);
         verify(mockAccess).checkEntity("OrderRequest", 42L);
 

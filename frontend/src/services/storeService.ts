@@ -13,7 +13,4 @@ export const storeService = {
   update: async (id: number, data: any) => {
     return api.put(`/stores/${id}`, data);
   },
-  delete: async (id: number) => {
-    return api.delete(`/stores/${id}`);
-  },
 };

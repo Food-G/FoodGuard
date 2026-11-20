@@ -26,6 +26,8 @@ public class SalesDataService {
     // 매출 등록
     @Transactional
     public SalesData create(Long storeId, Long menuId, Integer quantity, LocalDate saleDate) {
+        if (quantity == null || quantity <= 0) throw new RuntimeException("판매 수량은 1 이상이어야 합니다.");
+        if (saleDate.isAfter(LocalDate.now())) throw new RuntimeException("미래 날짜의 판매는 등록할 수 없습니다.");
         Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new RuntimeException("가맹점을 찾을 수 없습니다."));
         Menu menu = menuRepository.findById(menuId)
@@ -58,15 +60,5 @@ public class SalesDataService {
             result.put(((Number) row[0]).longValue(), ((Number) row[1]).longValue());
         }
         return result;
-    }
-
-    // Soft Delete (실제 삭제 X, 삭제 표시만)
-    @Transactional
-    public String delete(Long id) {
-        SalesData sales = salesDataRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("매출 데이터를 찾을 수 없습니다."));
-        sales.setIsDeleted(true);
-        salesDataRepository.save(sales);
-        return "매출 데이터 삭제 완료";
     }
 }

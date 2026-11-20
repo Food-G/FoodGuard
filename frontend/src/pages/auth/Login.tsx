@@ -32,7 +32,8 @@ const Login = ({ onLogin }: { onLogin: (token: string) => void }) => {
       onLogin(token);
       navigate('/');
     } catch (err: any) {
-      setError('로그인 실패: 정보를 다시 확인해 주세요.');
+      // 서버 안내 문구 (틀린 정보, 반복 실패 차단)
+      setError(err.message || '로그인에 실패했습니다.');
     }
   };
 

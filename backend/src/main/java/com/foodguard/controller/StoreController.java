@@ -50,9 +50,4 @@ public class StoreController {
                 region
         ));
     }
-
-    @DeleteMapping("/{id}")
-    public ResponseEntity<String> delete(@PathVariable Long id) {
-        return ResponseEntity.ok(storeService.delete(id));
-    }
 }

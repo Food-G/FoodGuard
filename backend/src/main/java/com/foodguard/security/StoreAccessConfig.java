@@ -10,9 +10,11 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 public class StoreAccessConfig implements WebMvcConfigurer {
 
     private final StoreAccessInterceptor storeAccessInterceptor;
+    private final AiRateLimitInterceptor aiRateLimitInterceptor;
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(storeAccessInterceptor).addPathPatterns("/api/**");
+        registry.addInterceptor(aiRateLimitInterceptor).addPathPatterns(AiRateLimitInterceptor.PATHS);
     }
 }

@@ -11,6 +11,7 @@ import { api } from '../services/api';
 import IconifyIcon from '../components/base/IconifyIcon';
 import QrScanner from '../components/QrScanner';
 import OrderExplainDialog from '../components/OrderExplainDialog';
+import OrderReviewDialog from '../components/agent/OrderReviewDialog';
 import { useMyStore } from '../hooks/useMyStore';
 import { useConfirm } from '../hooks/useConfirm';
 import AlertMessages from '../components/AlertMessages';
@@ -46,6 +47,7 @@ const Orders = ({ user }: any) => {
   const [scanning, setScanning] = useState(false);
   const [orderDialog, setOrderDialog] = useState(false);
   const [explainOpen, setExplainOpen] = useState(false);
+  const [reviewOpen, setReviewOpen] = useState(false);
   const [ingredients, setIngredients] = useState<any[]>([]);
   const [orderForm, setOrderForm] = useState({ ingredientId: '', quantity: '' });
   const [submitting, setSubmitting] = useState(false);
@@ -222,6 +224,15 @@ const Orders = ({ user }: any) => {
           AI 추천 근거 보기
         </Button>
         <Button
+          variant="outlined"
+          startIcon={<IconifyIcon icon="mingcute:user-star-line" />}
+          onClick={() => setReviewOpen(true)}
+          disabled={!storeId}
+          sx={{ px: 3, py: 1.5, borderRadius: 3 }}
+        >
+          AI 발주 참모
+        </Button>
+        <Button
           variant="contained"
           startIcon={ordering
             ? <CircularProgress size={16} color="inherit" />
@@ -235,6 +246,7 @@ const Orders = ({ user }: any) => {
       </Stack>
 
       {storeId && <OrderExplainDialog open={explainOpen} storeId={storeId} onClose={() => setExplainOpen(false)} />}
+      {storeId && <OrderReviewDialog open={reviewOpen} storeId={storeId} onClose={() => setReviewOpen(false)} onOrdered={() => loadOrders(storeId)} />}
 
       <Dialog open={orderDialog} onClose={() => setOrderDialog(false)} maxWidth="xs" fullWidth>
         <DialogTitle fontWeight={700}>발주 신청</DialogTitle>

@@ -4,7 +4,11 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     DB_URL: str = "mysql+pymysql://root:password@localhost:3306/foodguard"
     DB_SSL: bool = True
+    AI_SERVICE_HOST: str = "127.0.0.1"  # 인증 없는 내부 서비스라 백엔드와 같은 서버에서만 받는다
     AI_SERVICE_PORT: int = 8000
+    AI_RELOAD: bool = False  # 코드 수정 시 자동 재시작 (개발용)
+    # 백엔드만 부르게 하는 공유 키 (X-Internal-Key). 비우면 검사하지 않는다 (로컬 개발용), 운영은 필수
+    INTERNAL_API_KEY: str = ""
     MODEL_DIR: str = "trained_models"
     PREDICTION_DAYS: int = 7
     MIN_DATA_POINTS: int = 7       # 글로벌 모델 최소 학습 행 수 (전체 매장·메뉴 합계, 미만이면 요일 평균 사용)

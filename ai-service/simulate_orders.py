@@ -43,6 +43,10 @@ HORIZON = settings.PREDICTION_DAYS
 EPOCH = date(2026, 1, 5)
 RULE_MARGINS = (0.0, 0.1, 0.2)
 FOODGUARD = "FoodGuard (안전재고 포함)"
+CONFORMAL_ONLY = "FoodGuard (conformal 보정만)"
+# 보관기한이 발주 주기보다 길면 남은 재고가 다음 발주에서 차감되어 버려지지 않으므로 안전재고를 더 둔다.
+# 필요량 ≥ 점추정 × 이 값. 백엔드 OrderRequestService.CARRY_OVER_BUFFER 와 같은 값 (PROJECT_STATUS 17절)
+CARRY_OVER_BUFFER = 1.2
 # 폐기 1단위의 손실 = 식자재 원가 1, 품절 1단위의 손실 = 놓친 마진 = (1 − COST_RATIO) / COST_RATIO
 SHORTAGE_COST = (1 - settings.COST_RATIO) / settings.COST_RATIO
 
@@ -58,11 +62,17 @@ class Scenario:
     def coverage(self) -> int:
         return self.lead_time - 1 + min(self.cycle, self.shelf_life)
 
+    @property
+    def carries_over(self) -> bool:
+        return self.shelf_life > self.cycle
+
 
 SCENARIOS = [
     Scenario("주 1회 발주 · 보관 7일 (장류·냉동)", 1, 7, 7),
     Scenario("3일마다 발주 · 보관 4일 (육류·두부)", 1, 3, 4),
     Scenario("2일마다 발주 · 보관 3일 (엽채류)", 1, 2, 3),
+    Scenario("3일마다 발주 · 보관 3일 (이월 없음)", 1, 3, 3),
+    Scenario("주 1회 발주 · 보관 14일 (냉동·건조)", 1, 7, 14),
 ]
 
 
@@ -123,7 +133,7 @@ class ModelCache:
     def model(self, d: date) -> DemandPredictor:
         if d not in self._models:
             past = {k: df[df["ds"] <= d] for k, df in self.series.items()}
-            self._models[d] = DemandPredictor().fit({k: df for k, df in past.items() if len(df) > 0})
+            self._models[d] = DemandPredictor().fit({k: df for k, df in past.items() if len(df) > 0}, with_scores=False)
         return self._models[d]
 
     def _ratios_at(self, o: date, sid: int) -> list[float]:
@@ -206,6 +216,14 @@ def run_store(cache: ModelCache, sid: int, sc: Scenario, open_days: dict[int, li
             for mid, q in qty.items():
                 for ing, per_unit in cache.recipes[mid]:
                     required[policy][ing][d] = required[policy][ing].get(d, 0.0) + q * per_unit
+
+    # 백엔드 recommend() 와 같이 식자재 단위로 적용
+    required[CONFORMAL_ONLY] = {ing: dict(req) for ing, req in required[FOODGUARD].items()}
+    if sc.carries_over:
+        for ing, req in required[FOODGUARD].items():
+            point = required["FoodGuard (안전재고 없음)"][ing]
+            for d in req:
+                req[d] = max(req[d], point[d] * CARRY_OVER_BUFFER)
 
     rows = []
     for policy, by_ing in required.items():

@@ -12,6 +12,11 @@ const getHeaders = () => {
 };
 
 const handleResponse = async (response: Response) => {
+  // 만료·위조 토큰: 로그인 화면으로 (로그인 실패 응답은 400 이라 여기로 오지 않는다)
+  if (response.status === 401 && localStorage.getItem('token')) {
+    localStorage.removeItem('token');
+    window.location.assign('/login');
+  }
   if (!response.ok) {
     const error = await response.text();
     throw new Error(error || 'API Request Failed');

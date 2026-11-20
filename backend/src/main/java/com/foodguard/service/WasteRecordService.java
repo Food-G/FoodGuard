@@ -10,7 +10,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.List;
 import java.util.Map;
 
 @Service
@@ -33,6 +32,7 @@ public class WasteRecordService {
         Inventory inv = inventoryRepository.findByStoreIdAndIngredientId(storeId, ingredientId)
                 .orElseThrow(() -> new RuntimeException("재고에 없는 식자재입니다."));
         double remaining = inv.getCurrentQty().doubleValue() - quantity;
+        if (remaining < -1e-9) throw new RuntimeException("폐기 수량이 재고보다 많습니다.");
         inv.setCurrentQty(BigDecimal.valueOf(Math.max(0, remaining)));
         inventoryRepository.save(inv);
 
@@ -46,9 +46,5 @@ public class WasteRecordService {
         record.setWasteDate(body.get("wasteDate") != null
                 ? LocalDate.parse(body.get("wasteDate").toString()) : LocalDate.now());
         return wasteRecordRepository.save(record);
-    }
-
-    public List<WasteRecord> getByStore(Long storeId) {
-        return wasteRecordRepository.findByStoreIdOrderByWasteDateDesc(storeId);
     }
 }

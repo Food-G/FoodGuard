@@ -1,6 +1,5 @@
 package com.foodguard.controller;
 
-import com.foodguard.entity.Inventory;
 import com.foodguard.entity.OrderRequest;
 import com.foodguard.service.OrderExplainService;
 import com.foodguard.service.OrderRequestService;
@@ -56,12 +55,6 @@ public class OrderRequestController {
         return ResponseEntity.ok(orderRequestService.processQrScan(qrData));
     }
 
-    // QR 스캔 검수 처리 — 네이티브 카메라 URL 방식
-    @GetMapping("/scan")
-    public ResponseEntity<Map<String, Object>> scanByToken(@RequestParam String token) {
-        return ResponseEntity.ok(orderRequestService.processQrScanByToken(token));
-    }
-
     // 배달기사 전용 QR 스캔 — HQ_SENT→DRIVER_RECEIVED만 처리 (중복 스캔 안전)
     @GetMapping("/driver-scan")
     public ResponseEntity<Map<String, Object>> driverScan(@RequestParam String token) {
@@ -82,12 +75,6 @@ public class OrderRequestController {
     @PostMapping("/{id}/driver-receive")
     public ResponseEntity<OrderRequest> driverReceive(@PathVariable Long id) {
         return ResponseEntity.ok(orderRequestService.driverReceive(id));
-    }
-
-    // 3단계: 가맹점주 수령 확인
-    @PostMapping("/{id}/owner-receive")
-    public ResponseEntity<OrderRequest> ownerReceive(@PathVariable Long id) {
-        return ResponseEntity.ok(orderRequestService.ownerReceive(id));
     }
 
     @PutMapping("/{id}/status")

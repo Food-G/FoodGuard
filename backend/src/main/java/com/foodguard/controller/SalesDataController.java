@@ -48,9 +48,4 @@ public class SalesDataController {
                 LocalDate.parse(end)
         ));
     }
-
-    @DeleteMapping("/{id}")
-    public ResponseEntity<String> delete(@PathVariable Long id) {
-        return ResponseEntity.ok(salesDataService.delete(id));
-    }
 }
