@@ -4,7 +4,6 @@ import { ThemeProvider, CssBaseline, CircularProgress, Box } from '@mui/material
 import theme from './theme/theme';
 import BreakpointsProvider from './providers/BreakpointsProvider';
 import MainLayout from './layouts/main-layout';
-import AuthLayout from './layouts/auth-layout';
 import { useAuth } from './hooks/useAuth';
 import { ConfirmProvider } from './hooks/useConfirm';
 
@@ -46,7 +45,8 @@ function App() {
 
   const PublicRoute = ({ children }: { children: React.ReactNode }) => {
     if (isLoggedIn && user) return <Navigate to="/" replace />;
-    return <AuthLayout>{children}</AuthLayout>;
+    // 로그인·회원가입은 화면마다 AuthShell 로 전체 화면을 그린다
+    return <>{children}</>;
   };
 
   return (
