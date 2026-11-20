@@ -267,8 +267,8 @@ c, ts_ = api('GET', f'/sales/{S}/today-summary', t=T)
 check('오늘 매출 요약', c, 200, None if c == 200 else ts_)
 if c == 200:
     yq = 20 + (today - timedelta(days=1)).weekday() * 3
-    check('오늘 매출 = POS 할인가 (2개 12000)', (ts_['quantity'], ts_['revenue']), (2, 12000))
-    check('어제 매출 = 정가 (unit_price 없음)', (ts_['prevQuantity'], ts_['prevRevenue']), (yq, yq * 8000))
+    check('오늘 매출 = POS 할인가 (2개 12000)', (ts_['quantity'], ts_['revenue']), [(2, 12000)])
+    check('어제 매출 = 정가 (unit_price 없음)', (ts_['prevQuantity'], ts_['prevRevenue']), [(yq, yq * 8000)])
 c, emp = api('POST', '/employees', {'storeId': S, 'name': 'QA알바', 'phone': '010', 'hourlyWage': 10030, 'pin': '1234'}, T)
 check('직원 등록', c, 200, None if c == 200 else emp)
 E = emp['id']
@@ -299,13 +299,13 @@ if c == 200 and att:
     c, pay = api('GET', f'/attendance/{S}/weekly-pay?weekStart={week}', t=T)
     row = next((p for p in pay if p['employeeId'] == E), {}) if c == 200 else {}
     # 20시간 ≥ 15시간 → 주휴수당 = 20/40 × 8 × 10030
-    check('주간 급여·주휴수당', (row.get('workedMinutes'), row.get('basePay'), row.get('holidayPay')), (1200, 200600, 40120), row or pay)
+    check('주간 급여·주휴수당', (row.get('workedMinutes'), row.get('basePay'), row.get('holidayPay')), [(1200, 200600, 40120)], row or pay)
 check('직원 퇴사 처리', api('PUT', f'/employees/{E}', {'active': False}, T)[0], 200)
 check('퇴사 직원 PIN 거부', api('POST', '/attendance/clock', {'storeId': S, 'pin': '1234'}, T)[0], 400)
 layout = [{'name': 'T1', 'x': 0, 'y': 0, 'w': 100, 'h': 80, 'seats': 4}, {'name': 'T2', 'x': 120, 'y': 0, 'w': 100, 'h': 80, 'seats': 2}]
 check('POS 좌석 배치 저장', api('PUT', f'/pos-tables/{S}', layout, T)[0], 200)
-check('POS 좌석 배치 다시 저장하면 교체', [t['seats'] for t in api('PUT', f'/pos-tables/{S}', layout[:1], T)[1]], [4])
-check('POS 좌석 배치 조회', [(t['name'], t['seats']) for t in api('GET', f'/pos-tables/{S}', t=T)[1]], [('T1', 4)])
+check('POS 좌석 배치 다시 저장하면 교체', [t['seats'] for t in api('PUT', f'/pos-tables/{S}', layout[:1], T)[1]], [[4]])
+check('POS 좌석 배치 조회', [(t['name'], t['seats']) for t in api('GET', f'/pos-tables/{S}', t=T)[1]], [[('T1', 4)]])
 check('POS 좌석 0 거부', api('PUT', f'/pos-tables/{S}', [{'name': 'T', 'x': 0, 'y': 0, 'w': 1, 'h': 1, 'seats': 0}], T)[0], 400)
 
 # ── 예약 ──
