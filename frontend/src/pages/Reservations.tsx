@@ -1,37 +1,28 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  Box, Typography, Chip, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Button,
-  Alert, CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Stack,
+  Box, Typography, Chip, Paper, Button, CircularProgress, Dialog, DialogTitle, DialogContent, DialogActions,
+  TextField, Stack, useTheme,
 } from '@mui/material';
 import IconifyIcon from '../components/base/IconifyIcon';
+import AlertMessages from '../components/AlertMessages';
 import { useMyStore } from '../hooks/useMyStore';
 import { errorText } from '../services/agentService';
 import { reservationService, Reservation, ReservationStatus, STATUS_LABEL } from '../services/reservationService';
 import { hhmm, localDate } from '../helpers/date';
 
-const STATUS_STYLE: Record<ReservationStatus, { bgcolor: string; color: string; border: string }> = {
-  RESERVED:  { bgcolor: '#EEF4FF', color: '#1976D2', border: '#BBCFFF' },
-  VISITED:   { bgcolor: '#F1F8F5', color: '#1D9E75', border: '#A5D6BC' },
-  CANCELLED: { bgcolor: '#FFF5F5', color: '#E53935', border: '#FFCDD2' },
-};
-
-const StatCard = ({ icon, iconColor, label, value }: { icon: string; iconColor: string; label: string; value: number }) => (
-  <Box sx={{ flex: 1, borderRadius: 3, bgcolor: '#fff', border: '1px solid #E8EAF0', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', p: 2.5, display: 'flex', alignItems: 'center', gap: 2 }}>
-    <Box sx={{ width: 44, height: 44, borderRadius: 2.5, bgcolor: `${iconColor}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-      <IconifyIcon icon={icon} width={22} height={22} color={iconColor} />
-    </Box>
-    <Box>
-      <Typography fontSize={22} fontWeight={800} color="#1A1C1E" lineHeight={1}>{value}</Typography>
-      <Typography fontSize={12} color="#44474E" fontWeight={500} sx={{ mt: 0.3 }}>{label}</Typography>
-    </Box>
-  </Box>
-);
-
 interface Form { customerName: string; phone: string; reservationDate: string; reservationTime: string; guests: string; note: string }
 
+const WEEKDAY = ['일', '월', '화', '수', '목', '금', '토'];
+const dateLabel = (iso: string, today: string) => {
+  const d = new Date(`${iso}T00:00:00`);
+  const base = `${d.getMonth() + 1}월 ${d.getDate()}일 (${WEEKDAY[d.getDay()]})`;
+  return iso === today ? `${base} · 오늘` : base;
+};
+
 const Reservations = ({ user }: any) => {
+  const theme = useTheme();
   const { storeId, storeLoading } = useMyStore(user);
-  const [list, setList] = useState<Reservation[]>([]);
+  const [list, setList] = useState<Reservation[] | null>(null);
   const [filter, setFilter] = useState<ReservationStatus | 'ALL'>('ALL');
   const [form, setForm] = useState<Form | null>(null);
   const [saving, setSaving] = useState(false);
@@ -39,19 +30,30 @@ const Reservations = ({ user }: any) => {
 
   const reload = useCallback(() => {
     if (!storeId) return;
-    reservationService.getByStore(storeId).then(setList).catch(() => setError('예약 목록을 불러오지 못했습니다.'));
+    reservationService.getByStore(storeId)
+      .then(setList)
+      .catch(() => { setList((l) => l ?? []); setError('예약 목록을 불러오지 못했습니다.'); });
   }, [storeId]);
   useEffect(reload, [reload]);
 
-  if (storeLoading) return <Box textAlign="center" py={10}><CircularProgress /></Box>;
-  if (!storeId) return <Alert severity="warning">등록된 가게가 없습니다. 가게를 먼저 등록해주세요.</Alert>;
+  if (storeLoading) return <Stack alignItems="center" py={10}><CircularProgress /></Stack>;
+  if (!storeId) return <AlertMessages error="등록된 가게가 없습니다. 가게를 먼저 등록해주세요." />;
 
+  const rows = list ?? [];
   const today = localDate(new Date());
-  const todayCount = list.filter((r) => r.reservationDate === today && r.status === 'RESERVED').length;
-  const totalCount = list.filter((r) => r.status === 'RESERVED').length;
-  const doneCount  = list.filter((r) => r.status === 'VISITED').length;
-  const filtered = filter === 'ALL' ? list : list.filter((r) => r.status === filter);
-  const FILTERS: Array<ReservationStatus | 'ALL'> = ['ALL', 'RESERVED', 'VISITED', 'CANCELLED'];
+  const todayCount = rows.filter((r) => r.reservationDate === today && r.status === 'RESERVED').length;
+  const waiting = rows.filter((r) => r.status === 'RESERVED').length;
+  const visited = rows.filter((r) => r.status === 'VISITED').length;
+  const cancelled = rows.filter((r) => r.status === 'CANCELLED').length;
+  const filtered = filter === 'ALL' ? rows : rows.filter((r) => r.status === filter);
+
+  // 날짜별 묶음 (API 가 날짜·시간 순으로 준다)
+  const groups: { date: string; items: Reservation[] }[] = [];
+  for (const r of filtered) {
+    const last = groups[groups.length - 1];
+    if (last && last.date === r.reservationDate) last.items.push(r);
+    else groups.push({ date: r.reservationDate, items: [r] });
+  }
 
   const save = async () => {
     if (!form) return;
@@ -76,107 +78,96 @@ const Reservations = ({ user }: any) => {
     }
   };
 
+  const statusColor = (s: ReservationStatus) =>
+    s === 'RESERVED' ? theme.palette.primary.main : s === 'VISITED' ? theme.palette.success.main : theme.palette.text.disabled;
+  const rowSx = { borderTop: `1px solid ${theme.palette.divider}`, '&:first-of-type': { borderTop: 'none' } };
+  const pill = (key: ReservationStatus | 'ALL', label: string) => (
+    <Chip
+      key={key} label={label} onClick={() => setFilter(key)}
+      sx={{
+        height: 34, borderRadius: 999, border: 'none', fontWeight: filter === key ? 700 : 500,
+        bgcolor: filter === key ? 'text.primary' : 'background.default',
+        color: filter === key ? 'common.white' : 'text.secondary',
+        '&:hover': { bgcolor: filter === key ? 'text.primary' : 'divider' },
+        '& .MuiChip-label': { fontSize: 14 },
+      }}
+    />
+  );
+
   return (
-    <Box sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
-      {/* 헤더 */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
-        <Box sx={{ width: 40, height: 40, borderRadius: 2.5, bgcolor: '#EEF4FF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <IconifyIcon icon="mingcute:calendar-2-line" width={22} height={22} color="#1976D2" />
-        </Box>
+    <Stack gap={5}>
+      {/* 큰 숫자 요약 */}
+      <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'flex-end' }} gap={3}>
         <Box>
-          <Typography fontWeight={800} fontSize={20} color="#1A1C1E">예약 현황</Typography>
-          <Typography fontSize={12} color="#44474E">최근 30일부터의 예약을 확인하고 관리하세요</Typography>
+          <Typography color="text.secondary" fontSize={15} mb={1}>오늘 예약</Typography>
+          <Typography fontSize={{ xs: 30, md: 36 }} fontWeight={700} lineHeight={1.2}>
+            {list === null ? '-' : `${todayCount}건`}
+          </Typography>
+          {list !== null && (
+            <Typography fontSize={15} color="text.secondary" mt={1}>
+              앞으로 방문할 예약 <Box component="span" color="primary.main" fontWeight={700}>{waiting}건</Box> · 방문 완료 {visited}건
+            </Typography>
+          )}
         </Box>
-        <Button variant="contained" startIcon={<IconifyIcon icon="mingcute:add-line" />} sx={{ ml: 'auto' }}
+        <Button variant="contained" startIcon={<IconifyIcon icon="mingcute:add-line" width={16} />}
           onClick={() => setForm({ customerName: '', phone: '', reservationDate: today, reservationTime: '18:00', guests: '2', note: '' })}>
           예약 추가
         </Button>
-      </Box>
+      </Stack>
 
-      {error && <Alert severity="error" onClose={() => setError('')} sx={{ mb: 2 }}>{error}</Alert>}
+      <AlertMessages error={error} onClearError={() => setError('')} />
 
-      {/* 통계 카드 */}
-      <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>
-        <StatCard icon="mingcute:calendar-2-line"  iconColor="#1976D2" label="오늘 예약"    value={todayCount} />
-        <StatCard icon="mingcute:time-line"         iconColor="#FF9800" label="전체 대기 중" value={totalCount} />
-        <StatCard icon="mingcute:check-circle-fill" iconColor="#1D9E75" label="방문 완료"   value={doneCount} />
-      </Box>
+      <Paper sx={{ p: { xs: 3, md: 5 } }}>
+        <Stack direction="row" gap={1} mb={2} flexWrap="wrap">
+          {pill('ALL', `전체 ${rows.length}`)}
+          {pill('RESERVED', `${STATUS_LABEL.RESERVED} ${waiting}`)}
+          {pill('VISITED', `${STATUS_LABEL.VISITED} ${visited}`)}
+          {pill('CANCELLED', `${STATUS_LABEL.CANCELLED} ${cancelled}`)}
+        </Stack>
 
-      {/* 필터 */}
-      <Box sx={{ display: 'flex', gap: 1, mb: 2.5, flexWrap: 'wrap' }}>
-        {FILTERS.map((f) => (
-          <Button
-            key={f}
-            size="small"
-            onClick={() => setFilter(f)}
-            sx={{
-              borderRadius: 99,
-              px: 2,
-              py: 0.6,
-              fontSize: 12,
-              fontWeight: 600,
-              textTransform: 'none',
-              bgcolor: filter === f ? '#1976D2' : '#F4F6F8',
-              color: filter === f ? '#fff' : '#44474E',
-              border: '1px solid',
-              borderColor: filter === f ? '#1976D2' : '#E8EAF0',
-              '&:hover': { bgcolor: filter === f ? '#1565C0' : '#EAECEF' },
-            }}
-          >
-            {f === 'ALL' ? '전체' : STATUS_LABEL[f]}
-          </Button>
+        {list === null ? (
+          <Stack alignItems="center" py={8}><CircularProgress /></Stack>
+        ) : groups.length === 0 ? (
+          <Stack alignItems="center" py={8} gap={1}>
+            <IconifyIcon icon="mingcute:calendar-2-line" color={theme.palette.text.disabled} width={44} />
+            <Typography color="text.secondary" fontWeight={600}>
+              {rows.length === 0 ? '예약이 없습니다.' : '해당 상태의 예약이 없습니다.'}
+            </Typography>
+            {rows.length === 0 && <Typography variant="body2" color="text.secondary">'예약 추가'로 전화·방문 예약을 등록하세요.</Typography>}
+          </Stack>
+        ) : groups.map((g) => (
+          <Box key={g.date} sx={{ '& + &': { mt: 4 } }}>
+            <Typography fontSize={14} fontWeight={700} color={g.date === today ? 'primary.main' : 'text.secondary'} mb={0.5}>
+              {dateLabel(g.date, today)}
+            </Typography>
+            {g.items.map((r) => (
+              <Stack key={r.id} direction="row" alignItems="center" gap={3}
+                sx={{ py: 2.5, ...rowSx, opacity: r.status === 'CANCELLED' ? 0.5 : 1 }}>
+                <Typography fontWeight={700} fontSize={17} sx={{ width: 56, flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>
+                  {hhmm(r.reservationTime)}
+                </Typography>
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                  <Typography fontWeight={600} fontSize={15} noWrap>
+                    {r.customerName} <Box component="span" fontWeight={700}>{r.guests}명</Box>
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" noWrap>
+                    {[r.phone, r.note].filter(Boolean).join(' · ') || '연락처·메모 없음'}
+                  </Typography>
+                </Box>
+                <Typography fontWeight={700} fontSize={14} sx={{ color: statusColor(r.status), whiteSpace: 'nowrap' }}>
+                  {STATUS_LABEL[r.status]}
+                </Typography>
+                {r.status === 'RESERVED' && (
+                  <Stack direction="row" gap={1}>
+                    <Button size="small" variant="text" color="error" onClick={() => setStatus(r, 'CANCELLED')}>취소</Button>
+                    <Button size="small" onClick={() => setStatus(r, 'VISITED')}>방문완료</Button>
+                  </Stack>
+                )}
+              </Stack>
+            ))}
+          </Box>
         ))}
-      </Box>
-
-      {/* 테이블 */}
-      <TableContainer component={Paper} sx={{ borderRadius: 3, boxShadow: '0 2px 12px rgba(0,0,0,0.06)', border: '1px solid #E8EAF0' }}>
-        <Table>
-          <TableHead>
-            <TableRow sx={{ bgcolor: '#F8F9FA' }}>
-              {['예약자', '연락처', '날짜', '시간', '인원', '상태', '메모', ''].map((h) => (
-                <TableCell key={h} sx={{ fontWeight: 700, fontSize: 12, color: '#44474E', borderBottom: '1px solid #E8EAF0', py: 1.5 }}>{h}</TableCell>
-              ))}
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {filtered.map((r) => {
-              const s = STATUS_STYLE[r.status];
-              return (
-                <TableRow key={r.id} sx={{ '&:hover': { bgcolor: '#F8FAFF' }, '&:last-child td': { borderBottom: 0 } }}>
-                  <TableCell sx={{ fontWeight: 700, fontSize: 13, color: '#1A1C1E', py: 1.5 }}>{r.customerName}</TableCell>
-                  <TableCell sx={{ fontSize: 12, color: '#44474E', py: 1.5 }}>{r.phone || '-'}</TableCell>
-                  <TableCell sx={{ fontSize: 12, color: '#44474E', py: 1.5 }}>{r.reservationDate}</TableCell>
-                  <TableCell sx={{ fontSize: 13, fontWeight: 600, color: '#1A1C1E', py: 1.5 }}>{hhmm(r.reservationTime)}</TableCell>
-                  <TableCell sx={{ fontSize: 13, fontWeight: 600, color: '#1A1C1E', py: 1.5 }}>{r.guests}명</TableCell>
-                  <TableCell sx={{ py: 1.5 }}>
-                    <Chip
-                      label={STATUS_LABEL[r.status]}
-                      size="small"
-                      sx={{ bgcolor: s.bgcolor, color: s.color, border: `1px solid ${s.border}`, fontWeight: 700, fontSize: 11, height: 22 }}
-                    />
-                  </TableCell>
-                  <TableCell sx={{ fontSize: 12, color: '#8E9199', py: 1.5 }}>{r.note || '-'}</TableCell>
-                  <TableCell sx={{ py: 1, whiteSpace: 'nowrap' }} align="right">
-                    {r.status === 'RESERVED' && (
-                      <>
-                        <Button size="small" variant="text" onClick={() => setStatus(r, 'VISITED')}>방문완료</Button>
-                        <Button size="small" variant="text" color="error" onClick={() => setStatus(r, 'CANCELLED')}>취소</Button>
-                      </>
-                    )}
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-            {filtered.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={8} sx={{ textAlign: 'center', py: 5, color: '#8E9199', fontSize: 13 }}>
-                  {list.length === 0 ? "예약이 없습니다. '예약 추가'로 등록하세요." : '해당 상태의 예약이 없습니다'}
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
+      </Paper>
 
       <Dialog open={form != null} onClose={() => setForm(null)} fullWidth maxWidth="xs">
         <DialogTitle>예약 추가</DialogTitle>
@@ -205,7 +196,7 @@ const Reservations = ({ user }: any) => {
           </Button>
         </DialogActions>
       </Dialog>
-    </Box>
+    </Stack>
   );
 };
 
