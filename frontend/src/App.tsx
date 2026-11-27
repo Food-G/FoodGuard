@@ -6,7 +6,6 @@ import BreakpointsProvider from './providers/BreakpointsProvider';
 import MainLayout from './layouts/main-layout';
 import AuthLayout from './layouts/auth-layout';
 import Dashboard from './pages/Dashboard';
-import Inventory from './pages/Inventory';
 import Ingredients from './pages/Ingredients';
 import SalesEntry from './pages/SalesEntry';
 import SalesHistory from './pages/SalesHistory';
@@ -61,15 +60,11 @@ function App() {
 
             <Route path="/inventory" element={
               <ProtectedRoute role="OWNER">
-                <Inventory user={user} />
-              </ProtectedRoute>
-            } />
-
-            <Route path="/ingredients" element={
-              <ProtectedRoute role="OWNER">
                 <Ingredients user={user} />
               </ProtectedRoute>
             } />
+            {/* 식자재 목록은 재고 현황으로 합쳤다 (예전 주소로 들어와도 같은 화면) */}
+            <Route path="/ingredients" element={<Navigate to="/inventory" replace />} />
 
             <Route path="/orders" element={
               <ProtectedRoute role="OWNER">

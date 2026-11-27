@@ -16,7 +16,6 @@ const OWNER_MENU: MenuGroup[] = [
     desc: '발주부터 입고, 재고까지 한 흐름으로',
     items: [
       { title: '식자재 발주', path: '/orders', icon: 'mingcute:refresh-2-line' },
-      { title: '식자재 목록', path: '/ingredients', icon: 'mdi:carrot' },
       { title: '재고 현황', path: '/inventory', icon: 'mingcute:box-3-line' },
     ],
   },

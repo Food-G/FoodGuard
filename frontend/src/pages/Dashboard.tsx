@@ -68,7 +68,7 @@ const OWNER_HELPERS: Helper[] = [
   { cat: '발주', icon: 'mingcute:refresh-2-line', color: '#1D9E75', q: '부족한 식자재를 주문하고 싶어요!', links: [L('식자재 발주', '/orders'), L('재고 현황', '/inventory')] },
   { cat: '예측', icon: 'mingcute:brain-fill', color: '#6A4BD1', q: '내일 얼마나 팔릴지 알고 싶어요!', links: [L('AI 수요 예측', '/predictions'), L('발주 참모 제안 보기', '/agent-inbox')] },
   { cat: '폐기·기부', icon: 'mingcute:heart-line', color: '#D0457F', q: '버려질 재료를 줄이고 싶어요!', links: [L('폐기 예측 & 기부', '/waste-prediction'), L('기부 이력', '/donations')] },
-  { cat: '메뉴', icon: 'mingcute:fork-spoon-line', color: '#E0803D', q: '메뉴와 레시피를 바꾸고 싶어요!', links: [L('메뉴 관리', '/menus'), L('식자재 목록', '/ingredients')] },
+  { cat: '메뉴', icon: 'mingcute:fork-spoon-line', color: '#E0803D', q: '메뉴와 레시피를 바꾸고 싶어요!', links: [L('메뉴 관리', '/menus'), L('재고 현황', '/inventory')] },
   { cat: 'AI 에이전트', icon: 'mingcute:robot-line', color: '#5468C4', q: 'AI가 무엇을 했는지 궁금해요!', links: [L('AI 에이전트 센터', '/agents'), L('AI 승인함', '/agent-inbox')] },
 ];
 const HQ_HELPERS: Helper[] = [

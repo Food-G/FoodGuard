@@ -4,6 +4,9 @@ export const inventoryService = {
   getByStore: async (storeId: number) => {
     return api.get(`/inventory/${storeId}`);
   },
+  getLots: async (storeId: number) => {
+    return api.get(`/inventory/${storeId}/lots`);
+  },
   create: async (data: any) => {
     return api.post('/inventory', data);
   },
