@@ -67,7 +67,7 @@ function App() {
 
             <Route path="/ingredients" element={
               <ProtectedRoute role="OWNER">
-                <Ingredients />
+                <Ingredients user={user} />
               </ProtectedRoute>
             } />
 

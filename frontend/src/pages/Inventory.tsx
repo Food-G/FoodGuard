@@ -1,10 +1,12 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
-  Typography, Box, Paper, Button, CircularProgress, Stack,
-  useTheme, Chip, TextField, MenuItem, IconButton, Alert,
-  Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  Divider, Dialog, DialogTitle, DialogContent, DialogActions,
+  Typography, Box, Button, CircularProgress, Stack, TextField, MenuItem, IconButton, Alert,
+  Dialog, DialogTitle, DialogContent, DialogActions,
 } from '@mui/material';
+import { useNavigate } from 'react-router-dom';
+import {
+  TOSS, TossPage, TwoColumn, SidePanel, BigStat, Segmented, EmptyState, tossButtonSx, tossSubButtonSx, GroupList, ColumnHeader,
+} from '../components/TossUI';
 import { inventoryService } from '../services/inventoryService';
 import { wasteService } from '../services/wasteService';
 import { storeService } from '../services/storeService';
@@ -22,8 +24,9 @@ const WASTE_REASONS = [
 ];
 
 const Inventory = ({ user }: any) => {
-  const theme = useTheme();
   const confirm = useConfirm();
+  const navigate = useNavigate();
+  const [stockFilter, setStockFilter] = useState<'ALL' | 'URGENT' | 'LOW' | 'OK'>('ALL');
 
   // 재고 현황
   const [rows, setRows] = useState<any[]>([]);
@@ -40,7 +43,6 @@ const Inventory = ({ user }: any) => {
   const [success, setSuccess] = useState('');
 
   // 메뉴-식자재 연결 추가 폼
-  const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ ingredientId: '', qtyPerUnit: '', unit: '' });
   const [submitting, setSubmitting] = useState(false);
 
@@ -93,7 +95,6 @@ const Inventory = ({ user }: any) => {
 
   const handleSelectMenu = (menu: any) => {
     setSelectedMenu(menu);
-    setShowForm(false);
     setForm({ ingredientId: '', qtyPerUnit: '', unit: '' });
     setError('');
     setSuccess('');
@@ -114,7 +115,6 @@ const Inventory = ({ user }: any) => {
       });
       setSuccess('식자재가 추가되었습니다.');
       setForm({ ingredientId: '', qtyPerUnit: '', unit: '' });
-      setShowForm(false);
       await loadMenuIngredients(selectedMenu.id);
     } catch {
       setError('식자재 추가에 실패했습니다.');
@@ -177,225 +177,180 @@ const Inventory = ({ user }: any) => {
     setForm((prev) => ({ ...prev, ingredientId, unit: toRecipeUnit(ing?.unit ?? '') }));
   };
 
-  // 재고 긴급도: 현재고 / 최소임계치 비율로 판단 (낮을수록 급함)
+  // 재고 긴급도: 현재고 / 최소 보유량 비율 (par 기준 3단계: 긴급·부족·충분)
   const urgencyOf = (q: number, min: number) => {
     const ratio = min > 0 ? q / min : (q <= 0 ? 0 : 99);
-    if (q <= 0 || ratio <= 1) return { level: '긴급', color: theme.palette.error.main, sort: ratio - (q <= 0 ? 1 : 0) };
-    if (ratio <= 2) return { level: '부족', color: theme.palette.warning.main, sort: ratio };
-    return { level: '충분', color: theme.palette.success.main, sort: ratio };
+    if (q <= 0 || ratio <= 1) return { key: 'URGENT', level: '긴급', color: TOSS.red, sort: ratio - (q <= 0 ? 1 : 0) };
+    if (ratio <= 2) return { key: 'LOW', level: '부족', color: '#F59F00', sort: ratio };
+    return { key: 'OK', level: '충분', color: TOSS.green, sort: ratio };
   };
   // 급한(현재고 적은) 순으로 상단 정렬
   const sortedRows = [...rows].sort((a, b) => urgencyOf(a.quantity, a.minThreshold).sort - urgencyOf(b.quantity, b.minThreshold).sort);
+  const countOf = (k: string) => rows.filter((r) => urgencyOf(r.quantity, r.minThreshold).key === k).length;
+  const shownRows = sortedRows.filter((r) => stockFilter === 'ALL' || urgencyOf(r.quantity, r.minThreshold).key === stockFilter);
+  const urgent = countOf('URGENT');
+  const fmtQty = (v: number, unit: string) => `${unit === '개' ? Math.round(v) : Math.round(v * 10) / 10}${unit}`;
+  const fieldSx = { '& .MuiInputBase-root': { borderRadius: '12px', bgcolor: '#FFFFFF' }, '& fieldset': { border: 'none' } };
 
-  return (
-    <Stack gap={4} sx={{ bgcolor: 'background.default' }}>
-      {error && <Alert severity="error" onClose={() => setError('')}>{error}</Alert>}
-      {success && <Alert severity="success" onClose={() => setSuccess('')}>{success}</Alert>}
+  const side = (
+    <SidePanel glow={urgent > 0 ? TOSS.red : TOSS.green}>
+      <BigStat label="지금 채워야 할 식자재" value={loadingInventory ? '…' : `${urgent}개`} color={urgent > 0 ? TOSS.red : undefined} />
+      <Typography sx={{ fontSize: 14, color: TOSS.sub, mt: 0.75 }}>
+        {loadingInventory ? '' : urgent > 0 ? '최소 보유량보다 적거나 다 떨어졌어요.' : '모든 식자재가 최소 보유량 이상이에요.'}
+      </Typography>
 
-      {/* 메뉴별 식자재 구성 */}
-      <Paper sx={{ p: 3, border: `1px solid ${theme.palette.divider}`, borderRadius: '10px' }}>
-        <Typography variant="h6" fontWeight={700} mb={2}>메뉴별 식자재 구성</Typography>
+      <Stack direction="row" gap={1} mt={3}>
+        <Button variant="contained" onClick={() => navigate('/orders')} startIcon={<IconifyIcon icon="mingcute:sparkles-line" width={18} />}
+          sx={{ ...tossButtonSx, py: 1.1, fontSize: 15, flex: 1 }}>
+          발주하러 가기
+        </Button>
+        <Button onClick={() => navigate('/waste-prediction')} sx={{ ...tossSubButtonSx, py: 1.1, fontSize: 15, flex: 1, bgcolor: '#FFFFFF' }}>
+          폐기 예측
+        </Button>
+      </Stack>
+      <Button variant="text" size="small" onClick={handleClearInventory} disabled={rows.length === 0}
+        sx={{ mt: 1.5, color: TOSS.sub, bgcolor: 'transparent', boxShadow: 'none', fontWeight: 600, '&:hover': { color: TOSS.red, bgcolor: 'transparent' } }}>
+        전체 재고 비우기
+      </Button>
+    </SidePanel>
+  );
 
-        {/* 메뉴 선택 버튼 */}
-        <Stack direction="row" gap={1} flexWrap="wrap" mb={2.5}>
-          {menus.length === 0 ? (
-            <Typography variant="body2" color="text.secondary">등록된 메뉴가 없습니다.</Typography>
-          ) : (
-            menus.map((menu) => (
-              <Chip
-                key={menu.id}
-                label={menu.menuName}
-                onClick={() => handleSelectMenu(menu)}
-                color={selectedMenu?.id === menu.id ? 'primary' : 'default'}
-                variant={selectedMenu?.id === menu.id ? 'filled' : 'outlined'}
-                sx={{ fontWeight: selectedMenu?.id === menu.id ? 700 : 400, cursor: 'pointer' }}
-              />
-            ))
-          )}
-        </Stack>
+  const main = (
+    <Box>
+      {error && <Alert severity="error" sx={{ borderRadius: '12px', mb: 2 }} onClose={() => setError('')}>{error}</Alert>}
+      {success && <Alert severity="success" sx={{ borderRadius: '12px', mb: 2 }} onClose={() => setSuccess('')}>{success}</Alert>}
 
-        {/* 선택된 메뉴의 식자재 목록 */}
-        {selectedMenu && (
-          <>
-            <Divider sx={{ mb: 2 }} />
-            <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1.5}>
-              <Typography variant="subtitle1" fontWeight={700}>
-                {selectedMenu.menuName} 식자재 목록
-              </Typography>
-              <Button
-                size="small"
-                variant="outlined"
-                startIcon={<IconifyIcon icon="mingcute:add-line" />}
-                onClick={() => setShowForm((v) => !v)}
-              >
-                식자재 추가
-              </Button>
-            </Stack>
-
-            {/* 추가 폼 */}
-            {showForm && (
-              <Box
-                component="form"
-                onSubmit={handleAddIngredient}
-                sx={{ p: 2, mb: 2, bgcolor: 'action.hover', borderRadius: 2 }}
-              >
-                <Stack direction={{ xs: 'column', sm: 'row' }} gap={1.5} alignItems="flex-end">
-                  <TextField
-                    select label="식자재 선택" size="small" required
-                    value={form.ingredientId}
-                    onChange={(e) => handleIngredientSelect(e.target.value)}
-                    sx={{ minWidth: 160 }}
-                  >
-                    {allIngredients.map((ing) => (
-                      <MenuItem key={ing.id} value={String(ing.id)}>
-                        {ing.name} ({ing.unit})
-                      </MenuItem>
-                    ))}
-                  </TextField>
-                  <TextField
-                    label="1개당 사용량" size="small" type="number" required
-                    value={form.qtyPerUnit}
-                    onChange={(e) => setForm((p) => ({ ...p, qtyPerUnit: e.target.value }))}
-                    sx={{ width: 140 }}
-                    inputProps={{ step: '0.01', min: '0' }}
-                  />
-                  {form.unit && (
-                    <Chip label={form.unit} size="small" color="primary" variant="outlined"
-                      sx={{ height: 40, px: 0.5, fontSize: 13, fontWeight: 700 }} />
+      <Typography sx={{ fontSize: 20, fontWeight: 800, color: TOSS.text, mb: 1.5, letterSpacing: '-0.02em' }}>재고 현황</Typography>
+      <Segmented value={stockFilter} onChange={setStockFilter} options={[
+        { value: 'ALL', label: `전체 ${rows.length}` },
+        { value: 'URGENT', label: `긴급 ${urgent}` },
+        { value: 'LOW', label: `부족 ${countOf('LOW')}` },
+        { value: 'OK', label: `충분 ${countOf('OK')}` },
+      ]} />
+      <Box mt={1.5}>
+        {loadingInventory ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}><CircularProgress /></Box>
+        ) : shownRows.length === 0 ? (
+          <EmptyState icon="mingcute:box-3-line"
+            title={rows.length === 0 ? '등록된 재고가 없어요' : '이 상태의 식자재가 없어요'}
+            desc={rows.length === 0 ? '발주한 식자재를 검수하면 재고가 생겨요.' : undefined} />
+        ) : (
+        <GroupList header={<ColumnHeader left="식자재" right="재고" actionWidth={56} />}>
+        {shownRows.map((row) => {
+          const u = urgencyOf(row.quantity, row.minThreshold);
+          return (
+            <Stack key={row.id} className="group-row" direction="row" alignItems="center" gap={2}
+              sx={{ py: 1.5, '& .row-action': { opacity: { xs: 1, md: 0 }, transition: 'opacity .15s' }, '&:hover .row-action': { opacity: 1 } }}>
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Stack direction="row" alignItems="center" gap={1}>
+                  <Typography noWrap sx={{ fontSize: 16, fontWeight: 600, color: TOSS.text }}>{row.name}</Typography>
+                  {u.key !== 'OK' && (
+                    <Typography sx={{ fontSize: 12, fontWeight: 700, color: u.color, bgcolor: `${u.color}14`, px: 0.75, py: 0.1, borderRadius: '6px' }}>{u.level}</Typography>
                   )}
-                  <Button
-                    type="submit" variant="contained" size="medium"
-                    disabled={submitting}
-                    startIcon={submitting ? <CircularProgress size={14} color="inherit" /> : null}
-                  >
-                    추가
-                  </Button>
-                  <Button size="medium" onClick={() => setShowForm(false)}>취소</Button>
                 </Stack>
+                {row.minThreshold > 0 && (
+                  <Typography sx={{ fontSize: 13, color: TOSS.sub }}>최소 {fmtQty(row.minThreshold, row.unit)}</Typography>
+                )}
               </Box>
-            )}
-
-            {/* 식자재 테이블 */}
-            {loadingMI ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
-                <CircularProgress size={24} />
-              </Box>
-            ) : menuIngredients.length === 0 ? (
-              <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
-                등록된 식자재가 없습니다. "식자재 추가" 버튼으로 연결하세요.
+              <Typography sx={{ width: 110, textAlign: 'right', fontSize: 16, fontWeight: 700, color: u.key === 'OK' ? TOSS.text : u.color, flexShrink: 0 }}>
+                {fmtQty(row.quantity, row.unit)}
               </Typography>
-            ) : (
-              <TableContainer>
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>식자재명</TableCell>
-                      <TableCell align="right">1개당 사용량</TableCell>
-                      <TableCell>단위</TableCell>
-                      <TableCell align="center">삭제</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {menuIngredients.map((mi) => (
-                      <TableRow key={mi.id} hover>
-                        <TableCell><Typography variant="body2" fontWeight={600}>{mi.ingredient.name}</Typography></TableCell>
-                        <TableCell align="right">
-                          <Typography fontWeight={700} color="primary.main">{mi.qtyPerUnit}</Typography>
-                        </TableCell>
-                        <TableCell>{mi.unit}</TableCell>
-                        <TableCell align="center">
-                          <IconButton size="small" color="error" onClick={() => handleDelete(mi.id)}>
-                            <IconifyIcon icon="mingcute:delete-2-line" width={18} />
-                          </IconButton>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            )}
-          </>
+              <Box sx={{ width: 56, textAlign: 'right', flexShrink: 0 }}>
+                <Button className="row-action" size="small" disabled={row.quantity <= 0} onClick={() => setWasteTarget(row)}
+                  sx={{ borderRadius: '8px', px: 1.25, py: 0.25, minWidth: 0, fontSize: 13, fontWeight: 700, bgcolor: TOSS.bg, color: TOSS.sub,
+                    '&:hover': { bgcolor: '#FFF0F1', color: TOSS.red } }}>
+                  폐기
+                </Button>
+              </Box>
+            </Stack>
+          );
+        })}
+        </GroupList>
+        )}
+      </Box>
+
+      {/* 메뉴별 식자재 구성 (레시피) */}
+      <Box sx={{ mt: 5, pt: 4, backgroundImage: `linear-gradient(90deg, transparent, ${TOSS.line} 18%, ${TOSS.line} 82%, transparent)`, backgroundSize: '100% 1px', backgroundRepeat: 'no-repeat' }}>
+        <Typography sx={{ fontSize: 20, fontWeight: 800, color: TOSS.text, mb: 0.5, letterSpacing: '-0.02em' }}>메뉴별 식자재 구성</Typography>
+        <Typography sx={{ fontSize: 14, color: TOSS.sub, mb: 1.5 }}>메뉴 하나에 들어가는 식자재와 양이에요. 판매하면 이만큼 재고에서 빠져요.</Typography>
+        {menus.length === 0 ? (
+          <Typography sx={{ fontSize: 14, color: TOSS.sub }}>등록된 메뉴가 없습니다.</Typography>
+        ) : (
+          <Stack direction="row" gap={1} flexWrap="wrap" mb={1.5}>
+            {menus.map((menu) => {
+              const on = selectedMenu?.id === menu.id;
+              return (
+                <Button key={menu.id} onClick={() => handleSelectMenu(menu)}
+                  sx={{ borderRadius: '12px', px: 1.75, py: 0.75, fontSize: 14, fontWeight: on ? 700 : 500,
+                    color: on ? '#fff' : TOSS.text, background: on ? 'linear-gradient(135deg, #22B286, #1D9E75)' : TOSS.bg,
+                    '&:hover': { background: on ? undefined : 'rgba(15,30,50,0.08)' } }}>
+                  {menu.menuName}
+                </Button>
+              );
+            })}
+          </Stack>
         )}
 
         {!selectedMenu && menus.length > 0 && (
-          <Typography variant="body2" color="text.secondary">
-            위에서 메뉴를 선택하면 해당 메뉴의 식자재 구성이 표시됩니다.
-          </Typography>        )}
-      </Paper>
-
-      {/* 전체 재고 현황 */}
-      <Paper sx={{ p: 3, border: `1px solid ${theme.palette.divider}`, borderRadius: '10px' }}>
-        <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
-          <Typography variant="h6" fontWeight={700}>전체 재고 현황</Typography>
-          <Button
-            variant="outlined"
-            color="error"
-            startIcon={<IconifyIcon icon="mingcute:delete-2-line" />}
-            onClick={handleClearInventory}
-            sx={{ px: 3, borderRadius: 2 }}
-          >
-            전체 삭제
-          </Button>
-        </Stack>
-        {loadingInventory ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200 }}>
-            <CircularProgress color="primary" />
-          </Box>
-        ) : sortedRows.length === 0 ? (
-          <Typography variant="body2" color="text.secondary" sx={{ py: 3 }}>등록된 재고가 없습니다.</Typography>
-        ) : (
-          // 급한 재고일수록 상단 · 색상으로 긴급도 표현 (스크롤바 숨김)
-          <Box
-            sx={{
-              maxHeight: 480, overflowY: 'auto',
-              scrollbarWidth: 'none', msOverflowStyle: 'none',
-              '&::-webkit-scrollbar': { display: 'none' },
-            }}
-          >
-            <Stack gap={1}>
-              {sortedRows.map((row) => {
-                const u = urgencyOf(row.quantity, row.minThreshold);
-                return (
-                  <Stack
-                    key={row.id}
-                    direction="row"
-                    alignItems="center"
-                    gap={2}
-                    sx={{
-                      p: 1.8, borderRadius: 2,
-                      border: `1px solid ${theme.palette.divider}`,
-                      borderLeft: `5px solid ${u.color}`,
-                      bgcolor: `${u.color}0d`,   // 아주 옅은 긴급도 색 배경
-                    }}
-                  >
-                    <Box sx={{ flex: 1, minWidth: 0 }}>
-                      <Typography fontWeight={700} noWrap>{row.name}</Typography>
-                    </Box>
-                    <Box sx={{ textAlign: 'right' }}>
-                      <Typography fontWeight={800} fontSize={17} sx={{ color: u.color, lineHeight: 1.1 }}>
-                        {row.quantity}<Box component="span" sx={{ fontSize: 12, fontWeight: 500, color: 'text.secondary', ml: 0.3 }}>{row.unit}</Box>
-                      </Typography>
-                      <Typography variant="caption" color="text.disabled">최소 {row.minThreshold}{row.unit}</Typography>
-                    </Box>
-                    <Chip
-                      label={u.level}
-                      size="small"
-                      sx={{ fontWeight: 800, minWidth: 56, color: '#fff', bgcolor: u.color }}
-                    />
-                    <Button size="small" variant="outlined" color="error" disabled={row.quantity <= 0}
-                      onClick={() => setWasteTarget(row)}>
-                      폐기 등록
-                    </Button>
-                  </Stack>
-                );
-              })}
-            </Stack>
-          </Box>
+          <Typography sx={{ fontSize: 14, color: TOSS.sub }}>메뉴를 고르면 들어가는 식자재가 나와요.</Typography>
         )}
-      </Paper>
 
-      <Dialog open={!!wasteTarget} onClose={() => setWasteTarget(null)} maxWidth="xs" fullWidth>
-        <DialogTitle>폐기 등록 — {wasteTarget?.name}</DialogTitle>
+        {selectedMenu && (
+          <>
+            {loadingMI ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}><CircularProgress size={24} /></Box>
+            ) : menuIngredients.length === 0 ? (
+              <Typography sx={{ fontSize: 14, color: TOSS.sub, py: 1.5 }}>아직 연결된 식자재가 없어요. 아래에서 추가해 주세요.</Typography>
+            ) : (
+            <GroupList header={<ColumnHeader left="식자재" right="1개당" actionWidth={56} />}>
+            {menuIngredients.map((mi) => (
+              <Stack key={mi.id} className="group-row" direction="row" alignItems="center" gap={2}
+                sx={{ py: 1, '& .row-action': { opacity: { xs: 1, md: 0 }, transition: 'opacity .15s' }, '&:hover .row-action': { opacity: 1 } }}>
+                <Typography sx={{ flex: 1, fontSize: 15, color: TOSS.text }}>{mi.ingredient.name}</Typography>
+                <Typography sx={{ width: 110, textAlign: 'right', fontSize: 15, fontWeight: 700, color: TOSS.text }}>{mi.qtyPerUnit}{mi.unit}</Typography>
+                <Box sx={{ width: 56, textAlign: 'right' }}>
+                  <IconButton className="row-action" size="small" aria-label={`${mi.ingredient.name} 빼기`} onClick={() => handleDelete(mi.id)}>
+                    <IconifyIcon icon="mingcute:delete-2-line" width={18} color={TOSS.red} />
+                  </IconButton>
+                </Box>
+              </Stack>
+            ))}
+            </GroupList>
+            )}
+
+            <Box component="form" onSubmit={handleAddIngredient} sx={{ mt: 1.5, p: 1.5, borderRadius: '16px', bgcolor: TOSS.bg }}>
+              <Stack direction={{ xs: 'column', sm: 'row' }} gap={1} alignItems={{ xs: 'stretch', sm: 'center' }}>
+                <TextField select size="small" required value={form.ingredientId} sx={{ minWidth: 180, flex: 1, ...fieldSx }}
+                  SelectProps={{ displayEmpty: true }} inputProps={{ 'aria-label': '추가할 식자재' }}
+                  onChange={(e) => handleIngredientSelect(e.target.value)}>
+                  <MenuItem value="" disabled>식자재 선택</MenuItem>
+                  {allIngredients.map((ing) => (
+                    <MenuItem key={ing.id} value={String(ing.id)}>{ing.name} ({ing.unit})</MenuItem>
+                  ))}
+                </TextField>
+                <TextField size="small" type="number" required placeholder="1개당 양" value={form.qtyPerUnit} sx={{ width: { sm: 120 }, ...fieldSx }}
+                  inputProps={{ step: '0.01', min: '0', 'aria-label': '1개당 사용량' }}
+                  InputProps={{ endAdornment: form.unit ? <Typography sx={{ fontSize: 14, color: TOSS.sub }}>{form.unit}</Typography> : undefined }}
+                  onChange={(e) => setForm((p) => ({ ...p, qtyPerUnit: e.target.value }))} />
+                <Button type="submit" variant="contained" disabled={submitting || !form.ingredientId || !form.qtyPerUnit}
+                  sx={{ ...tossButtonSx, py: 0.9, px: 2.5, fontSize: 14 }}>
+                  {submitting ? '추가 중…' : `${selectedMenu.menuName}에 추가`}
+                </Button>
+              </Stack>
+            </Box>
+          </>
+        )}
+      </Box>
+    </Box>
+  );
+
+  return (
+    <TossPage wide>
+      <TwoColumn main={main} side={side} />
+
+      <Dialog open={!!wasteTarget} onClose={() => setWasteTarget(null)} maxWidth="xs" fullWidth
+        PaperProps={{ sx: { borderRadius: TOSS.radius, p: 1, bgcolor: '#FFFFFF', backgroundImage: 'none' } }}>
+        <DialogTitle sx={{ fontWeight: 800 }}>폐기 등록 — {wasteTarget?.name}</DialogTitle>
         <DialogContent>
           <Stack gap={2} pt={1}>
             <Typography variant="body2" color="text.secondary">
@@ -412,14 +367,14 @@ const Inventory = ({ user }: any) => {
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setWasteTarget(null)}>취소</Button>
-          <Button variant="contained" color="error" onClick={handleWaste}
-            disabled={!(Number(wasteForm.quantity) > 0)}>
+          <Button onClick={() => setWasteTarget(null)} sx={{ ...tossSubButtonSx, py: 1, px: 3, fontSize: 15 }}>취소</Button>
+          <Button variant="contained" onClick={handleWaste} disabled={!(Number(wasteForm.quantity) > 0)}
+            sx={{ ...tossButtonSx, py: 1, px: 3, fontSize: 15, backgroundImage: 'linear-gradient(135deg, #F25C68, #F04452)' }}>
             폐기 등록
           </Button>
         </DialogActions>
       </Dialog>
-    </Stack>
+    </TossPage>
   );
 };
 

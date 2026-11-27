@@ -64,7 +64,8 @@ export const BigStat = ({ label, value, color }: { label: string; value: ReactNo
 export const Segmented = <T extends string>({ options, value, onChange }: {
   options: { value: T; label: string }[]; value: T | ''; onChange: (v: T) => void;
 }) => (
-  <Stack direction="row" sx={{ bgcolor: TOSS.bg, backdropFilter: 'blur(8px)', borderRadius: '14px', p: 0.5, gap: 0.5, overflowX: 'auto' }}>
+  <Stack direction="row" sx={{ bgcolor: TOSS.bg, backdropFilter: 'blur(8px)', borderRadius: '14px', p: 0.5, gap: 0.5, overflowX: 'auto',
+    scrollbarWidth: 'none', '&::-webkit-scrollbar': { display: 'none' } }}>
     {options.map((o) => {
       const on = o.value === value;
       return (
@@ -228,3 +229,24 @@ export const StackedBar = ({ parts }: { parts: { value: number; color: string; l
     </Box>
   );
 };
+
+// 묶음 목록 (iOS 설정 화면처럼): 옅은 반투명 면 안에 행을 넣고, 행 사이는 안쪽으로 들어간 얇은 선
+export const GroupList = ({ children, header }: { children: ReactNode; header?: ReactNode }) => (
+  <Box sx={{ bgcolor: 'rgba(15, 30, 50, 0.028)', borderRadius: '18px', px: 2, py: 0.5,
+    boxShadow: 'inset 0 0 0 1px rgba(15, 30, 50, 0.04)',
+    '& > .group-row + .group-row': { borderTop: `1px solid ${TOSS.line}` } }}>
+    {header && (
+      <Box sx={{ py: 1, borderBottom: `1px solid ${TOSS.line}` }}>{header}</Box>
+    )}
+    {children}
+  </Box>
+);
+
+// 목록 위의 작은 열 머리 (오른쪽 숫자 열 이름)
+export const ColumnHeader = ({ left, right, rightWidth = 110, actionWidth = 0 }: { left: string; right: string; rightWidth?: number; actionWidth?: number }) => (
+  <Stack direction="row" gap={2}>
+    <Typography sx={{ flex: 1, fontSize: 12, fontWeight: 600, color: TOSS.sub }}>{left}</Typography>
+    <Typography sx={{ width: rightWidth, textAlign: 'right', fontSize: 12, fontWeight: 600, color: TOSS.sub }}>{right}</Typography>
+    {actionWidth > 0 && <Box sx={{ width: actionWidth }} />}
+  </Stack>
+);
