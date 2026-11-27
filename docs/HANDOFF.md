@@ -1,6 +1,6 @@
 # FoodGuard 인계 문서 — 다른 PC·새 세션에서 이어서 하기
 
-> 작성 2026-10-28 · 갱신 2026-11-20 · 기준 브랜치 `jihwan` (`hyeon` 과 같은 커밋, origin: `Food-G/FoodGuard`)
+> 작성 2026-10-28 · 갱신 2026-11-20 · 기준 브랜치 `jihwan` (`hyeon`·`dev` 와 같은 커밋, origin: `Food-G/FoodGuard`)
 > Claude Code 는 이전 대화·세션 기록·로컬 메모리를 보지 못한다. 이어서 할 때 필요한 맥락은 이 문서,
 > `CLAUDE.md`(자동 로드), `ai-service/PROJECT_STATUS.md`(근거·수치 상세) 세 곳에 둔다.
 > 새 세션 시작 프롬프트 예: **"CLAUDE.md 와 docs/HANDOFF.md 를 읽고 남은 작업 1번부터 진행해줘"**
@@ -51,6 +51,16 @@
 - LSTM·Prophet: 데이터 규모상 이득이 작다는 것이 M5·Montero-Manso & Hyndman 결론. 넣는다면 베이스라인으로만
 - 상권 데이터: 행정동·분기 단위라 일 단위 메뉴 예측 기여가 작음
 
+### dev 병합·의존성 보안 (2026-11-20 오후)
+
+- **jhy PR #1 → dev 병합분을 hyeon 에 병합** (`6c3598f`, 충돌 없음): 전 화면 새 디자인(숲 초록 테마·Square 리포트 스타일), PWA(매장 태블릿·휴대폰 홈 화면 설치, `vite-plugin-pwa`), 레시피 AI 초안(`POST /api/menu-ingredients/menu/{menuId}/draft` → AI `/api/recipes/draft`, 저장은 점주 확인 후), 기상청 로그 API 키 가림, 윈도우 claude CLI 실행 수정. 새 SQL 없음
+- **백엔드 의존성** (`31b462a`): Spring Boot 3.5.13 → 3.5.16, `ext['tomcat.version']=10.1.62`, `ext['jackson-bom.version']=2.21.8`. OSV 조회로 runtime 취약점 65건(critical 10) → 3건
+  - 남은 3건: spring-webmvc 6.2.x 의 XsltView·SSE fragment(둘 다 미사용, 수정은 7.0.9 = Boot 4 필요), log4j-api 2.24.3(로깅은 logback). Boot 3.5.x 새 패치가 나오면 두 `ext` 줄은 Boot 관리 버전이 더 높아질 때 지운다
+- **프론트** (`53e1f3f`): `workbox-build` 7.3.0 → 7.4.1 (serialize-javascript high 해결). `npm audit` moderate 3건 남음: workbox-build 7.4.1 의 glob 11·minimatch (빌드 시에만 사용, 최신 버전이라 더 올릴 수 없음). JHY 가 고정한 버전을 바꿨으니 알릴 것
+- **GitHub Dependabot 102건**: 대부분 dev 에 남아 있던 `sample/`(10/30 삭제)과 예전 lock 파일 기준. 11/20 dev 반영 후 재검사로 줄어드는지 Security 탭에서 확인. Dependabot 은 Gradle 을 잡지 않으므로 백엔드는 위처럼 OSV 로 따로 본다
+- dev·hyeon·jihwan 모두 `53e1f3f` 이후 같은 커밋. 위 점검(5절 수치)은 서버 3개 재시작 후 이 커밋 기준
+- **배포 전**: EC2 에서 Docker 이미지를 다시 빌드해 Boot 3.5.16·PWA 빌드가 되는지 확인 (이 PC 에 Docker 없음, 11/13 이후 미확인). 운영 DB 의 11/20 SQL 2개 적용 여부도 그대로 확인 필요
+
 ### hyeon 병합·직원·예약 (2026-11-13 ~ 11-20)
 
 - **hyeon → jihwan 병합** (`6e548ef`): 직원 관리·PIN 출퇴근·주휴수당(`/staff`, `/clock`), POS 좌석 수·배치 저장, 홈 화면, 예약·매출 통계, 대시보드 오늘 매출 요약(`/api/sales/{storeId}/today-summary`). 병합하면서 오늘 매출을 `COALESCE(unit_price, 메뉴 가격)` 으로 바꿔 할인 판매가 반영됨
@@ -61,8 +71,8 @@
 - **미사용 코드**: `pages/admin/AdminDashboard.tsx` 는 10/30 정리에서 지웠다가 11/06 프론트 복원으로 되살아나 11/20 다시 삭제 (`59ad3a0`). 백엔드 `GET /api/sales/all-stores/weekly-summary` 는 이제 프론트 호출처가 없다 (`qa_smoke.py` 만 점검, 지울지 결정 필요)
 - **배포 전 필수**: 운영 DB(`ddl-auto=none`)에 `backend/src/main/resources/db/2026-11-20_staff_pos.sql`, `2026-11-20_reservation.sql` 실행 (`docs/DEPLOY.md` 스키마 절)
   - 공유 TiDB(`foodguard`): 2026-11-20 확인, 5개 테이블 모두 있음 (`EMPLOYEE`·`EMPLOYEE_SCHEDULE`·`ATTENDANCE`·`POS_TABLE` 은 11/13 개발 bootRun 으로 이미 생성, `RESERVATION` 은 11/20 SQL 로 생성). 컬럼은 SQL 과 일치
-  - EC2 운영 서버가 다른 DB 를 쓰면 그쪽은 따로 확인할 것. 예약 API 실제 동작(`qa_smoke.py`)은 아직 미확인
-- `qa_smoke.py` 에 직원·스케줄·출퇴근·주간 급여·좌석·예약·오늘 매출 항목 추가 (`ef4b8a6`, `9a149f9`). 추가 후 전체 실행은 아직 안 했다
+  - EC2 운영 서버가 다른 DB 를 쓰면 그쪽은 따로 확인할 것. 예약 API 실제 동작은 `qa_smoke.py` 로 확인함 (2026-11-20, 공유 DB)
+- `qa_smoke.py` 에 직원·스케줄·출퇴근·주간 급여·좌석·예약·오늘 매출 항목 추가 (`ef4b8a6`, `9a149f9`). 2026-11-20 전체 실행 174개 통과 (`check()` 묶음 기대값 비교 오류 수정 `c401f82`)
 
 ### 배포 전 남은 것 (2026-10-30 점검, PROJECT_STATUS 13절)
 
@@ -76,7 +86,7 @@
 
 ### 전 기능 점검·배포 준비 (2026-11-06, PROJECT_STATUS 20절)
 
-- `python qa_smoke.py run` (ai-service): 133개 항목 전 기능 점검, 끝나면 `python qa_smoke.py cleanup`
+- `python qa_smoke.py run` (ai-service): 176개 항목 전 기능 점검, 끝나면 `python qa_smoke.py cleanup`
 - 배포 절차는 `docs/DEPLOY.md`. Docker 구성은 2026-11-13 EC2 에서 실행 확인 (`e42d4ac`)
 - 다른 PC: `pip install -r requirements.txt`, `npm install --legacy-peer-deps` 다시 실행 (React Router 7, ECharts 6 등)
 
@@ -136,11 +146,11 @@
 
 | 확인 | 명령 (위치) | 기대값 |
 |---|---|---|
-| AI 단위 테스트 | `python -m pytest tests` (ai-service) | 57 passed (2026-11-20) |
-| 백엔드 단위 테스트 | `gradlew.bat test --tests "com.foodguard.service.*" --tests "com.foodguard.security.*"` (backend) | BUILD SUCCESSFUL (41개, 2026-11-20) |
-| 전 기능 점검 | `python qa_smoke.py run` (ai-service, 서버 3개 필요, 약 2분) | 133개 통과 (11/06 기준. 11/20 항목 추가 후 미측정) |
+| AI 단위 테스트 | `python -m pytest tests` (ai-service) | 61 passed (2026-11-20) |
+| 백엔드 단위 테스트 | `gradlew.bat test --tests "com.foodguard.service.*" --tests "com.foodguard.security.*"` (backend) | BUILD SUCCESSFUL (42개, 2026-11-20) |
+| 전 기능 점검 | `python qa_smoke.py run` (ai-service, 서버 3개 필요, 약 2분) | 176개 통과 (2026-11-20) |
 | 프론트 타입체크 | `npx tsc --noEmit` (frontend) | 오류 0 |
-| 프론트 빌드·lint | `npm run build`, `npx eslint src` (frontend) | 빌드 통과, lint 오류 0·경고 11 (2026-11-20) |
+| 프론트 빌드·lint | `npm run build`, `npx eslint src` (frontend) | 빌드 통과, lint 오류 0·경고 12 (2026-11-20) |
 | DB 백테스트 | `python backtest.py --db --step 7` (ai-service) | 1,765 평가일, 글로벌 모델 wMAPE **9.2%** / MASE **0.900**, 요일 평균(4주) 9.9% / 0.952, 식자재 7일 커버리지 **56.2%** (평균 잉여율 4.4%, 부족률 3.0%) |
 | 합성 백테스트 | `python backtest.py --synthetic` (ai-service) | 글로벌 모델 14.8% / 0.817 |
 | DB 모델 비교 | `python backtest.py --db --step 7 --compare` (ai-service, 약 15분, requirements-experiment.txt) | XGBoost 9.2% / 0.902, Prophet 9.7% / 0.965, LSTM 12.6% / 1.490 |
