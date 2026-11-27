@@ -84,6 +84,9 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 ### 배포·점검
 절차는 `docs/DEPLOY.md`. 전 기능 점검은 `ai-service` 에서 `python qa_smoke.py run` 후 `cleanup` (시험 계정·매장을 실제 DB 에 만들고 지운다). API 를 바꾸면 항목을 추가한다.
 
+### 작업 보드
+https://claude.ai/artifact/RNRMZgYC3tG78Lc5HJWw81 — 팀 작업 카드 (레인 = git 브랜치). 세션 첫 응답 때 `board-run` 스킬의 "요청 확인"으로 현재 브랜치 레인에 온 실행·재작업 요청을 한두 줄로 먼저 알린다 (작업은 사용자가 원할 때). 커밋 메시지 끝에 `[카드번호]`. 다른 레인에 일을 넘길 때는 "u3 카드에 실행 요청 보내줘"처럼 요청을 보낸다.
+
 ### 실행 순서
 1. AI Service (`ai-service/start.bat`)
 2. Backend (`backend/gradlew.bat bootRun`)
