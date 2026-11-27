@@ -25,6 +25,7 @@ const OWNER_MENU: MenuGroup[] = [
     desc: '판매를 기록하고, 남는 식자재는 이웃과 나눕니다',
     items: [
       { title: '판매 입력', path: '/sales', icon: 'mingcute:chart-line-line' },
+      { title: '판매 내역', path: '/sales/history', icon: 'mingcute:list-check-line' },
       { title: '폐기 예측 & 기부', path: '/waste-prediction', icon: 'mingcute:delete-2-line' },
       { title: '기부 이력', path: '/donations', icon: 'mingcute:heart-line' },
     ],

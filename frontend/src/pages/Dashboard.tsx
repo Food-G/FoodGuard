@@ -64,7 +64,7 @@ const ATTEND = {
 interface Helper { cat: string; icon: string; color: string; q: string; links: MenuLink[] }
 const L = (title: string, path: string): MenuLink => ({ title, path, icon: '' });
 const OWNER_HELPERS: Helper[] = [
-  { cat: '매출', icon: 'mingcute:chart-line-line', color: '#2F7DD1', q: '오늘 얼마나 팔았는지 궁금해요!', links: [L('판매 입력', '/sales'), L('POS 시스템', '/pos')] },
+  { cat: '매출', icon: 'mingcute:chart-line-line', color: '#2F7DD1', q: '오늘 얼마나 팔았는지 궁금해요!', links: [L('판매 입력', '/sales'), L('판매 내역', '/sales/history'), L('POS 시스템', '/pos')] },
   { cat: '발주', icon: 'mingcute:refresh-2-line', color: '#1D9E75', q: '부족한 식자재를 주문하고 싶어요!', links: [L('식자재 발주', '/orders'), L('재고 현황', '/inventory')] },
   { cat: '예측', icon: 'mingcute:brain-fill', color: '#6A4BD1', q: '내일 얼마나 팔릴지 알고 싶어요!', links: [L('AI 수요 예측', '/predictions'), L('발주 참모 제안 보기', '/agent-inbox')] },
   { cat: '폐기·기부', icon: 'mingcute:heart-line', color: '#D0457F', q: '버려질 재료를 줄이고 싶어요!', links: [L('폐기 예측 & 기부', '/waste-prediction'), L('기부 이력', '/donations')] },
@@ -347,7 +347,7 @@ const Dashboard = ({ user }: any) => {
                       <Typography fontWeight={800} fontSize={16} noWrap>{storeName || '오늘의 매장'}</Typography>
                       <Typography fontSize={12} color="text.secondary">{todayLabel} 기준</Typography>
                     </Box>
-                    <MoreButton onClick={() => navigate('/sales')} />
+                    <MoreButton onClick={() => navigate('/sales/history')} />
                   </Stack>
                   {loading ? <Box display="flex" justifyContent="center" py={2}><CircularProgress size={24} /></Box> : (
                     <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1 }}>
@@ -620,7 +620,7 @@ const Dashboard = ({ user }: any) => {
               <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '1.15fr 1fr' }, gap: 2 }}>
                 <Reveal>
                   <Paper elevation={0} sx={{ ...CARD, p: { xs: 2.5, md: 3 }, height: 1 }}>
-                    <CardHead title="매출 현황" more={() => navigate('/sales')} />
+                    <CardHead title="매출 현황" more={() => navigate('/sales/history')} />
                     <Typography fontSize={12.5} color="primary.main" fontWeight={700} sx={{ textDecoration: 'underline', textUnderlineOffset: 4 }}>최근 7일</Typography>
                     <Box sx={{ display: 'flex', alignItems: 'flex-end', gap: { xs: 1, sm: 2 }, height: { xs: 170, md: 210 }, mt: 2, px: { sm: 2 } }}>
                       {week.map((w) => {

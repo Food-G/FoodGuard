@@ -9,6 +9,7 @@ import Dashboard from './pages/Dashboard';
 import Inventory from './pages/Inventory';
 import Ingredients from './pages/Ingredients';
 import SalesEntry from './pages/SalesEntry';
+import SalesHistory from './pages/SalesHistory';
 import Predictions from './pages/Predictions';
 import Orders from './pages/Orders';
 import StoreManagement from './pages/admin/StoreManagement';
@@ -79,6 +80,12 @@ function App() {
             <Route path="/sales" element={
               <ProtectedRoute role="OWNER">
                 <SalesEntry user={user} />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/sales/history" element={
+              <ProtectedRoute role="OWNER">
+                <SalesHistory user={user} />
               </ProtectedRoute>
             } />
 

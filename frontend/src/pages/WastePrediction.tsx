@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import {
-  Typography, Box, Paper, Button, CircularProgress, Stack, useTheme, Alert, Chip,
+  Typography, Box, Button, CircularProgress, Stack, useTheme, Alert,
   Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem,
 } from '@mui/material';
-import { DataGrid, GridColDef } from '@mui/x-data-grid';
+import { useNavigate } from 'react-router-dom';
+import { TOSS, TossPage, BigStat, ListRow, EmptyState, tossButtonSx, tossSubButtonSx, TwoColumn, SidePanel, PanelTitle, BarRow, StackedBar } from '../components/TossUI';
 import { wastePredictionService } from '../services/wastePredictionService';
 import { donationService } from '../services/donationService';
 import IconifyIcon from '../components/base/IconifyIcon';
@@ -22,15 +23,10 @@ const DONATION_TYPES = [
   { value: 'INGREDIENT', label: '식재료 (원재료 기부)' },
 ];
 
-const RISK_CHIP: Record<string, { label: string; color: any }> = {
-  HIGH: { label: '높음', color: 'error' },
-  MEDIUM: { label: '보통', color: 'warning' },
-  LOW: { label: '낮음', color: 'success' },
-};
-
 const WastePrediction = ({ user }: any) => {
   const theme = useTheme();
   const { storeId, storeLoading } = useMyStore(user);
+  const navigate = useNavigate();
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -86,137 +82,104 @@ const WastePrediction = ({ user }: any) => {
     }
   };
 
-  const columns: GridColDef[] = [
-    { field: 'ingredientName', headerName: '식자재', flex: 1, minWidth: 120 },
-    {
-      field: 'currentQty', headerName: '현재 재고', width: 120, align: 'right', headerAlign: 'right',
-      renderCell: (p) => <Typography fontSize={13}>{p.value} <span style={{ color: '#999' }}>{p.row.unit}</span></Typography>,
-    },
-    {
-      field: 'expiryDate', headerName: '유통기한', width: 120,
-      renderCell: (p) => {
-        const days = p.row.daysUntilExpiry;
-        const color = days <= 3 ? 'error' : days <= 7 ? 'warning' : 'default';
-        return <Chip label={p.value} color={color} size="small" variant="outlined" sx={{ fontWeight: 600 }} />;
-      },
-    },
-    {
-      field: 'daysUntilExpiry', headerName: 'D-', width: 80, align: 'center', headerAlign: 'center',
-      renderCell: (p) => (
-        <Typography fontWeight={700} color={p.value <= 3 ? 'error.main' : p.value <= 7 ? 'warning.main' : 'text.primary'}>
-          {p.value < 0 ? '만료' : `D-${p.value}`}
-        </Typography>
-      ),
-    },
-    {
-      field: 'expectedConsumption', headerName: '소비 예상', width: 110, align: 'right', headerAlign: 'right',
-      renderCell: (p) => <Typography fontSize={13}>{p.value} <span style={{ color: '#999' }}>{p.row.unit}</span></Typography>,
-    },
-    {
-      field: 'wastePrediction', headerName: '폐기 예측량', width: 120, align: 'right', headerAlign: 'right',
-      renderCell: (p) => (
-        <Typography fontWeight={700} color={p.value > 0 ? 'error.main' : 'success.main'} fontSize={13}>
-          {p.value > 0 ? `+${p.value}` : p.value} <span style={{ color: '#999', fontWeight: 400 }}>{p.row.unit}</span>
-        </Typography>
-      ),
-    },
-    {
-      field: 'wasteRate', headerName: '폐기율', width: 90, align: 'center', headerAlign: 'center',
-      renderCell: (p) => (
-        <Chip
-          label={`${p.value}%`}
-          size="small"
-          color={p.value > 50 ? 'error' : p.value > 20 ? 'warning' : 'success'}
-          variant="filled"
-          sx={{ fontWeight: 700 }}
-        />
-      ),
-    },
-    {
-      field: 'riskLevel', headerName: '위험도', width: 90, align: 'center', headerAlign: 'center',
-      renderCell: (p) => (
-        <Chip label={RISK_CHIP[p.value]?.label ?? p.value} color={RISK_CHIP[p.value]?.color ?? 'default'} size="small" />
-      ),
-    },
-    {
-      field: 'actions', headerName: '기부', width: 110, sortable: false,
-      // 기한이 오늘이거나 지난 식자재는 기부할 수 없다 (식품 안전)
-      renderCell: (p) => p.row.wastePrediction > 0 && p.row.daysUntilExpiry >= 1 ? (
-        <Button variant="contained" size="small" color="secondary"
-          startIcon={<IconifyIcon icon="mingcute:heart-fill" width={14} />}
-          onClick={() => openDonation(p.row)}
-          sx={{ borderRadius: 2, fontSize: 11 }}>
-          기부 등록
-        </Button>
-      ) : null,
-    },
-  ];
-
+  // 버려질 양이 많은 것부터, 같으면 기한이 급한 것부터
+  const sorted = [...rows].sort((a, b) => (b.wastePrediction - a.wastePrediction) || (a.daysUntilExpiry - b.daysUntilExpiry));
   const wasteItems = rows.filter(r => r.wastePrediction > 0);
+  const dLabel = (d: number) => (d < 0 ? '기한 지남' : d === 0 ? '오늘까지' : `D-${d}`);
+  // 개는 정수, kg·L 는 소수 첫째 자리까지
+  const q = (v: number, unit: string) => `${unit === '개' ? Math.round(v) : Math.round(v * 10) / 10}${unit}`;
 
-  return (
-    <Stack gap={3}>
-      <Stack direction="row" justifyContent="flex-end" gap={1}>
-        <Button variant="contained" startIcon={<IconifyIcon icon="mingcute:robot-line" width={16} />}
-          href="/agent-inbox?agent=waste">
-          에이전트 제안 보기
+  // 기한 긴급도 (식품 폐기 관리 도구들이 쓰는 3단계)
+  const urgent = rows.filter((r) => r.daysUntilExpiry <= 3).length;
+  const soon = rows.filter((r) => r.daysUntilExpiry > 3 && r.daysUntilExpiry <= 7).length;
+  const later = rows.length - urgent - soon;
+  const topWaste = [...wasteItems].sort((a, b) => b.wastePrediction / Math.max(b.currentQty, 1e-9) - a.wastePrediction / Math.max(a.currentQty, 1e-9)).slice(0, 4);
+  const riskColor = wasteItems.length > 0 ? TOSS.red : TOSS.green;
+
+  const side = (
+    <SidePanel glow={riskColor}>
+      <BigStat label="7일 안에 다 못 쓰고 버려질 식자재"
+        value={loading ? '…' : `${wasteItems.length}개`} color={wasteItems.length > 0 ? TOSS.red : undefined} />
+      <Typography sx={{ fontSize: 14, color: TOSS.sub, mt: 0.75 }}>
+        {loading ? '' : wasteItems.length > 0
+          ? '할인 판매나 기부로 줄일 수 있어요. 에이전트가 방법을 먼저 제안해요.'
+          : '지금은 버려질 걱정이 없어요.'}
+      </Typography>
+
+      {!loading && rows.length > 0 && (
+        <>
+          <PanelTitle right={`${rows.length}개 식자재`}>유통기한까지</PanelTitle>
+          <StackedBar parts={[
+            { label: '3일 이내', value: urgent, color: TOSS.red },
+            { label: '7일 이내', value: soon, color: '#F59F00' },
+            { label: '여유', value: later, color: TOSS.green },
+          ]} />
+        </>
+      )}
+
+      {!loading && topWaste.length > 0 && (
+        <>
+          <PanelTitle right="재고 대비">남을 양</PanelTitle>
+          {topWaste.map((r) => (
+            <BarRow key={r.id} label={`${r.ingredientName} · ${dLabel(r.daysUntilExpiry)}`} value={q(r.wastePrediction, r.unit)}
+              ratio={r.currentQty ? r.wastePrediction / r.currentQty : 0} color={TOSS.red} />
+          ))}
+        </>
+      )}
+
+      <Stack direction="row" gap={1} mt={3}>
+        <Button variant="contained" onClick={() => navigate('/agent-inbox?agent=waste')}
+          startIcon={<IconifyIcon icon="mingcute:robot-line" width={18} />} sx={{ ...tossButtonSx, py: 1.1, fontSize: 15, flex: 1 }}>
+          에이전트 제안
         </Button>
-        <Button variant="outlined" startIcon={<IconifyIcon icon="mingcute:history-line" width={16} />}
-          href="/donations">
+        <Button onClick={() => navigate('/donations')} sx={{ ...tossSubButtonSx, py: 1.1, fontSize: 15, flex: 1, bgcolor: '#FFFFFF' }}>
           기부 이력
         </Button>
       </Stack>
+    </SidePanel>
+  );
 
+  const main = (
+    <Box>
       <AlertMessages error={error} success={success}
         onClearError={() => setError('')} onClearSuccess={() => setSuccess('')} />
+      <Typography sx={{ fontSize: 20, fontWeight: 800, color: TOSS.text, mb: 1, letterSpacing: '-0.02em' }}>식자재별 폐기 예측</Typography>
+      {loading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}><CircularProgress /></Box>
+      ) : sorted.length === 0 ? (
+        <EmptyState icon="mingcute:leaf-line" title="유통기한이 있는 재고가 없어요"
+          desc="보관일수가 정해진 식자재가 입고되면 언제 얼마나 버려질지 미리 알려 드려요."
+          action={<Button variant="outlined" sx={{ borderRadius: '12px' }} onClick={() => navigate('/inventory')}>재고 현황 보기</Button>} />
+      ) : sorted.map((r) => {
+        const waste = r.wastePrediction > 0;
+        const color = !waste ? '#1D9E75' : r.riskLevel === 'HIGH' ? TOSS.red : '#F59F00';
+        // 기한이 오늘이거나 지난 식자재는 기부할 수 없다 (식품 안전)
+        const donatable = waste && r.daysUntilExpiry >= 1;
+        return (
+          <ListRow key={r.id} icon={waste ? 'mingcute:alert-line' : 'mingcute:check-circle-line'} iconColor={color}
+            title={r.ingredientName}
+            desc={`${dLabel(r.daysUntilExpiry)} · 재고 ${q(r.currentQty, r.unit)} · 7일 사용 ${q(r.expectedConsumption, r.unit)}`}
+            right={<Typography component="span" sx={{ fontSize: 16, fontWeight: 700, color: waste ? TOSS.red : TOSS.sub }}>
+              {waste ? `${q(r.wastePrediction, r.unit)} 남아요` : '다 쓸 수 있어요'}
+            </Typography>}
+            rightSub={donatable ? (
+              <Button size="small" onClick={() => openDonation(r)}
+                sx={{ mt: 0.5, borderRadius: '8px', px: 1.25, py: 0.25, minWidth: 0, fontSize: 13, fontWeight: 700, bgcolor: '#FFF0F1', color: TOSS.red, '&:hover': { bgcolor: '#FFE3E5' } }}>
+                기부하기
+              </Button>
+            ) : waste ? `폐기율 ${r.wasteRate}%` : undefined} />
+        );
+      })}
+    </Box>
+  );
 
-      {/* 요약 카드 */}
-      {!loading && wasteItems.length > 0 && (
-        <Paper sx={{ p: 2.5, border: `1px solid ${theme.palette.error.light}`, borderRadius: '10px', bgcolor: 'error.50' }}>
-          <Stack direction="row" gap={1} alignItems="center" mb={0.5}>
-            <IconifyIcon icon="mingcute:alert-fill" color={theme.palette.error.main} width={20} />
-            <Typography fontWeight={700} color="error.main">
-              {wasteItems.length}개 식재료 폐기 위험
-            </Typography>
-          </Stack>
-          <Typography variant="body2" color="text.secondary">
-            유통기한 내 소비 예측량보다 재고가 많습니다. 에이전트 제안에서 대응 방법을 확인하세요.
-          </Typography>
-        </Paper>
-      )}
-
-      <Paper sx={{ p: 3, border: `1px solid ${theme.palette.divider}`, borderRadius: '10px' }}>
-        <Typography variant="h6" fontWeight={700} mb={2}>식재료별 폐기 예측</Typography>
-        <Box sx={{ height: !loading && rows.length === 0 ? 240 : 480 }}>
-          {loading ? (
-            <Stack alignItems="center" justifyContent="center" height="100%">
-              <CircularProgress />
-            </Stack>
-          ) : rows.length === 0 ? (
-            <Stack alignItems="center" justifyContent="center" height="100%" gap={1}>
-              <IconifyIcon icon="mingcute:leaf-fill" color={theme.palette.success.main} width={48} />
-              <Typography color="text.secondary" fontWeight={600}>
-                유통기한이 설정된 재고가 없습니다.
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                식자재 보관일수가 설정된 재고가 입고되면 폐기 예측이 활성화됩니다.
-              </Typography>
-            </Stack>
-          ) : (
-            <DataGrid
-              rows={rows}
-              columns={columns}
-              disableRowSelectionOnClick
-              initialState={{ pagination: { paginationModel: { pageSize: 10 } } }}
-              pageSizeOptions={[10, 20]}
-              sx={{ border: 'none' }}
-            />
-          )}
-        </Box>
-      </Paper>
+  return (
+    <TossPage wide>
+      <TwoColumn main={main} side={side} />
 
       {/* 기부 등록 다이얼로그 */}
-      <Dialog open={!!donationTarget} onClose={() => setDonationTarget(null)} maxWidth="sm" fullWidth>
+      <Dialog open={!!donationTarget} onClose={() => setDonationTarget(null)} maxWidth="sm" fullWidth
+        PaperProps={{ sx: { borderRadius: TOSS.radius, p: 1, bgcolor: '#FFFFFF', backgroundImage: 'none', backdropFilter: 'none' } }}>
         <DialogTitle>
           <Stack direction="row" gap={1} alignItems="center">
             <IconifyIcon icon="mingcute:heart-fill" color={theme.palette.secondary.main} width={20} />
@@ -260,15 +223,15 @@ const WastePrediction = ({ user }: any) => {
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDonationTarget(null)}>취소</Button>
-          <Button variant="contained" color="secondary" onClick={handleDonate}
-            disabled={!donationForm.orgName}
-            startIcon={<IconifyIcon icon="mingcute:heart-fill" width={14} />}>
+          <Button variant="text" onClick={() => setDonationTarget(null)}
+            sx={{ ...tossSubButtonSx, py: 1.1, px: 3, fontSize: 15 }}>취소</Button>
+          <Button variant="contained" onClick={handleDonate} disabled={!donationForm.orgName}
+            sx={{ ...tossButtonSx, py: 1.1, px: 3, fontSize: 15 }}>
             기부 등록
           </Button>
         </DialogActions>
       </Dialog>
-    </Stack>
+    </TossPage>
   );
 };
 
