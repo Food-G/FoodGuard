@@ -148,8 +148,8 @@
 | 확인 | 명령 (위치) | 기대값 |
 |---|---|---|
 | AI 단위 테스트 | `python -m pytest tests` (ai-service) | 71 passed (2026-11-20, junho 병합 후) |
-| 백엔드 테스트 | `gradlew.bat test` (backend, 단위 + H2 통합 테스트) | BUILD SUCCESSFUL (170개, 2026-11-20, junho 병합 후) |
-| 전 기능 점검 | `python qa_smoke.py run` (ai-service, 서버 3개 필요, 약 2분) | 223개 통과 (2026-11-20, junho·origin/jihwan 병합 후) |
+| 백엔드 테스트 | `gradlew.bat test` (backend, 단위 + H2 통합 테스트) | BUILD SUCCESSFUL (173개, 2026-11-27) |
+| 전 기능 점검 | `python qa_smoke.py run` (ai-service, 서버 3개 필요, 약 2분) | 230개 통과 (2026-11-27, junho 화면 연결 점검 항목 포함) |
 | 프론트 타입체크 | `npx tsc --noEmit` (frontend) | 오류 0 |
 | 프론트 빌드·lint | `npm run build`, `npx eslint src` (frontend) | 빌드 통과, lint 오류 0·경고 11 (2026-11-20) |
 | DB 백테스트 | `python backtest.py --db --step 7` (ai-service) | 1,765 평가일, 글로벌 모델 wMAPE **9.2%** / MASE **0.900**, 요일 평균(4주) 9.9% / 0.952, 식자재 7일 커버리지 **56.2%** (평균 잉여율 4.4%, 부족률 3.0%) |
