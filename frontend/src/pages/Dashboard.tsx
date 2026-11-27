@@ -5,7 +5,7 @@ import {
 } from '@mui/material';
 import IconifyIcon from '../components/base/IconifyIcon';
 import { CARD_ICON, HqBriefing, TONE, useOwnerBriefing } from '../components/AgentBriefing';
-import heroBg from '../assets/hero-bg.jpg';
+import heroBg from '../assets/hero-bg.svg';
 import { menuFor, MenuLink } from '../layouts/main-layout/menu';
 import { AGENTS } from './AgentCenter';
 import { agentService, AgentProposal, AgentRun } from '../services/agentService';
@@ -46,20 +46,13 @@ const HQ_SLIDES: Slide[] = [
   { eyebrow: 'AI 에이전트', title: '에이전트가 먼저 찾습니다', desc: ['발주 심사·입고 추적·예측 운영을 ', 'AI 에이전트', '가 맡습니다.'], to: '/agents', color: '#6A4BD1' },
 ];
 
-// ── 직원 출퇴근 현황 (예시 데이터: 근태 기능이 생기면 API 로 교체) ──
-const STAFF = [
-  { name: '정태현', role: '매니저', start: '09:00', end: '18:00', clockIn: '08:52', color: '#1D9E75' },
-  { name: '김지환', role: '주방', start: '10:00', end: '19:00', clockIn: '10:07', color: '#2F7DD1' },
-  { name: '지현윤', role: '홀', start: '11:00', end: '20:00', clockIn: '10:55', color: '#D0457F' },
-  { name: '서준호', role: '파트타임', start: '17:00', end: '22:00', clockIn: '16:58', color: '#6A4BD1' },
+// ── 본사: 발주 진행 단계 (발주 관리 화면의 상태 이름과 같게) ──
+const HQ_STAGES = [
+  { key: 'REQUESTED', label: '승인 대기', short: '승인 대기', color: '#E0803D' },
+  { key: 'APPROVED', label: '발송 필요', short: '발송 필요', color: '#2F7DD1' },
+  { key: 'HQ_SENT', label: '배달기사 수령 대기', short: '기사 수령', color: '#6A4BD1' },
+  { key: 'DRIVER_RECEIVED', label: '가맹점주 검수 대기', short: '점주 검수', color: '#1D9E75' },
 ];
-const toMin = (hhmm: string) => { const [h, m] = hhmm.split(':').map(Number); return h * 60 + m; };
-const ATTEND = {
-  before: { label: '출근 전', color: '#7A8194', bg: '#EEF0F4' },
-  working: { label: '근무 중', color: '#1D9E75', bg: '#E3F5EE' },
-  off: { label: '퇴근', color: '#5468C4', bg: '#ECEEFA' },
-};
-
 // ── 자주 쓰는 메뉴 카드 ──
 interface Helper { cat: string; icon: string; color: string; q: string; links: MenuLink[] }
 const L = (title: string, path: string): MenuLink => ({ title, path, icon: '' });
@@ -94,15 +87,6 @@ const Reveal = ({ children, delay = 0 }: { children: ReactNode; delay?: number }
     </Box>
   );
 };
-
-const MoreButton = ({ onClick }: { onClick: () => void }) => (
-  <Stack direction="row" alignItems="center" gap={0.3} onClick={onClick} sx={{
-    cursor: 'pointer', fontSize: 11.5, color: 'text.secondary', px: 1.2, py: 0.3, borderRadius: 9, border: '1px solid', borderColor: 'divider', flexShrink: 0,
-    '&:hover': { color: 'primary.main', borderColor: 'primary.main' },
-  }}>
-    더보기 <IconifyIcon icon="mingcute:add-line" width={12} />
-  </Stack>
-);
 
 // 소식 섹션 카드 머리: 막대 + 제목, 오른쪽에 "1 / 4 ‹ ›"
 const NEWS_BOX = { height: { xs: 280, md: 300 }, borderRadius: '10px', border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper' };
@@ -154,6 +138,26 @@ const IconTile = ({ item, onClick, size = 44 }: { item: MenuLink; onClick: () =>
   </Stack>
 );
 
+// 남색 띠 섹션: 반짝이는 별 + 가운데 제목
+const NavyBand = ({ title, children }: { title: string; children: ReactNode }) => (
+  <Box sx={{ position: 'relative', overflow: 'hidden', background: 'linear-gradient(180deg, #172457 0%, #24366F 60%, #2C3F78 100%)', py: { xs: 7, md: 10 } }}>
+    {Array.from({ length: 28 }).map((_, i) => (
+      <Box key={i} sx={{
+        position: 'absolute', width: i % 3 ? 2 : 3, height: i % 3 ? 2 : 3, borderRadius: '50%', bgcolor: 'common.white',
+        top: `${(i * 37) % 60}%`, left: `${(i * 53) % 100}%`, animation: `${twinkle} ${2 + (i % 4)}s ease-in-out ${i * 0.3}s infinite`,
+      }} />
+    ))}
+    <Box sx={{ ...PAGE, position: 'relative' }}>
+      <Reveal>
+        <Typography textAlign="center" sx={{ color: 'common.white', fontSize: { xs: 22, md: 30 }, fontWeight: 900, letterSpacing: '-0.5px', mb: { xs: 3, md: 5 } }}>
+          {title}
+        </Typography>
+      </Reveal>
+      {children}
+    </Box>
+  </Box>
+);
+
 const Dashboard = ({ user }: any) => {
   const theme = useTheme();
   const navigate = useNavigate();
@@ -180,9 +184,6 @@ const Dashboard = ({ user }: any) => {
   const cur = slides[slide];
 
   const [quickTab, setQuickTab] = useState(0);
-  // 출퇴근 상태는 현재 시각 기준이라 1분마다 다시 계산
-  const [clock, setClock] = useState(() => new Date());
-  useEffect(() => { const t = setInterval(() => setClock(new Date()), 60000); return () => clearInterval(t); }, []);
   const [briefIdx, setBriefIdx] = useState(0);
   const [promoIdx, setPromoIdx] = useState(0);
   const [query, setQuery] = useState('');
@@ -194,12 +195,24 @@ const Dashboard = ({ user }: any) => {
   const [storeId, setStoreId] = useState<number | null>(null);
   const [storeName, setStoreName] = useState('');
   const [today, setToday] = useState<{ revenue: number; qty: number } | null>(null);
-  const [orderCount, setOrderCount] = useState(0);
   const [lowStock, setLowStock] = useState<{ low: number; total: number }>({ low: 0, total: 0 });
   const [week, setWeek] = useState<{ date: string; revenue: number }[]>([]);
-  const [loading, setLoading] = useState(!isHq);
+  const [loading, setLoading] = useState(true);
   const [runs, setRuns] = useState<AgentRun[]>([]);
   const [pending, setPending] = useState<AgentProposal[]>([]);
+  // 본사 데이터 (전 가맹점·전 발주)
+  const [hqStores, setHqStores] = useState<any[]>([]);
+  const [hqOrders, setHqOrders] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!isHq) return;
+    Promise.all([storeService.getAll().catch(() => []), orderService.getAll().catch(() => [])])
+      .then(([stores, orders]) => {
+        setHqStores(Array.isArray(stores) ? stores : []);
+        setHqOrders(Array.isArray(orders) ? orders : []);
+      })
+      .finally(() => setLoading(false));
+  }, [isHq]);
 
   useEffect(() => {
     if (isHq || !user?.id) return;
@@ -214,10 +227,9 @@ const Dashboard = ({ user }: any) => {
         const start = new Date(); start.setDate(end.getDate() - 6);
         const fmt = (d: Date) => d.toISOString().split('T')[0];
 
-        const [summary, inv, orders, range] = await Promise.all([
+        const [summary, inv, range] = await Promise.all([
           salesService.getTodaySummary(sid).catch(() => null),
           inventoryService.getByStore(sid).catch(() => []),
-          orderService.getByStore(sid).catch(() => []),
           salesService.getByDateRange(sid, fmt(start), fmt(end)).catch(() => []),
         ]);
 
@@ -226,10 +238,6 @@ const Dashboard = ({ user }: any) => {
         const invArr = Array.isArray(inv) ? inv : [];
         const low = invArr.filter((x: any) => Number(x.currentQty) < Number(x.minThreshold ?? 0)).length;
         setLowStock({ low, total: invArr.length });
-
-        const active = (Array.isArray(orders) ? orders : [])
-          .filter((o: any) => !['DONE', 'CANCELLED', 'REJECTED'].includes(o.status));
-        setOrderCount(active.length);
 
         // 최근 7일 일별 매출 (수량 × 메뉴가격)
         const byDate: Record<string, number> = {};
@@ -257,20 +265,23 @@ const Dashboard = ({ user }: any) => {
   }, [isHq, storeId]);
 
   const briefing = useOwnerBriefing(isHq ? null : storeId);
-  const todayLabel = new Date().toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' });
   const maxRev = useMemo(() => Math.max(...week.map((w) => w.revenue), 1), [week]);
   const weekTotal = useMemo(() => week.reduce((s, w) => s + w.revenue, 0), [week]);
   const recentPending = useMemo(() => [...pending].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 4), [pending]);
-  const nowMin = clock.getHours() * 60 + clock.getMinutes();
-  const staff = STAFF.map((st) => {
-    const start = toMin(st.start); const end = toMin(st.end);
-    const state: keyof typeof ATTEND = nowMin < start ? 'before' : nowMin < end ? 'working' : 'off';
-    const late = state !== 'before' && toMin(st.clockIn) > start ? toMin(st.clockIn) - start : 0;
-    const progress = state === 'working' ? Math.round(((nowMin - start) / (end - start)) * 100) : state === 'off' ? 100 : 0;
-    const detail = state === 'before' ? `${st.start} 출근 예정` : state === 'working' ? `${st.clockIn} 출근` : `${st.clockIn} 출근 · ${st.end} 퇴근`;
-    return { ...st, state, late, progress, detail };
-  });
-  const staffCount = (k: keyof typeof ATTEND) => staff.filter((x) => x.state === k).length;
+  // 본사: 단계별 발주 수, 승인 대기 발주가 있는 가맹점 (오래 기다린 순)
+  const stageCounts = HQ_STAGES.map((s) => ({ ...s, count: hqOrders.filter((o) => o.status === s.key).length }));
+  const maxStage = Math.max(...stageCounts.map((s) => s.count), 1);
+  const inProgress = stageCounts.reduce((sum, s) => sum + s.count, 0);
+  const pendingStores = useMemo(() => {
+    const by: Record<number, { id: number; name: string; count: number; oldest: string }> = {};
+    hqOrders.filter((o) => o.status === 'REQUESTED' && o.store?.id).forEach((o) => {
+      const cur = by[o.store.id] ?? { id: o.store.id, name: o.store.storeName ?? '-', count: 0, oldest: o.orderedAt ?? '' };
+      cur.count += 1;
+      if (o.orderedAt && (!cur.oldest || o.orderedAt < cur.oldest)) cur.oldest = o.orderedAt;
+      by[o.store.id] = cur;
+    });
+    return Object.values(by).sort((a, b) => a.oldest.localeCompare(b.oldest));
+  }, [hqOrders]);
 
   return (
     <Box sx={{ bgcolor: '#FFFFFF' }}>
@@ -278,12 +289,18 @@ const Dashboard = ({ user }: any) => {
       <Box sx={{
         position: 'relative', overflow: 'hidden', pb: { xs: 10, md: 9 },
         // 배경 사진(글자 없는 숲·채소 그림) + 왼쪽 글씨가 잘 읽히도록 흰빛 그라데이션
-        background: `linear-gradient(90deg, rgba(255,255,255,.82) 0%, rgba(255,255,255,.55) 34%, rgba(255,255,255,0) 58%), url(${heroBg}) center / cover no-repeat`,
+        background: `linear-gradient(90deg, rgba(255,255,255,.82) 0%, rgba(255,255,255,.55) 34%, rgba(255,255,255,0) 58%), url(${heroBg}) right bottom / cover no-repeat`,
         borderBottom: '1px solid rgba(80,70,140,.10)',
       }}>
         <Box sx={{ height: { xs: 64, lg: 112 } }} />
-        <Box sx={{ ...PAGE, pt: { xs: 3, md: 5 }, display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '1fr 400px' }, gap: { xs: 3, lg: 4 } }}>
-          {/* 왼쪽: 슬라이드 */}
+        <Box sx={{ ...PAGE, pt: { xs: 3, md: 5 } }}>
+          {/* 매장명 (본사는 '본사') */}
+          {(isHq || storeName) && (
+            <Typography sx={{ position: 'relative', zIndex: 1, fontSize: { xs: 26, md: 34 }, fontWeight: 900, letterSpacing: '-0.8px', color: '#1B1F3B', mb: { xs: 1, md: 2 } }}>
+              {isHq ? '본사' : storeName}
+            </Typography>
+          )}
+          {/* 슬라이드 */}
           <Box onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}
             sx={{ position: 'relative', minHeight: { sm: 330 }, display: 'flex', alignItems: { xs: 'flex-start', sm: 'center' } }}>
             <Box key={slide} sx={{ position: 'relative', zIndex: 1, maxWidth: { xs: 1, sm: '58%' } }}>
@@ -322,110 +339,6 @@ const Dashboard = ({ user }: any) => {
             </Box>
           </Box>
 
-          {/* 오른쪽: 오늘의 매장(위) + 직원 출퇴근 현황(아래) */}
-          <Stack gap={2} sx={{ position: 'relative', zIndex: 1 }}>
-            <Paper elevation={0} sx={{ ...CARD, borderRadius: 0, p: 2.5, boxShadow: '0 12px 32px rgba(40,50,110,0.10)' }}>
-              {isHq ? (
-                <>
-                  <Stack direction="row" alignItems="center" gap={1.2} mb={2}>
-                    <Box sx={{ width: 34, height: 34, borderRadius: '10px', bgcolor: alpha('#1D9E75', 0.12), color: 'primary.main', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <IconifyIcon icon="mingcute:star-line" width={19} />
-                    </Box>
-                    <Typography fontWeight={800} fontSize={16}>자주 찾는 서비스</Typography>
-                  </Stack>
-                  <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 1.5 }}>
-                    {allLinks.slice(0, 8).map((it) => <IconTile key={it.path} item={it} size={38} onClick={() => navigate(it.path)} />)}
-                  </Box>
-                </>
-              ) : (
-                <>
-                  <Stack direction="row" alignItems="center" gap={1.2} mb={2}>
-                    <Box sx={{ width: 34, height: 34, borderRadius: '10px', bgcolor: alpha('#1D9E75', 0.12), color: 'primary.main', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <IconifyIcon icon="mingcute:store-2-line" width={19} />
-                    </Box>
-                    <Box flex={1} minWidth={0}>
-                      <Typography fontWeight={800} fontSize={16} noWrap>{storeName || '오늘의 매장'}</Typography>
-                      <Typography fontSize={12} color="text.secondary">{todayLabel} 기준</Typography>
-                    </Box>
-                    <MoreButton onClick={() => navigate('/sales')} />
-                  </Stack>
-                  {loading ? <Box display="flex" justifyContent="center" py={2}><CircularProgress size={24} /></Box> : (
-                    <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1 }}>
-                      {[
-                        { icon: 'mingcute:currency-won-line', label: '오늘 매출', value: won(today?.revenue ?? 0), sub: `${today?.qty ?? 0}건 판매`, color: '#2F7DD1', to: '/sales' },
-                        { icon: 'mingcute:refresh-2-line', label: '진행 중 발주', value: `${orderCount}건`, sub: '대기·승인·배송', color: '#1D9E75', to: '/orders' },
-                        { icon: 'mingcute:alert-line', label: '재고 부족', value: `${lowStock.low}종`, sub: `전체 ${lowStock.total}종`, color: lowStock.low > 0 ? '#E0803D' : '#8A90A6', to: '/inventory' },
-                      ].map((x) => (
-                        <Stack key={x.label} gap={0.6} onClick={() => navigate(x.to)} sx={{
-                          p: 1.4, borderRadius: '8px', bgcolor: '#F6F8FB', cursor: 'pointer', minWidth: 0, transition: 'all .2s',
-                          '&:hover': { bgcolor: alpha(x.color, 0.08) },
-                        }}>
-                          <Box sx={{ width: 28, height: 28, borderRadius: '50%', bgcolor: alpha(x.color, 0.14), color: x.color, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <IconifyIcon icon={x.icon} width={16} />
-                          </Box>
-                          <Typography fontSize={12} color="text.secondary" mt={0.4}>{x.label}</Typography>
-                          <Typography fontWeight={900} fontSize={17} lineHeight={1.1} noWrap>{x.value}</Typography>
-                          <Typography fontSize={11} color="text.disabled" noWrap>{x.sub}</Typography>
-                        </Stack>
-                      ))}
-                    </Box>
-                  )}
-                </>
-              )}
-            </Paper>
-
-            <Paper elevation={0} sx={{ ...CARD, borderRadius: 0, p: 2.5, boxShadow: '0 12px 32px rgba(40,50,110,0.10)' }}>
-              <Stack direction="row" alignItems="center" gap={1.2} mb={1.5}>
-                <Box sx={{ width: 34, height: 34, borderRadius: '10px', bgcolor: alpha('#5468C4', 0.12), color: '#5468C4', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <IconifyIcon icon="mingcute:user-3-line" width={19} />
-                </Box>
-                <Box flex={1} minWidth={0}>
-                  <Typography fontWeight={800} fontSize={16}>직원 출퇴근 현황</Typography>
-                  <Typography fontSize={12} color="text.secondary">
-                    {todayLabel} {String(clock.getHours()).padStart(2, '0')}:{String(clock.getMinutes()).padStart(2, '0')} 기준
-                  </Typography>
-                </Box>
-              </Stack>
-              <Stack direction="row" gap={0.8} mb={1.2}>
-                {(['working', 'before', 'off'] as const).map((k) => (
-                  <Stack key={k} direction="row" alignItems="center" gap={0.6} sx={{ flex: 1, justifyContent: 'center', py: 0.7, borderRadius: '8px', bgcolor: ATTEND[k].bg }}>
-                    <Typography fontSize={12} color={ATTEND[k].color} fontWeight={600}>{ATTEND[k].label}</Typography>
-                    <Typography fontSize={14} color={ATTEND[k].color} fontWeight={900}>{staffCount(k)}</Typography>
-                  </Stack>
-                ))}
-              </Stack>
-              <Box>
-                {staff.map((st, i) => {
-                  const a = ATTEND[st.state];
-                  return (
-                    <Stack key={st.name} direction="row" gap={1.2} alignItems="center" sx={{ py: 1, borderTop: i ? '1px dashed' : 'none', borderColor: 'divider' }}>
-                      <Box sx={{
-                        width: 34, height: 34, borderRadius: '50%', flexShrink: 0, bgcolor: alpha(st.color, 0.14), color: st.color,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 14, position: 'relative',
-                      }}>
-                        {st.name[0]}
-                        <Box sx={{ position: 'absolute', right: -1, bottom: -1, width: 10, height: 10, borderRadius: '50%', bgcolor: a.color, border: '2px solid #fff' }} />
-                      </Box>
-                      <Box flex={1} minWidth={0}>
-                        <Stack direction="row" alignItems="center" gap={0.7}>
-                          <Typography fontSize={13.5} fontWeight={800}>{st.name}</Typography>
-                          <Typography fontSize={11.5} color="text.secondary">{st.role}</Typography>
-                          {st.late > 0 && <Box sx={{ px: 0.7, borderRadius: 9, bgcolor: '#FDF0E4', color: '#C26A1F', fontSize: 10.5, fontWeight: 700 }}>{st.late}분 지각</Box>}
-                        </Stack>
-                        <Typography fontSize={12} color="text.secondary" noWrap>근무 {st.start}–{st.end} · {st.detail}</Typography>
-                        {st.state === 'working' && (
-                          <Box sx={{ mt: 0.5, height: 4, borderRadius: 2, bgcolor: '#EEF0F4', overflow: 'hidden' }}>
-                            <Box sx={{ width: `${st.progress}%`, height: 1, bgcolor: a.color, borderRadius: 2, transition: 'width .5s ease' }} />
-                          </Box>
-                        )}
-                      </Box>
-                      <Box sx={{ px: 1, py: 0.3, borderRadius: 9, bgcolor: a.bg, color: a.color, fontSize: 11.5, fontWeight: 700, flexShrink: 0 }}>{a.label}</Box>
-                    </Stack>
-                  );
-                })}
-              </Box>
-            </Paper>
-          </Stack>
         </Box>
       </Box>
 
@@ -602,20 +515,7 @@ const Dashboard = ({ user }: any) => {
 
       {/* ════════ 매장 현황 (남색 띠) ════════ */}
       {!isHq && (
-        <Box sx={{ position: 'relative', overflow: 'hidden', background: 'linear-gradient(180deg, #172457 0%, #24366F 60%, #2C3F78 100%)', py: { xs: 7, md: 10 } }}>
-          {/* 반짝이는 별 */}
-          {Array.from({ length: 28 }).map((_, i) => (
-            <Box key={i} sx={{
-              position: 'absolute', width: i % 3 ? 2 : 3, height: i % 3 ? 2 : 3, borderRadius: '50%', bgcolor: 'common.white',
-              top: `${(i * 37) % 60}%`, left: `${(i * 53) % 100}%`, animation: `${twinkle} ${2 + (i % 4)}s ease-in-out ${i * 0.3}s infinite`,
-            }} />
-          ))}
-          <Box sx={{ ...PAGE, position: 'relative' }}>
-            <Reveal>
-              <Typography textAlign="center" sx={{ color: 'common.white', fontSize: { xs: 22, md: 30 }, fontWeight: 900, letterSpacing: '-0.5px', mb: { xs: 3, md: 5 } }}>
-                우리 매장 현황을 자세히 알려드려요
-              </Typography>
-            </Reveal>
+        <NavyBand title="우리 매장 현황을 자세히 알려드려요">
             {loading ? <Box display="flex" justifyContent="center" py={6}><CircularProgress sx={{ color: 'common.white' }} /></Box> : (
               <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '1.15fr 1fr' }, gap: 2 }}>
                 <Reveal>
@@ -685,8 +585,72 @@ const Dashboard = ({ user }: any) => {
                 </Stack>
               </Box>
             )}
-          </Box>
-        </Box>
+        </NavyBand>
+      )}
+
+      {/* ════════ 가맹점 네트워크 현황 (본사, 남색 띠) ════════ */}
+      {isHq && (
+        <NavyBand title="가맹점 네트워크 현황을 알려드려요">
+          {loading ? <Box display="flex" justifyContent="center" py={6}><CircularProgress sx={{ color: 'common.white' }} /></Box> : (
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '1.15fr 1fr' }, gap: 2 }}>
+              <Reveal>
+                <Paper elevation={0} sx={{ ...CARD, p: { xs: 2.5, md: 3 }, height: 1 }}>
+                  <CardHead title="발주 진행 현황" more={() => navigate('/admin/orders')} />
+                  <Typography fontSize={12.5} color="primary.main" fontWeight={700} sx={{ textDecoration: 'underline', textUnderlineOffset: 4 }}>전 가맹점 · 단계별</Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'flex-end', gap: { xs: 1.5, sm: 3 }, height: { xs: 170, md: 210 }, mt: 2, px: { sm: 2 } }}>
+                    {stageCounts.map((st) => (
+                      <Stack key={st.key} flex={1} alignItems="center" gap={0.8} sx={{ height: '100%', justifyContent: 'flex-end', minWidth: 0 }}>
+                        <Typography fontSize={12} fontWeight={800} sx={{ fontVariantNumeric: 'tabular-nums' }}>{st.count}건</Typography>
+                        <Box sx={{
+                          width: '100%', maxWidth: 48, height: `${Math.max(Math.round((st.count / maxStage) * 100), 2)}%`,
+                          borderRadius: '6px 6px 0 0', bgcolor: st.color, transition: 'height .5s ease',
+                        }} />
+                        <Typography fontSize={11.5} color="text.secondary" textAlign="center" sx={{ wordBreak: 'keep-all', lineHeight: 1.3 }}>{st.label}</Typography>
+                      </Stack>
+                    ))}
+                  </Box>
+                  <Stack direction="row" justifyContent="center" gap={{ xs: 2, sm: 4 }} mt={2.5} flexWrap="wrap">
+                    {[
+                      { k: '진행 중', v: `${inProgress}건` },
+                      { k: '전체 가맹점', v: `${hqStores.length}곳` },
+                      { k: '승인 대기', v: `${stageCounts[0].count}건`, hl: true },
+                    ].map((x) => (
+                      <Stack key={x.k} direction="row" alignItems="baseline" gap={0.8}>
+                        <Typography fontSize={12} color="text.secondary">{x.k}</Typography>
+                        <Typography fontWeight={800} fontSize={x.hl ? 20 : 17} color={x.hl ? '#E0803D' : 'text.primary'}>{x.v}</Typography>
+                      </Stack>
+                    ))}
+                  </Stack>
+                </Paper>
+              </Reveal>
+              <Stack gap={2}>
+                <Reveal delay={0.1}>
+                  <Paper elevation={0} sx={{ ...CARD, p: { xs: 2.5, md: 3 } }}>
+                    <CardHead title="가맹점 관리" more={() => navigate('/admin/stores')} />
+                    <Typography fontSize={13} color="text.secondary" mb={2}>
+                      {pendingStores.length > 0 ? `${pendingStores.length}개 매장이 발주 승인을 기다리고 있어요.` : '모든 매장의 발주가 처리됐어요.'}
+                    </Typography>
+                    <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 1 }}>
+                      {(menu.find((g) => g.title === '가맹점 관리')?.items ?? [])
+                        .map((it) => <IconTile key={it.path} item={it} size={40} onClick={() => navigate(it.path)} />)}
+                    </Box>
+                  </Paper>
+                </Reveal>
+                <Reveal delay={0.2}>
+                  <Paper elevation={0} sx={{ ...CARD, p: { xs: 2.5, md: 3 } }}>
+                    <CardHead title="AI 비서" more={() => navigate('/agents')} />
+                    <Typography fontSize={13} color="text.secondary" mb={2}>
+                      발주 심사·입고 추적·예측 운영을 에이전트가 먼저 살피고, 본사가 승인해요.
+                    </Typography>
+                    <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 1 }}>
+                      {(aiGroup?.items ?? []).map((it) => <IconTile key={it.path} item={it} size={40} onClick={() => navigate(it.path)} />)}
+                    </Box>
+                  </Paper>
+                </Reveal>
+              </Stack>
+            </Box>
+          )}
+        </NavyBand>
       )}
 
       {/* ════════ 매장 소식 (첨부 시안의 '다양한 소식' 섹션 형태) ════════ */}
@@ -697,7 +661,7 @@ const Dashboard = ({ user }: any) => {
               <IconifyIcon icon="mingcute:news-line" width={28} />
             </Box>
             <Typography sx={{ fontSize: { xs: 22, md: 30 }, fontWeight: 900, letterSpacing: '-0.5px', textAlign: 'center' }}>
-              우리 매장 소식을 확인해 보세요!
+              {isHq ? '가맹점 소식을 확인해 보세요!' : '우리 매장 소식을 확인해 보세요!'}
             </Typography>
           </Stack>
         </Reveal>
@@ -705,7 +669,6 @@ const Dashboard = ({ user }: any) => {
         {/* 1줄: 브리핑 · 승인 대기 · 바로가기 존 */}
         {isHq ? (
           <Reveal>
-            <NewsHead label="매장별 위험 현황" />
             <HqBriefing />
           </Reveal>
         ) : (

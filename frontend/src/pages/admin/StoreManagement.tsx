@@ -486,38 +486,49 @@ const StoreManagement = () => {
                         '&:hover': { bgcolor: isSelected ? `${theme.palette.primary.main}12` : 'action.hover' },
                       }}
                     >
-                      <Stack direction="row" justifyContent="space-between" alignItems="center">
-                        <Typography
-                          fontWeight={700} fontSize={14}
-                          color={isSelected ? 'primary.main' : 'text.primary'}
-                          noWrap sx={{ maxWidth: 140 }}
-                        >
-                          {store.storeName}
-                        </Typography>
-                        <Stack direction="row" gap={0.5} alignItems="center">
-                          {pendingStoreIds.has(store.id) && (
-                            <Chip
-                              label="대기"
-                              size="small"
-                              color="warning"
-                              sx={{ height: 18, fontSize: 10, fontWeight: 700, '& .MuiChip-label': { px: 0.6 } }}
-                            />
-                          )}
-                          <Chip
-                            label={store.isActive ? '운영중' : '비활성'}
-                            size="small"
-                            color={store.isActive ? 'success' : 'default'}
-                            sx={{ height: 18, fontSize: 10, fontWeight: 700, '& .MuiChip-label': { px: 0.75 } }}
-                          />
-                        </Stack>
-                      </Stack>
-                      <Stack direction="row" gap={0.5} mt={0.5} alignItems="center">
-                        <IconifyIcon icon="mingcute:location-line" width={12} color={theme.palette.text.disabled} />
-                        <Typography variant="caption" color="text.secondary">{store.region ?? '-'}</Typography>
-                        <Typography variant="caption" color="text.disabled" mx={0.25}>·</Typography>
-                        <Typography variant="caption" color="text.secondary" noWrap sx={{ maxWidth: 140 }}>
-                          {store.user?.email ?? '-'}
-                        </Typography>
+                      <Stack direction="row" gap={1.5} alignItems="center">
+                        <Box sx={{
+                          width: 36, height: 36, flexShrink: 0, borderRadius: 2,
+                          bgcolor: isSelected ? 'primary.main' : 'primary.light', color: isSelected ? 'common.white' : 'primary.main',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all .15s',
+                        }}>
+                          <IconifyIcon icon="mingcute:store-2-line" width={19} />
+                        </Box>
+                        <Box sx={{ flex: 1, minWidth: 0 }}>
+                          <Stack direction="row" justifyContent="space-between" alignItems="center">
+                            <Typography
+                              fontWeight={700} fontSize={14}
+                              color={isSelected ? 'primary.main' : 'text.primary'}
+                              noWrap sx={{ maxWidth: 140 }}
+                            >
+                              {store.storeName}
+                            </Typography>
+                            <Stack direction="row" gap={0.5} alignItems="center">
+                              {pendingStoreIds.has(store.id) && (
+                                <Chip
+                                  label="대기"
+                                  size="small"
+                                  color="warning"
+                                  sx={{ height: 18, fontSize: 10, fontWeight: 700, '& .MuiChip-label': { px: 0.6 } }}
+                                />
+                              )}
+                              <Chip
+                                label={store.isActive ? '운영중' : '비활성'}
+                                size="small"
+                                color={store.isActive ? 'success' : 'default'}
+                                sx={{ height: 18, fontSize: 10, fontWeight: 700, '& .MuiChip-label': { px: 0.75 } }}
+                              />
+                            </Stack>
+                          </Stack>
+                          <Stack direction="row" gap={0.5} mt={0.5} alignItems="center">
+                            <IconifyIcon icon="mingcute:location-line" width={12} color={theme.palette.text.disabled} />
+                            <Typography variant="caption" color="text.secondary">{store.region ?? '-'}</Typography>
+                            <Typography variant="caption" color="text.disabled" mx={0.25}>·</Typography>
+                            <Typography variant="caption" color="text.secondary" noWrap sx={{ maxWidth: 140 }}>
+                              {store.user?.email ?? '-'}
+                            </Typography>
+                          </Stack>
+                        </Box>
                       </Stack>
                     </Box>
                   );

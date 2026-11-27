@@ -190,7 +190,24 @@ const AdminOrders = () => {
     setSuccess('완료된 발주 목록이 초기화되었습니다.');
   };
 
+  // 전체 보기에서는 어느 가맹점 발주인지 보여준다 (매장으로 거른 화면은 생략)
+  const storeColumn: GridColDef[] = filterStoreId ? [] : [{
+    field: 'storeName', headerName: '가맹점', width: 150,
+    renderCell: (p) => (
+      <Stack direction="row" alignItems="center" gap={1} sx={{ height: 1, minWidth: 0 }}>
+        <Box sx={{
+          width: 28, height: 28, flexShrink: 0, borderRadius: 1.5, bgcolor: 'primary.light', color: 'primary.main',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <IconifyIcon icon="mingcute:store-2-line" width={16} />
+        </Box>
+        <Typography fontWeight={700} fontSize={13.5} noWrap>{p.value}</Typography>
+      </Stack>
+    ),
+  }];
+
   const activeColumns: GridColDef[] = [
+    ...storeColumn,
     { field: 'orderedAt', headerName: '발주 일시', width: 170 },
     { field: 'name', headerName: '식자재', flex: 1, minWidth: 130 },
     {
@@ -276,6 +293,7 @@ const AdminOrders = () => {
   ];
 
   const doneColumns: GridColDef[] = [
+    ...storeColumn,
     { field: 'orderedAt', headerName: '발주 일시', width: 180 },
     { field: 'name', headerName: '식자재', flex: 1, minWidth: 160 },
     {

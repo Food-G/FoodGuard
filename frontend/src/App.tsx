@@ -22,6 +22,8 @@ import DeliveryDriver from './pages/DeliveryDriver';
 import WastePrediction from './pages/WastePrediction';
 import DonationHistory from './pages/DonationHistory';
 import AgentInbox from './pages/AgentInbox';
+import StaffList from './pages/StaffList';
+import StaffAttendance from './pages/StaffAttendance';
 import AgentCenter from './pages/AgentCenter';
 import { useAuth } from './hooks/useAuth';
 import { ConfirmProvider } from './hooks/useConfirm';
@@ -111,6 +113,18 @@ function App() {
             <Route path="/donations" element={
               <ProtectedRoute role="OWNER">
                 <DonationHistory user={user} />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/staff" element={
+              <ProtectedRoute role="OWNER">
+                <StaffList />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/staff/attendance" element={
+              <ProtectedRoute role="OWNER">
+                <StaffAttendance />
               </ProtectedRoute>
             } />
 

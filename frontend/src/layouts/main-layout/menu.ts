@@ -30,6 +30,14 @@ const OWNER_MENU: MenuGroup[] = [
     ],
   },
   {
+    title: '직원 관리', en: 'STAFF', icon: 'mingcute:user-3-line', color: '#5468C4',
+    desc: '직원 정보와 오늘의 출퇴근을 한곳에서',
+    items: [
+      { title: '직원 목록', path: '/staff', icon: 'mingcute:group-line' },
+      { title: '출퇴근 현황', path: '/staff/attendance', icon: 'mingcute:time-line' },
+    ],
+  },
+  {
     title: 'AI 비서', en: 'AI ASSISTANT', icon: 'mingcute:sparkles-line', color: '#7A4FD6',
     desc: '수요를 예측하고 에이전트가 먼저 제안합니다',
     items: [
