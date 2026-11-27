@@ -12,6 +12,11 @@ const getHeaders = () => {
 };
 
 const handleResponse = async (response: Response) => {
+  // 쓰던 중 로그인이 만료되면(서버 401) 토큰을 지우고 로그인 화면으로
+  if (response.status === 401 && localStorage.getItem('token') && !window.location.pathname.startsWith('/login')) {
+    localStorage.removeItem('token');
+    window.location.href = '/login';
+  }
   if (!response.ok) {
     const error = await response.text();
     // 백엔드 오류 응답은 {"error": "안내 문구"} (일부는 {"message": ...}). 화면에는 문구만 보여 준다
