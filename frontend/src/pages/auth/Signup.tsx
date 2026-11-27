@@ -7,13 +7,23 @@ import {
   TextField,
   Typography,
   Alert,
+  Divider,
+  SelectChangeEvent,
+  alpha,
   IconButton,
   InputAdornment,
+  Collapse,
 } from '@mui/material';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import IconifyIcon from '../../components/base/IconifyIcon';
-import AuthShell from '../../components/AuthShell';
+import AuthVisual, { enter } from '../../components/AuthVisual';
 import { authService } from '../../services/authService';
+
+const FEATURES = [
+  { icon: 'mingcute:store-2-line', text: '매장 정보만 입력하면 바로 시작' },
+  { icon: 'mingcute:user-follow-line', text: '가맹점 점주·본사 관리자 계정 지원' },
+  { icon: 'mingcute:robot-line', text: 'AI 에이전트 제안은 승인해야만 실행' },
+];
 
 const POSTCODE_SCRIPT_URL = 'https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js';
 
@@ -35,7 +45,6 @@ const Signup = () => {
     userName: '',
     password: '',
     confirmPassword: '',
-    // 회원가입은 점주만 (본사 관리자 계정은 회원가입으로 만들 수 없다, 백엔드 UserService.signup)
     role: 'OWNER',
     storeName: '',
     region: '',
@@ -82,7 +91,7 @@ const Signup = () => {
     loadPostcodeScript();
   }, []);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | SelectChangeEvent<string>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name as string]: value }));
   };
@@ -91,10 +100,6 @@ const Signup = () => {
     e.preventDefault();
     setError('');
 
-    if (formData.password.length < 8) {
-      setError('비밀번호는 8자 이상이어야 합니다.');
-      return;
-    }
     if (formData.password !== formData.confirmPassword) {
       setError('비밀번호가 일치하지 않습니다.');
       return;
@@ -118,86 +123,240 @@ const Signup = () => {
     }
   };
 
-  const passwordAdornment = (shown: boolean, toggle: () => void) => ({
-    endAdornment: (
-      <InputAdornment position="end">
-        <IconButton aria-label={shown ? '비밀번호 숨기기' : '비밀번호 보기'} onClick={toggle} edge="end" sx={{ mr: 1 }}>
-          <IconifyIcon icon={shown ? 'mingcute:eye-2-line' : 'mingcute:eye-close-line'} />
-        </IconButton>
-      </InputAdornment>
-    ),
-  });
-  const sectionTitle = (text: string) => (
-    <Typography fontSize={16} fontWeight={700} mt={2}>{text}</Typography>
+  const textFieldStyle = {
+    '& .MuiFilledInput-root': {
+      bgcolor: 'grey.50',
+      borderRadius: 3,
+      '&:before, &:after': { display: 'none' },
+      '&:hover': { bgcolor: 'grey.100' },
+      '&.Mui-focused': { bgcolor: 'grey.50' },
+    },
+    '& .MuiInputLabel-root.Mui-focused': {
+      color: 'primary.main',
+    },
+  };
+
+  // 섹션 제목: 번호 배지 + 제목
+  const stepTitle = (n: number, title: string) => (
+    <Stack direction="row" alignItems="center" gap={1.2}>
+      <Box sx={{
+        width: 26, height: 26, borderRadius: '50%', bgcolor: 'primary.main', color: 'common.white',
+        fontSize: 13, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        {n}
+      </Box>
+      <Typography variant="subtitle1" fontWeight={700} color="text.primary">{title}</Typography>
+    </Stack>
   );
 
   return (
-    <AuthShell maxWidth={520}>
-      <Stack component="form" onSubmit={handleSubmit} gap={3.5}>
-        <Box mb={1}>
-          <Typography fontSize={28} fontWeight={700} mb={1}>점주 회원가입</Typography>
-          <Typography color="text.secondary" fontSize={15}>
-            이미 계정이 있으신가요?{' '}
-            <Link component={RouterLink} to="/login" fontWeight={700} underline="none">로그인</Link>
+    <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: { xs: 'column', md: 'row' } }}>
+      <AuthVisual
+        eyebrow="JOIN FOODGUARD"
+        title={<>함께 시작하는<br />지구를 위한 발걸음</>}
+        features={FEATURES}
+      />
+
+      {/* ── 회원가입 폼: 데스크톱은 오른쪽에서 스크롤, 모바일은 배너 위로 겹치는 시트 ── */}
+      <Stack
+        alignItems="center"
+        sx={{
+          flex: { md: '1 1 45%' }, minWidth: 0, bgcolor: 'background.paper', position: 'relative',
+          px: { xs: 3, sm: 5 }, py: { xs: 4, md: 8 },
+          mt: { xs: -4, md: 0 }, borderRadius: { xs: '28px 28px 0 0', md: 0 },
+        }}
+      >
+        <Stack component="form" onSubmit={handleSubmit} gap={3} sx={{ width: 1, maxWidth: 560, my: 'auto' }}>
+          <Box sx={enter(2)}>
+            <Typography variant="h4" fontWeight={800} color="text.primary" gutterBottom>
+              계정 생성하기
+            </Typography>
+            <Typography variant="body1" color="text.secondary">
+              이미 계정이 있으신가요?{' '}
+              <Link component={RouterLink} to="/login" fontWeight={700} underline="none">
+                로그인하기
+              </Link>
+            </Typography>
+          </Box>
+
+          {error && (
+            <Alert severity="error" sx={{ borderRadius: 3 }}>
+              {error}
+            </Alert>
+          )}
+          {success && (
+            <Alert severity="success" sx={{ borderRadius: 3 }}>
+              회원가입 성공! 로그인 페이지로 이동합니다.
+            </Alert>
+          )}
+
+          <Stack gap={2} sx={enter(3)}>
+            {stepTitle(1, '기본 정보')}
+
+            <Stack direction={{ xs: 'column', sm: 'row' }} gap={2}>
+              <TextField
+                fullWidth
+                variant="filled"
+                label="이름 (실명)"
+                name="userName"
+                required
+                value={formData.userName}
+                onChange={handleChange}
+                sx={textFieldStyle}
+              />
+              <TextField
+                fullWidth
+                variant="filled"
+                label="이메일 주소"
+                name="email"
+                type="email"
+                required
+                value={formData.email}
+                onChange={handleChange}
+                sx={textFieldStyle}
+              />
+            </Stack>
+
+            <Stack direction={{ xs: 'column', sm: 'row' }} gap={2}>
+              <TextField
+                fullWidth
+                variant="filled"
+                label="비밀번호"
+                name="password"
+                required
+                type={showPassword ? 'text' : 'password'}
+                value={formData.password}
+                onChange={handleChange}
+                sx={textFieldStyle}
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton onClick={() => setShowPassword(!showPassword)}>
+                        <IconifyIcon icon={showPassword ? 'mingcute:eye-2-line' : 'mingcute:eye-close-line'} />
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
+              />
+              <TextField
+                fullWidth
+                variant="filled"
+                label="비밀번호 확인"
+                name="confirmPassword"
+                required
+                type={showConfirmPassword ? 'text' : 'password'}
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                sx={textFieldStyle}
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton onClick={() => setShowConfirmPassword(!showConfirmPassword)}>
+                        <IconifyIcon icon={showConfirmPassword ? 'mingcute:eye-2-line' : 'mingcute:eye-close-line'} />
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            </Stack>
+            {/* 가입 유형 선택은 뺀다: 백엔드가 점주(OWNER) 가입만 받는다 (본사 계정은 따로 만든다) */}
+          </Stack>
+
+          {/* 점주일 때만 매장 정보를 펼친다 */}
+          <Collapse in={formData.role === 'OWNER'} timeout={350} unmountOnExit>
+            <Stack gap={2} sx={enter(4)}>
+              <Divider sx={{ mb: 1 }} />
+              {stepTitle(2, '가맹점 정보')}
+
+              <Stack direction={{ xs: 'column', sm: 'row' }} gap={2}>
+                <TextField
+                  fullWidth
+                  variant="filled"
+                  label="매장명"
+                  name="storeName"
+                  required
+                  value={formData.storeName}
+                  onChange={handleChange}
+                  sx={textFieldStyle}
+                />
+                <TextField
+                  fullWidth
+                  variant="filled"
+                  label="지역 (예: 서울 강남구)"
+                  name="region"
+                  required
+                  value={formData.region}
+                  onChange={handleChange}
+                  sx={textFieldStyle}
+                />
+              </Stack>
+
+              <TextField
+                fullWidth
+                variant="filled"
+                label="기본 주소"
+                name="address"
+                required
+                value={formData.address}
+                onClick={openPostcode}
+                InputProps={{
+                  readOnly: true,
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconifyIcon icon="mingcute:search-line" sx={{ mr: 1.5 }} />
+                    </InputAdornment>
+                  ),
+                }}
+                placeholder="클릭하여 주소 검색"
+                sx={{ ...textFieldStyle, cursor: 'pointer' }}
+              />
+
+              <TextField
+                fullWidth
+                variant="filled"
+                label="매장 전화번호"
+                name="phone"
+                required
+                placeholder="02-1234-5678"
+                value={formData.phone}
+                onChange={handleChange}
+                sx={textFieldStyle}
+              />
+            </Stack>
+          </Collapse>
+
+          <Button
+            type="submit"
+            variant="contained"
+            size="large"
+            endIcon={<IconifyIcon icon="mingcute:arrow-right-line" />}
+            sx={{
+              py: 1.8,
+              mt: 1,
+              borderRadius: 3,
+              fontSize: '1.05rem',
+              fontWeight: 700,
+              boxShadow: (theme) => `0 8px 16px ${alpha(theme.palette.primary.main, 0.24)}`,
+              transition: 'transform .2s, box-shadow .2s',
+              '&:hover': { transform: 'translateY(-2px)', boxShadow: (theme) => `0 12px 24px ${alpha(theme.palette.primary.main, 0.32)}` },
+              ...enter(5),
+            }}
+          >
+            회원가입 완료하기
+          </Button>
+
+          <Typography variant="body2" textAlign="center" color="text.secondary" sx={enter(6)}>
+            가입 시 FoodGuard의{' '}
+            <Link href="#!" fontWeight={600} underline="hover">
+              이용약관
+            </Link>
+            에 동의하게 됩니다.
           </Typography>
-        </Box>
-
-        {error && <Alert severity="error">{error}</Alert>}
-        {success && <Alert severity="success">회원가입 성공! 로그인 페이지로 이동합니다.</Alert>}
-
-        {sectionTitle('기본 정보')}
-        <Stack direction={{ xs: 'column', sm: 'row' }} gap={2}>
-          <TextField fullWidth label="이름" name="userName" required value={formData.userName} onChange={handleChange} />
-          <TextField fullWidth label="이메일" name="email" type="email" required autoComplete="email" value={formData.email} onChange={handleChange} />
         </Stack>
-        <Stack direction={{ xs: 'column', sm: 'row' }} gap={2}>
-          <TextField
-            fullWidth label="비밀번호 (8자 이상)" name="password" required autoComplete="new-password"
-            type={showPassword ? 'text' : 'password'} value={formData.password} onChange={handleChange}
-            InputProps={passwordAdornment(showPassword, () => setShowPassword(!showPassword))}
-          />
-          <TextField
-            fullWidth label="비밀번호 확인" name="confirmPassword" required autoComplete="new-password"
-            type={showConfirmPassword ? 'text' : 'password'} value={formData.confirmPassword} onChange={handleChange}
-            InputProps={passwordAdornment(showConfirmPassword, () => setShowConfirmPassword(!showConfirmPassword))}
-          />
-        </Stack>
-
-        {sectionTitle('가맹점 정보')}
-        <TextField fullWidth label="매장명" name="storeName" required value={formData.storeName} onChange={handleChange} />
-        <TextField
-          fullWidth label="주소" name="address" required
-          value={formData.address}
-          onClick={openPostcode}
-          InputProps={{
-            readOnly: true,
-            endAdornment: (
-              <InputAdornment position="end">
-                <IconifyIcon icon="mingcute:search-2-line" width={18} />
-              </InputAdornment>
-            ),
-          }}
-          placeholder="눌러서 주소 검색"
-          sx={{ '& input': { cursor: 'pointer' } }}
-        />
-        <Stack direction={{ xs: 'column', sm: 'row' }} gap={2}>
-          <TextField fullWidth label="상세 주소" value={detailAddress} onChange={(e) => setDetailAddress(e.target.value)} placeholder="층·호수" />
-          <TextField
-            fullWidth label="지역" name="region" required value={formData.region} onChange={handleChange}
-            helperText="주소를 검색하면 자동으로 채워져요 (날씨 예보 지역)"
-          />
-        </Stack>
-        <TextField fullWidth label="매장 전화번호" name="phone" required placeholder="02-1234-5678" value={formData.phone} onChange={handleChange} />
-
-        <Button type="submit" fullWidth size="large" sx={{ py: 2, fontSize: 16, mt: 2 }}>
-          가입하기
-        </Button>
-        <Typography variant="body2" textAlign="center" color="text.secondary">
-          본사 관리자 계정은 회원가입이 아니라 본사에서 따로 발급해요.
-        </Typography>
       </Stack>
-    </AuthShell>
+    </Box>
   );
 };
 
 export default Signup;
+

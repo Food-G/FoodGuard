@@ -31,4 +31,9 @@ export const predictionService = {
   trigger: async (storeId: number): Promise<{ status: string; message: string }> => {
     return api.post(`/predictions/${storeId}/trigger`, {});
   },
+  // ── junho 화면이 쓰는 함수 ──
+  getAccuracy: async (source: 'live' | 'backtest', storeId: number, windowDays?: number): Promise<any> => {
+    const window = windowDays ? `&windowDays=${windowDays}` : '';
+    return api.get(`/predictions/accuracy?source=${source}&storeId=${storeId}${window}`);
+  },
 };

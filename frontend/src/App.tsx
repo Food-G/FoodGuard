@@ -1,38 +1,38 @@
-import React, { Suspense, lazy } from 'react';
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { ThemeProvider, CssBaseline, CircularProgress, Box } from '@mui/material';
+import { ThemeProvider, CssBaseline } from '@mui/material';
 import theme from './theme/theme';
 import BreakpointsProvider from './providers/BreakpointsProvider';
 import MainLayout from './layouts/main-layout';
+import AuthLayout from './layouts/auth-layout';
+import Dashboard from './pages/Dashboard';
+import Inventory from './pages/Inventory';
+import Ingredients from './pages/Ingredients';
+import SalesEntry from './pages/SalesEntry';
+import Predictions from './pages/Predictions';
+import Orders from './pages/Orders';
+import StoreManagement from './pages/admin/StoreManagement';
+import MenuManagement from './pages/MenuManagement';
+import Stats from './pages/admin/Stats';
+import AdminOrders from './pages/admin/AdminOrders';
+import POS from './pages/POS';
+import Login from './pages/auth/Login';
+import Signup from './pages/auth/Signup';
+import DeliveryDriver from './pages/DeliveryDriver';
+import WastePrediction from './pages/WastePrediction';
+import DonationHistory from './pages/DonationHistory';
+import DeliveryDriverGroup from './pages/DeliveryDriverGroup';
+import ScanComplete from './pages/ScanComplete';
+import OwnerScanComplete from './pages/OwnerScanComplete';
+// dev 백엔드 기능 화면 (junho 화면에는 없음)
+import Staff from './pages/Staff';
+import Clock from './pages/Clock';
+import Reservations from './pages/Reservations';
+import Assistant from './pages/Assistant';
+import StoreRegister from './pages/StoreRegister';
+import SalesStats from './pages/SalesStats';
 import { useAuth } from './hooks/useAuth';
 import { ConfirmProvider } from './hooks/useConfirm';
-
-// 화면별로 나눠 받는다 (첫 로딩 번들 축소)
-const Dashboard = lazy(() => import('./pages/Dashboard'));
-const Assistant = lazy(() => import('./pages/Assistant'));
-const Inventory = lazy(() => import('./pages/Inventory'));
-const Ingredients = lazy(() => import('./pages/Ingredients'));
-const SalesEntry = lazy(() => import('./pages/SalesEntry'));
-const Predictions = lazy(() => import('./pages/Predictions'));
-const Orders = lazy(() => import('./pages/Orders'));
-const StoreManagement = lazy(() => import('./pages/admin/StoreManagement'));
-const MenuManagement = lazy(() => import('./pages/MenuManagement'));
-const StoreRegister = lazy(() => import('./pages/StoreRegister'));
-const Stats = lazy(() => import('./pages/admin/Stats'));
-const AdminOrders = lazy(() => import('./pages/admin/AdminOrders'));
-const POS = lazy(() => import('./pages/POS'));
-const Login = lazy(() => import('./pages/auth/Login'));
-const Signup = lazy(() => import('./pages/auth/Signup'));
-const DeliveryDriver = lazy(() => import('./pages/DeliveryDriver'));
-const DeliveryDriverGroup = lazy(() => import('./pages/DeliveryDriverGroup'));
-const WastePrediction = lazy(() => import('./pages/WastePrediction'));
-const DonationHistory = lazy(() => import('./pages/DonationHistory'));
-const ScanComplete = lazy(() => import('./pages/ScanComplete'));
-const OwnerScanComplete = lazy(() => import('./pages/OwnerScanComplete'));
-const Reservations = lazy(() => import('./pages/Reservations'));
-const SalesStats = lazy(() => import('./pages/SalesStats'));
-const Staff = lazy(() => import('./pages/Staff'));
-const Clock = lazy(() => import('./pages/Clock'));
 
 function App() {
   const { user, login, logout, isLoggedIn } = useAuth();
@@ -45,8 +45,7 @@ function App() {
 
   const PublicRoute = ({ children }: { children: React.ReactNode }) => {
     if (isLoggedIn && user) return <Navigate to="/" replace />;
-    // 로그인·회원가입은 화면마다 AuthShell 로 전체 화면을 그린다
-    return <>{children}</>;
+    return <AuthLayout>{children}</AuthLayout>;
   };
 
   return (
@@ -55,10 +54,10 @@ function App() {
       <BreakpointsProvider>
         <CssBaseline />
         <Router>
-          <Suspense fallback={<Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}><CircularProgress /></Box>}>
           <Routes>
             <Route path="/login" element={<PublicRoute><Login onLogin={login} /></PublicRoute>} />
             <Route path="/signup" element={<PublicRoute><Signup /></PublicRoute>} />
+            {/* 배송 QR 흐름 (dev 백엔드: 묶음 배송·기사 스캔·점주 스캔) */}
             <Route path="/driver/group/:groupToken" element={<DeliveryDriverGroup />} />
             <Route path="/driver/scan" element={<ScanComplete />} />
             <Route path="/owner/scan" element={<OwnerScanComplete />} />
@@ -100,21 +99,9 @@ function App() {
               </ProtectedRoute>
             } />
 
-            <Route path="/assistant" element={
-              <ProtectedRoute role="OWNER">
-                <Assistant user={user} />
-              </ProtectedRoute>
-            } />
-
             <Route path="/predictions" element={
               <ProtectedRoute role="OWNER">
                 <Predictions user={user} />
-              </ProtectedRoute>
-            } />
-
-            <Route path="/store" element={
-              <ProtectedRoute role="OWNER">
-                <StoreRegister user={user} />
               </ProtectedRoute>
             } />
 
@@ -138,12 +125,7 @@ function App() {
               </ProtectedRoute>
             } />
 
-            <Route path="/reservations" element={
-              <ProtectedRoute role="OWNER">
-                <Reservations user={user} />
-              </ProtectedRoute>
-            } />
-
+            {/* 직원은 dev 직원(EMPLOYEE)·출퇴근 API, AI 에이전트 센터·승인함은 dev 에 백엔드가 없어 연결하지 않음 */}
             <Route path="/staff" element={
               <ProtectedRoute role="OWNER">
                 <Staff user={user} />
@@ -156,13 +138,30 @@ function App() {
               </ProtectedRoute>
             } />
 
+            <Route path="/reservations" element={
+              <ProtectedRoute role="OWNER">
+                <Reservations user={user} />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/assistant" element={
+              <ProtectedRoute role="OWNER">
+                <Assistant user={user} />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/store" element={
+              <ProtectedRoute role="OWNER">
+                <StoreRegister user={user} />
+              </ProtectedRoute>
+            } />
+
             <Route path="/sales-stats" element={
               <ProtectedRoute role="OWNER">
                 <SalesStats user={user} />
               </ProtectedRoute>
             } />
 
-            {/* HQ Admin Routes */}
             <Route path="/admin/stores" element={
               <ProtectedRoute role="HQ_ADMIN">
                 <StoreManagement />
@@ -183,7 +182,6 @@ function App() {
 
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
-          </Suspense>
         </Router>
       </BreakpointsProvider>
       </ConfirmProvider>

@@ -13,4 +13,8 @@ export const storeService = {
   update: async (id: number, data: any) => {
     return api.put(`/stores/${id}`, data);
   },
+  // ── junho 화면이 쓰는 함수 ──
+  delete: async (id: number) => {
+    return api.delete(`/stores/${id}`);
+  },
 };

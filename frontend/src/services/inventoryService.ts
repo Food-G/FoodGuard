@@ -11,4 +11,14 @@ export const inventoryService = {
   recordWaste: async (data: { storeId: number; ingredientId: number; quantity: number; reason: string }) => {
     return api.post('/waste-records', data);
   },
+  // ── junho 화면이 쓰는 함수 ──
+  create: async (data: any) => {
+    return api.post('/inventory', data);
+  },
+  update: async (id: number, data: any) => {
+    return api.put(`/inventory/${id}`, data);
+  },
+  delete: async (id: number) => {
+    return api.delete(`/inventory/${id}`);
+  },
 };

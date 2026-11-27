@@ -36,4 +36,11 @@ export const salesService = {
   deleteEventNote: async (id: number) => {
     return api.delete(`/event-notes/${id}`);
   },
+  // ── junho 화면이 쓰는 함수 ──
+  delete: async (id: number) => {
+    return api.delete(`/sales/${id}`);
+  },
+  getAllStoreWeeklySummary: async () => {
+    return api.get('/sales/all-stores/weekly-summary');
+  },
 };

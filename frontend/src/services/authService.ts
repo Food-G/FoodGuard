@@ -15,4 +15,8 @@ export const authService = {
   getToken: () => {
     return localStorage.getItem('token');
   },
+  // ── junho 화면이 쓰는 함수 ──
+  isLoggedIn: () => {
+    return !!localStorage.getItem('token');
+  },
 };

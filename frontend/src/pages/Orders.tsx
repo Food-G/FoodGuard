@@ -1,33 +1,31 @@
 import { useEffect, useState } from 'react';
 import {
-  Typography, Box, Paper, Button, CircularProgress, Stack, useTheme,
-  Dialog, DialogTitle, DialogContent, DialogActions,
-  TextField, MenuItem, Select, FormControl, InputLabel,
+  Typography, Box, Paper, Button, CircularProgress, Chip, Stack, useTheme,
 } from '@mui/material';
 import { orderService } from '../services/orderService';
-import { notificationService } from '../services/notificationService';
-import { api } from '../services/api';
 import IconifyIcon from '../components/base/IconifyIcon';
-import QrScanner from '../components/QrScanner';
-import OrderExplainDialog from '../components/OrderExplainDialog';
-import OrderReviewDialog from '../components/agent/OrderReviewDialog';
 import { useMyStore } from '../hooks/useMyStore';
 import { useConfirm } from '../hooks/useConfirm';
 import AlertMessages from '../components/AlertMessages';
 
 const STATUS_LABEL: Record<string, string> = {
-  REQUESTED: '승인 대기',
+  REQUESTED: '대기중',
   APPROVED: '승인됨',
-  HQ_SENT: '발송중',
-  DRIVER_RECEIVED: '배달기사 검수완료',
-  DONE: '입고완료',
+  HQ_SENT: '발송완료',
+  DRIVER_RECEIVED: '배달기사 수령',
+  DONE: '완료',
   CANCELLED: '취소됨',
   REJECTED: '거절됨',
 };
-// 진행 단계 (배송 조회처럼 막대로 보여 준다)
-const STEPS = ['REQUESTED', 'APPROVED', 'HQ_SENT', 'DRIVER_RECEIVED', 'DONE'];
-
-interface Recommendation { ingredientId: number; ingredientName: string; unit: string; orderQty: number; coverageDays: number }
+const STATUS_COLOR: Record<string, any> = {
+  REQUESTED: 'warning',
+  APPROVED: 'info',
+  HQ_SENT: 'primary',
+  DRIVER_RECEIVED: 'secondary',
+  DONE: 'success',
+  CANCELLED: 'default',
+  REJECTED: 'error',
+};
 
 const Orders = ({ user }: any) => {
   const theme = useTheme();
@@ -38,19 +36,6 @@ const Orders = ({ user }: any) => {
   const [ordering, setOrdering] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [scanning, setScanning] = useState(false);
-  const [orderDialog, setOrderDialog] = useState(false);
-  const [explainOpen, setExplainOpen] = useState(false);
-  const [reviewOpen, setReviewOpen] = useState(false);
-  const [ingredients, setIngredients] = useState<any[]>([]);
-  const [orderForm, setOrderForm] = useState({ ingredientId: '', quantity: '' });
-  const [submitting, setSubmitting] = useState(false);
-  const [recs, setRecs] = useState<Recommendation[] | null>(null);
-
-  const loadRecs = (sid: number) =>
-    orderService.getRecommend(sid)
-      .then((r: Recommendation[]) => setRecs((r ?? []).filter((i) => i.orderQty > 0)))
-      .catch(() => setRecs([]));
 
   const loadOrders = async (sid: number) => {
     try {
@@ -63,7 +48,6 @@ const Orders = ({ user }: any) => {
         unit: item.ingredient?.unit ?? '',
         status: item.status,
         orderedAt: item.orderedAt ? new Date(item.orderedAt).toLocaleString() : '-',
-        qrToken: item.qrToken ?? null,
       })));
     } catch {
       setError('발주 내역을 불러오지 못했습니다.');
@@ -73,57 +57,9 @@ const Orders = ({ user }: any) => {
   useEffect(() => {
     if (!storeId) { if (!storeLoading) setLoading(false); return; }
     loadOrders(storeId).finally(() => setLoading(false));
-    loadRecs(storeId);
     const timer = setInterval(() => loadOrders(storeId), 5000);
-    // 페이지 진입 시 ORDER 알림 모두 읽음 처리
-    notificationService.getUnread(storeId).then((data: any[]) => {
-      (data ?? []).filter((n) => n.type === 'ORDER').forEach((n) => notificationService.markAsRead(n.id).catch(() => {}));
-    }).catch(() => {});
     return () => clearInterval(timer);
   }, [storeId, storeLoading]);
-  const handleOwnerQrScan = async (qrData: string) => {
-    setScanning(false);
-    try {
-      const tokenMatch = qrData.match(/[?&]token=([^&]+)/);
-      if (!tokenMatch) { setError('QR 코드 형식이 올바르지 않습니다.'); return; }
-      const result = await orderService.scanQrByOwner(decodeURIComponent(tokenMatch[1]));
-      setSuccess(`${result.ingredientName} 검수 완료. 재고에 반영되었습니다.`);
-      if (storeId) await loadOrders(storeId);
-    } catch {
-      setError('QR 스캔 처리에 실패했습니다. 배달기사 수령 확인 후 검수 가능합니다.');
-    }
-  };
-
-  const driversReceivedQrCodes = rows
-    .filter((r: any) => r.status === 'DRIVER_RECEIVED' && r.qrToken)
-    .map((r: any) => ({
-      data: `${window.location.origin}/owner/scan?token=${r.qrToken}`,
-      label: `${r.name} ${r.quantity}${r.unit}`,
-    }));
-
-  const openOrderDialog = async () => {
-    if (!ingredients.length) {
-      const data = await api.get('/ingredients').catch(() => []);
-      setIngredients(data ?? []);
-    }
-    setOrderForm({ ingredientId: '', quantity: '' });
-    setOrderDialog(true);
-  };
-
-  const handleOrderSubmit = async () => {
-    if (!storeId || !orderForm.ingredientId || !orderForm.quantity) return;
-    setSubmitting(true);
-    try {
-      await orderService.create({ storeId, ingredientId: Number(orderForm.ingredientId), quantity: Number(orderForm.quantity) });
-      setSuccess('발주 신청이 완료되었습니다.');
-      setOrderDialog(false);
-      await loadOrders(storeId);
-    } catch {
-      setError('발주 신청에 실패했습니다.');
-    } finally {
-      setSubmitting(false);
-    }
-  };
   const handleCancel = async (id: number) => {
     if (!await confirm('발주를 취소하시겠습니까?')) return;
     try {
@@ -132,6 +68,18 @@ const Orders = ({ user }: any) => {
       if (storeId) await loadOrders(storeId);
     } catch {
       setError('취소에 실패했습니다.');
+    }
+  };
+
+  // QR 검수 API(/orders/scan)가 아직 없어 상태 변경 API 로 입고 완료 처리한다 (DONE 전환 시 재고 반영)
+  const handleReceive = async (id: number) => {
+    if (!await confirm('입고를 확인하고 재고에 반영하시겠습니까?')) return;
+    try {
+      await orderService.updateStatus(id, 'DONE');
+      setSuccess('검수 완료. 재고에 반영되었습니다.');
+      if (storeId) await loadOrders(storeId);
+    } catch {
+      setError('검수 처리에 실패했습니다.');
     }
   };
 
@@ -148,7 +96,6 @@ const Orders = ({ user }: any) => {
       } else {
         setSuccess(`${count}건 발주가 등록되었습니다.`);
         await loadOrders(storeId);
-        loadRecs(storeId);
       }
     } catch (e: any) {
       try { setError(JSON.parse(e.message).error); } catch { setError('자동 발주 등록에 실패했습니다.'); }
@@ -157,183 +104,108 @@ const Orders = ({ user }: any) => {
     }
   };
 
-  const rowSx = { borderTop: `1px solid ${theme.palette.divider}`, '&:first-of-type': { borderTop: 'none' } };
-  const waitingQr = rows.filter((r) => r.status === 'DRIVER_RECEIVED').length;
-
-  // 오른쪽 AI 도우미 행 (Square 오른쪽 목록)
-  const aiAction = (icon: string, title: string, desc: string, onClick: () => void) => (
-    <Stack
-      direction="row" alignItems="center" gap={2.5} onClick={storeId ? onClick : undefined}
-      sx={{ py: 3, cursor: storeId ? 'pointer' : 'default', opacity: storeId ? 1 : 0.5, ...rowSx }}
-    >
-      <Box sx={{ width: 40, height: 40, borderRadius: '50%', bgcolor: 'primary.light', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <IconifyIcon icon={icon} width={20} color={theme.palette.primary.main} />
-      </Box>
-      <Box sx={{ flex: 1, minWidth: 0 }}>
-        <Typography fontWeight={600} fontSize={15}>{title}</Typography>
-        <Typography variant="body2" color="text.secondary">{desc}</Typography>
-      </Box>
-      <IconifyIcon icon="mingcute:right-line" width={18} color={theme.palette.text.disabled} />
-    </Stack>
-  );
-
   return (
-    <Stack gap={5}>
-      {/* 큰 숫자 요약 + 발주 버튼 */}
-      <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'flex-end' }} gap={3}>
-        <Box>
-          <Typography color="text.secondary" fontSize={15} mb={1}>진행 중인 발주</Typography>
-          <Typography fontSize={{ xs: 30, md: 36 }} fontWeight={700} lineHeight={1.2}>
-            {loading ? '-' : `${rows.length}건`}
-          </Typography>
-          {waitingQr > 0 && (
-            <Typography fontSize={15} color="primary.main" mt={1}>
-              배달기사가 도착했어요. {waitingQr}건은 QR로 검수해 주세요.
-            </Typography>
-          )}
-        </Box>
-        <Stack direction="row" gap={1.5} flexWrap="wrap">
-          <Button variant="outlined" startIcon={<IconifyIcon icon="mingcute:add-line" />} onClick={openOrderDialog}>
-            직접 발주
-          </Button>
-          <Button
-            startIcon={ordering ? <CircularProgress size={16} color="inherit" /> : <IconifyIcon icon="mingcute:sparkles-line" />}
-            onClick={handleAutoOrder}
-            disabled={ordering || !storeId}
-          >
-            {ordering ? '발주 등록 중...' : 'AI 추천대로 발주'}
-          </Button>
-        </Stack>
+    <Stack gap={3} sx={{ bgcolor: 'background.default' }}>
+      <Stack direction="row" justifyContent="flex-end">
+        <Button
+          variant="contained"
+          startIcon={ordering
+            ? <CircularProgress size={16} color="inherit" />
+            : <IconifyIcon icon="mingcute:sparkles-line" />}
+          onClick={handleAutoOrder}
+          disabled={ordering}
+          sx={{ px: 3, py: 1.5, borderRadius: '10px' }}
+        >
+          {ordering ? '발주 등록 중...' : 'AI 예측 기반 자동 발주'}
+        </Button>
       </Stack>
 
       <AlertMessages error={error} success={success}
         onClearError={() => setError('')} onClearSuccess={() => setSuccess('')} />
 
-      {storeId && <OrderExplainDialog open={explainOpen} storeId={storeId} onClose={() => setExplainOpen(false)} />}
-      {storeId && <OrderReviewDialog open={reviewOpen} storeId={storeId} onClose={() => setReviewOpen(false)} onOrdered={() => { loadOrders(storeId); loadRecs(storeId); }} />}
-
-      <Dialog open={orderDialog} onClose={() => setOrderDialog(false)} maxWidth="xs" fullWidth>
-        <DialogTitle fontWeight={700}>직접 발주</DialogTitle>
-        <DialogContent>
-          <Stack gap={2.5} mt={1}>
-            <FormControl fullWidth size="small">
-              <InputLabel>식자재 선택</InputLabel>
-              <Select
-                label="식자재 선택"
-                value={orderForm.ingredientId}
-                onChange={e => setOrderForm(f => ({ ...f, ingredientId: e.target.value }))}
-              >
-                {ingredients.map((ing: any) => (
-                  <MenuItem key={ing.id} value={ing.id}>
-                    {ing.name} ({ing.unit})
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            <TextField
-              label="수량"
-              type="number"
-              size="small"
-              value={orderForm.quantity}
-              onChange={e => setOrderForm(f => ({ ...f, quantity: e.target.value }))}
-              inputProps={{ min: 0.1, step: 0.1 }}
-              fullWidth
-            />
-          </Stack>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button variant="text" onClick={() => setOrderDialog(false)}>취소</Button>
-          <Button
-            onClick={handleOrderSubmit}
-            disabled={submitting || !orderForm.ingredientId || !orderForm.quantity}
-            startIcon={submitting ? <CircularProgress size={14} color="inherit" /> : null}
-          >
-            신청
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {scanning && (
-        <QrScanner
-          title="점주 검수 QR 스캔"
-          onScan={handleOwnerQrScan}
-          onClose={() => setScanning(false)}
-          displayQrCodes={driversReceivedQrCodes}
-        />
-      )}
-
-      <Box sx={{ display: 'grid', gap: 5, gridTemplateColumns: { xs: 'minmax(0, 1fr)', lg: 'minmax(0, 1fr) 360px' }, alignItems: 'start' }}>
-        {/* 진행 중인 발주 (배송 조회처럼 단계 막대) */}
-        <Paper sx={{ p: 5 }}>
-          <Typography fontSize={18} fontWeight={700} mb={2}>발주 진행 상황</Typography>
-          {loading ? (
-            <Stack alignItems="center" py={8}><CircularProgress /></Stack>
-          ) : rows.length === 0 ? (
-            <Typography color="text.secondary" sx={{ py: 6, textAlign: 'center' }}>
-              진행 중인 발주가 없어요. 오른쪽 추천을 보고 발주해 보세요.
-            </Typography>
-          ) : rows.map((r) => {
-            const step = STEPS.indexOf(r.status);
-            const qrReady = r.status === 'DRIVER_RECEIVED';
-            return (
-              <Box key={r.id} sx={{ py: 3.5, ...rowSx }}>
-                <Stack direction="row" alignItems="center" gap={2}>
-                  <Box sx={{ flex: 1, minWidth: 0 }}>
-                    <Typography fontWeight={600} fontSize={15} noWrap>
-                      {r.name} <Box component="span" fontWeight={700}>{r.quantity}{r.unit}</Box>
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">{r.orderedAt}</Typography>
-                  </Box>
-                  <Typography fontWeight={700} fontSize={14} color={qrReady ? 'primary.main' : 'text.secondary'} sx={{ whiteSpace: 'nowrap' }}>
-                    {STATUS_LABEL[r.status] ?? r.status}
-                  </Typography>
-                  {qrReady && (
-                    <Button size="small" startIcon={<IconifyIcon icon="mingcute:camera-line" />} onClick={() => setScanning(true)}>
-                      QR 검수
-                    </Button>
-                  )}
-                  <Button size="small" variant="text" color="error" onClick={() => handleCancel(r.id)}>
-                    취소
-                  </Button>
-                </Stack>
-                {step >= 0 && (
-                  <Stack direction="row" gap={0.75} mt={2}>
-                    {STEPS.slice(0, -1).map((s, i) => (
-                      <Box key={s} sx={{ flex: 1, height: 4, borderRadius: 2, bgcolor: i <= step ? 'primary.main' : 'divider' }} />
-                    ))}
-                  </Stack>
-                )}
-              </Box>
-            );
-          })}
-        </Paper>
-
-        <Stack gap={5}>
-          {/* AI 추천 발주량 */}
-          <Paper sx={{ p: 5 }}>
-            <Typography fontSize={18} fontWeight={700} mb={1}>AI 추천 발주량</Typography>
-            {recs == null ? (
-              <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>불러오는 중…</Typography>
-            ) : recs.length === 0 ? (
-              <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>지금은 더 발주할 식자재가 없어요.</Typography>
-            ) : recs.map((r) => (
-              <Stack key={r.ingredientId} direction="row" alignItems="center" gap={2} sx={{ py: 2.5, ...rowSx }}>
-                <Box sx={{ flex: 1, minWidth: 0 }}>
-                  <Typography fontWeight={600} fontSize={15} noWrap>{r.ingredientName}</Typography>
-                  <Typography variant="body2" color="text.secondary">{r.coverageDays}일분</Typography>
-                </Box>
-                <Typography fontWeight={700} fontSize={15}>{r.orderQty}{r.unit}</Typography>
-              </Stack>
-            ))}
-          </Paper>
-
-          {/* AI 도우미 */}
-          <Paper sx={{ px: 5, py: 2 }}>
-            {aiAction('mingcute:question-line', '추천 근거 보기', '왜 이만큼인지 AI가 설명해요', () => setExplainOpen(true))}
-            {aiAction('mingcute:user-star-line', 'AI 발주 참모', '발주 전에 한 번 더 점검해요', () => setReviewOpen(true))}
-          </Paper>
+      <Paper sx={{ p: 3, border: `1px solid ${theme.palette.divider}`, borderRadius: '10px' }}>
+        <Stack direction="row" alignItems="center" justifyContent="space-between" mb={2}>
+          <Typography variant="h6" fontWeight={700}>발주 내역</Typography>
+          <Chip label={`총 ${rows.length}건`} size="small" color="primary" variant="outlined" />
         </Stack>
-      </Box>
+        {loading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 200 }}>
+            <CircularProgress color="primary" />
+          </Box>
+        ) : rows.length === 0 ? (
+          <Stack alignItems="center" gap={1.5} py={6}>
+            <IconifyIcon icon="mingcute:inbox-line" width={44} color={theme.palette.text.disabled} />
+            <Typography color="text.secondary">진행 중인 발주가 없습니다.</Typography>
+          </Stack>
+        ) : (
+          // 슬라이드형 세로 스크롤 영역 (스크롤바 숨김)
+          <Box
+            sx={{
+              maxHeight: 560,
+              overflowY: 'auto',
+              pr: 0.5,
+              scrollbarWidth: 'none',                       // Firefox
+              msOverflowStyle: 'none',                      // IE/Edge
+              '&::-webkit-scrollbar': { display: 'none' },  // Chrome/Safari
+            }}
+          >
+            <Stack gap={1.2}>
+              {rows.map((row) => (
+                <Stack
+                  key={row.id}
+                  direction="row"
+                  alignItems="center"
+                  gap={2}
+                  sx={{
+                    p: 2,
+                    borderRadius: 2.5,
+                    border: `1px solid ${theme.palette.divider}`,
+                    transition: 'box-shadow .15s, border-color .15s',
+                    '&:hover': { boxShadow: theme.shadows[2], borderColor: theme.palette.primary.light },
+                  }}
+                >
+                  <Box
+                    sx={{
+                      width: 44, height: 44, flexShrink: 0, borderRadius: 2,
+                      bgcolor: 'secondary.light', color: 'secondary.dark',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}
+                  >
+                    <IconifyIcon icon="mingcute:package-2-line" width={22} />
+                  </Box>
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Typography fontWeight={700} noWrap>{row.name}</Typography>
+                    <Typography variant="caption" color="text.secondary">{row.orderedAt}</Typography>
+                  </Box>
+                  <Typography fontWeight={700} fontSize={15} sx={{ whiteSpace: 'nowrap' }}>
+                    {row.quantity} <Box component="span" sx={{ color: 'text.disabled', fontWeight: 400 }}>{row.unit}</Box>
+                  </Typography>
+                  <Chip
+                    label={STATUS_LABEL[row.status] ?? row.status}
+                    color={STATUS_COLOR[row.status] ?? 'default'}
+                    size="small" variant="filled" sx={{ fontWeight: 700, minWidth: 72 }}
+                  />
+                  <Box sx={{ width: 96, textAlign: 'right' }}>
+                    {row.status === 'REQUESTED' && (
+                      <Button color="error" size="small" variant="outlined"
+                        onClick={() => handleCancel(row.id as number)} sx={{ borderRadius: 2 }}>
+                        취소
+                      </Button>
+                    )}
+                    {row.status === 'DRIVER_RECEIVED' && (
+                      <Button color="success" size="small" variant="contained"
+                        onClick={() => handleReceive(row.id as number)} sx={{ borderRadius: 2 }}
+                        startIcon={<IconifyIcon icon="mingcute:check-line" width={16} />}>
+                        검수
+                      </Button>
+                    )}
+                  </Box>
+                </Stack>
+              ))}
+            </Stack>
+          </Box>
+        )}
+      </Paper>
     </Stack>
   );
 };

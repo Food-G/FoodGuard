@@ -1,15 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Typography, Box, Paper, Stack, useTheme,
+  Typography, Box, Paper, Grid, Stack, useTheme,
   TextField, InputAdornment, Popover,
-  CircularProgress, Alert, Chip, Button,
-  Dialog, DialogTitle, DialogContent, DialogActions,
+  CircularProgress, Alert, Chip, Divider, Button, Tab, Tabs,
 } from '@mui/material';
 import { storeService } from '../../services/storeService';
 import { orderService } from '../../services/orderService';
 import IconifyIcon from '../../components/base/IconifyIcon';
-import QrCodeDisplay from '../../components/QrCodeDisplay';
 
 declare global {
   interface Window {
@@ -282,10 +280,6 @@ const StoreManagement = () => {
   const [detailTab, setDetailTab] = useState(0);
   const [pendingOrders, setPendingOrders] = useState<any[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
-  const [hqSendTarget, setHqSendTarget] = useState<number | null>(null);
-  const [hqSendName, setHqSendName] = useState('');
-  const [expiryDateInput, setExpiryDateInput] = useState('');
-  const [qrData, setQrData] = useState<{ data: string; name: string } | null>(null);
   const [pendingStoreIds, setPendingStoreIds] = useState<Set<number>>(new Set());
   const [showPendingOnly, setShowPendingOnly] = useState(false);
   const scriptLoaded = useRef(false);
@@ -309,11 +303,10 @@ const StoreManagement = () => {
       .finally(() => setLoading(false));
     loadPostcodeScript();
 
-    const ACTIVE = new Set(['REQUESTED', 'APPROVED', 'HQ_SENT', 'DRIVER_RECEIVED']);
     const loadPendingStores = () =>
       orderService.getAll().then((orders: any[]) => {
         const ids = new Set<number>(
-          (orders ?? []).filter((o: any) => ACTIVE.has(o.status)).map((o: any) => o.store?.id).filter(Boolean)
+          (orders ?? []).filter((o: any) => o.status === 'REQUESTED').map((o: any) => o.store?.id).filter(Boolean)
         );
         setPendingStoreIds(ids);
       }).catch(() => {});
@@ -322,23 +315,17 @@ const StoreManagement = () => {
     return () => clearInterval(timer);
   }, []);
 
-  const ACTIVE_STATUSES = new Set(['REQUESTED', 'APPROVED', 'HQ_SENT', 'DRIVER_RECEIVED']);
-
-  const reloadOrders = (storeId: number) => {
-    setOrdersLoading(true);
-    orderService.getByStore(storeId)
-      .then((orders: any[]) =>
-        setPendingOrders((orders ?? []).filter((o: any) => ACTIVE_STATUSES.has(o.status)))
-      )
-      .catch(() => {})
-      .finally(() => setOrdersLoading(false));
-  };
-
   useEffect(() => {
     setEditMode(false);
     setDetailTab(0);
     if (!selectedStore?.id) return;
-    reloadOrders(selectedStore.id);
+    setOrdersLoading(true);
+    orderService.getByStore(selectedStore.id)
+      .then((orders: any[]) =>
+        setPendingOrders((orders ?? []).filter((o: any) => o.status === 'REQUESTED'))
+      )
+      .catch(() => {})
+      .finally(() => setOrdersLoading(false));
   }, [selectedStore?.id]);
 
   const filtered = stores.filter((s: any) => {
@@ -420,46 +407,16 @@ const StoreManagement = () => {
       ]
     : [];
 
-  const rowSx = { borderTop: `1px solid ${theme.palette.divider}`, '&:first-of-type': { borderTop: 'none' } };
-  const ORDER_STEPS = ['REQUESTED', 'APPROVED', 'HQ_SENT', 'DRIVER_RECEIVED'];
-  const ORDER_LABEL: Record<string, string> = {
-    REQUESTED: '승인 대기', APPROVED: '발송 필요', HQ_SENT: '배달중', DRIVER_RECEIVED: '점주 검수 대기',
-  };
-  const requestedCount = pendingOrders.filter(o => o.status === 'REQUESTED').length;
-  const pill = (label: string, selected: boolean, onClick: () => void) => (
-    <Chip
-      key={label} label={label} onClick={onClick}
-      sx={{
-        height: 34, borderRadius: 999, border: 'none', fontWeight: selected ? 700 : 500,
-        bgcolor: selected ? 'text.primary' : 'background.paper',
-        color: selected ? 'common.white' : 'text.secondary',
-        '&:hover': { bgcolor: selected ? 'text.primary' : 'divider' },
-        '& .MuiChip-label': { fontSize: 14 },
-      }}
-    />
-  );
-
   return (
-    <Stack gap={5}>
-      {/* 큰 숫자 요약 */}
-      <Box>
-        <Typography color="text.secondary" fontSize={15} mb={1}>가맹점</Typography>
-        <Typography fontSize={{ xs: 30, md: 36 }} fontWeight={700} lineHeight={1.2}>
-          {loading ? '-' : `${stores.length}곳`}
-        </Typography>
-        {!loading && (
-          <Typography fontSize={15} color="text.secondary" mt={1}>진행 중인 발주가 있는 곳 {pendingStoreIds.size}곳</Typography>
-        )}
-      </Box>
-
+    <Stack gap={3.5} sx={{ bgcolor: 'background.default' }}>
       {error && <Alert severity="error" onClose={() => setError('')}>{error}</Alert>}
       {success && <Alert severity="success" onClose={() => setSuccess('')}>{success}</Alert>}
 
-      {/* 검색 + 필터 */}
+      {/* 검색 + 필터 바 */}
       <Stack direction="row" gap={2} alignItems="center" flexWrap="wrap">
         <TextField
           size="small"
-          placeholder="가맹점명 검색"
+          placeholder="가맹점명 검색..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           sx={{ width: 280 }}
@@ -472,261 +429,300 @@ const StoreManagement = () => {
           }}
         />
         <CascadingRegionFilter value={regionFilter} onChange={setRegionFilter} />
-        {pill(`발주 진행 중만 (${pendingStoreIds.size})`, showPendingOnly, () => setShowPendingOnly(v => !v))}
-        <Typography variant="body2" color="text.secondary">{loading ? '불러오는 중…' : `${filtered.length}곳 표시`}</Typography>
+        <Chip
+          icon={<IconifyIcon icon="mingcute:alert-fill" width={14} />}
+          label={
+            showPendingOnly
+              ? `발주 대기 ${pendingStoreIds.size}곳`
+              : `발주 대기 ${pendingStoreIds.size}곳`
+          }
+          color="warning"
+          variant={showPendingOnly ? 'filled' : 'outlined'}
+          clickable
+          onClick={() => setShowPendingOnly(v => !v)}
+          sx={{ fontWeight: 700, fontSize: 12 }}
+        />
+        <Chip
+          label={loading ? '로딩 중...' : `총 ${filtered.length}개 가맹점`}
+          color="primary" variant="outlined" size="small"
+        />
       </Stack>
 
-      <Box sx={{ display: 'grid', gap: 5, gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: '340px minmax(0, 1fr)' }, alignItems: 'start' }}>
+      <Grid container spacing={2.5}>
         {/* 왼쪽: 가맹점 목록 */}
-        <Paper sx={{ p: 3, maxHeight: 680, overflowY: 'auto' }}>
-          {loading ? (
-            <Stack alignItems="center" py={8}><CircularProgress /></Stack>
-          ) : filtered.length === 0 ? (
-            <Stack alignItems="center" py={8} gap={1}>
-              <IconifyIcon icon="mingcute:search-2-line" width={32} color={theme.palette.text.disabled} />
-              <Typography color="text.secondary" fontSize={14}>검색 결과가 없습니다.</Typography>
-            </Stack>
-          ) : filtered.map((store: any) => {
-            const isSelected = selectedStore?.id === store.id;
-            return (
-              <Stack
-                key={store.id} direction="row" alignItems="center" gap={2}
-                onClick={() => setSelectedStore(store)}
-                sx={{
-                  px: 2, py: 2.5, borderRadius: 3, cursor: 'pointer', opacity: store.isActive ? 1 : 0.5,
-                  bgcolor: isSelected ? 'primary.light' : 'transparent',
-                  '&:hover': { bgcolor: isSelected ? 'primary.light' : 'background.default' },
-                }}
-              >
-                <Box sx={{ width: 36, height: 36, borderRadius: '50%', bgcolor: isSelected ? 'primary.main' : 'background.default', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Typography fontWeight={700} fontSize={14} color={isSelected ? 'common.white' : 'text.secondary'}>{store.storeName?.slice(0, 1)}</Typography>
-                </Box>
-                <Box sx={{ flex: 1, minWidth: 0 }}>
-                  <Typography fontWeight={600} fontSize={15} noWrap color={isSelected ? 'primary.main' : 'text.primary'}>{store.storeName}</Typography>
-                  <Typography variant="body2" color="text.secondary" noWrap>
-                    {store.region ?? '-'}{!store.isActive && ' · 비활성'}
-                  </Typography>
-                </Box>
-                {pendingStoreIds.has(store.id) && (
-                  <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: 'warning.main', flexShrink: 0 }} aria-label="진행 중 발주 있음" />
-                )}
-              </Stack>
-            );
-          })}
-        </Paper>
+        <Grid item xs={12} md={4}>
+          <Paper sx={{
+            border: `1px solid ${theme.palette.divider}`, borderRadius: '10px',
+            height: 600, overflow: 'hidden', display: 'flex', flexDirection: 'column',
+          }}>
+            <Box sx={{ px: 2.5, py: 2, borderBottom: `1px solid ${theme.palette.divider}` }}>
+              <Typography variant="subtitle1" fontWeight={700} color="text.primary">가맹점 목록</Typography>
+            </Box>
+
+            {loading ? (
+              <Box sx={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                <CircularProgress />
+              </Box>
+            ) : filtered.length === 0 ? (
+              <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: 1 }}>
+                <IconifyIcon icon="mingcute:search-2-line" width={32} color={theme.palette.text.disabled} />
+                <Typography color="text.secondary" fontSize={14}>검색 결과가 없습니다.</Typography>
+              </Box>
+            ) : (
+              <Box sx={{ flex: 1, overflowY: 'auto' }}>
+                {filtered.map((store: any, idx: number) => {
+                  const isSelected = selectedStore?.id === store.id;
+                  return (
+                    <Box
+                      key={store.id}
+                      onClick={() => setSelectedStore(store)}
+                      sx={{
+                        px: 2.5, py: 1.75,
+                        cursor: 'pointer',
+                        borderLeft: `3px solid ${isSelected ? theme.palette.primary.main : 'transparent'}`,
+                        bgcolor: isSelected ? `${theme.palette.primary.main}0A` : 'transparent',
+                        transition: 'background 0.12s',
+                        borderTop: idx > 0 ? `1px solid ${theme.palette.divider}` : 'none',
+                        '&:hover': { bgcolor: isSelected ? `${theme.palette.primary.main}12` : 'action.hover' },
+                      }}
+                    >
+                      <Stack direction="row" gap={1.5} alignItems="center">
+                        <Box sx={{
+                          width: 36, height: 36, flexShrink: 0, borderRadius: 2,
+                          bgcolor: isSelected ? 'primary.main' : 'primary.light', color: isSelected ? 'common.white' : 'primary.main',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all .15s',
+                        }}>
+                          <IconifyIcon icon="mingcute:store-2-line" width={19} />
+                        </Box>
+                        <Box sx={{ flex: 1, minWidth: 0 }}>
+                          <Stack direction="row" justifyContent="space-between" alignItems="center">
+                            <Typography
+                              fontWeight={700} fontSize={14}
+                              color={isSelected ? 'primary.main' : 'text.primary'}
+                              noWrap sx={{ maxWidth: 140 }}
+                            >
+                              {store.storeName}
+                            </Typography>
+                            <Stack direction="row" gap={0.5} alignItems="center">
+                              {pendingStoreIds.has(store.id) && (
+                                <Chip
+                                  label="대기"
+                                  size="small"
+                                  color="warning"
+                                  sx={{ height: 18, fontSize: 10, fontWeight: 700, '& .MuiChip-label': { px: 0.6 } }}
+                                />
+                              )}
+                              <Chip
+                                label={store.isActive ? '운영중' : '비활성'}
+                                size="small"
+                                color={store.isActive ? 'success' : 'default'}
+                                sx={{ height: 18, fontSize: 10, fontWeight: 700, '& .MuiChip-label': { px: 0.75 } }}
+                              />
+                            </Stack>
+                          </Stack>
+                          <Stack direction="row" gap={0.5} mt={0.5} alignItems="center">
+                            <IconifyIcon icon="mingcute:location-line" width={12} color={theme.palette.text.disabled} />
+                            <Typography variant="caption" color="text.secondary">{store.region ?? '-'}</Typography>
+                            <Typography variant="caption" color="text.disabled" mx={0.25}>·</Typography>
+                            <Typography variant="caption" color="text.secondary" noWrap sx={{ maxWidth: 140 }}>
+                              {store.user?.email ?? '-'}
+                            </Typography>
+                          </Stack>
+                        </Box>
+                      </Stack>
+                    </Box>
+                  );
+                })}
+              </Box>
+            )}
+          </Paper>
+        </Grid>
 
         {/* 오른쪽: 가맹점 상세 */}
-        {!selectedStore ? (
-          <Paper sx={{ p: 8, alignItems: 'center', gap: 2 }}>
-            <Box sx={{ width: 72, height: 72, borderRadius: '50%', bgcolor: 'background.default', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <IconifyIcon icon="mingcute:store-2-line" width={36} color={theme.palette.text.disabled} />
-            </Box>
-            <Typography color="text.secondary" fontWeight={600}>왼쪽에서 가맹점을 고르면 상세 정보가 보여요.</Typography>
-          </Paper>
-        ) : (
-          <Paper sx={{ p: 5, gap: 4 }}>
-            {/* 헤더 */}
-            <Stack direction="row" justifyContent="space-between" alignItems="flex-start" gap={2}>
-              <Box sx={{ minWidth: 0 }}>
-                <Typography fontSize={24} fontWeight={700}>{selectedStore.storeName}</Typography>
-                <Typography variant="body2" color="text.secondary" mt={0.5}>
-                  {selectedStore.isActive ? '운영 중' : '비활성'} · {selectedStore.address ?? '주소 미등록'}
-                </Typography>
+        <Grid item xs={12} md={8}>
+          {!selectedStore ? (
+            <Paper sx={{
+              border: `1px solid ${theme.palette.divider}`, borderRadius: '10px', height: 600,
+              display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: 2,
+            }}>
+              <Box sx={{ p: 3, borderRadius: '50%', bgcolor: 'action.hover', display: 'flex' }}>
+                <IconifyIcon icon="mingcute:store-2-line" width={44} color={theme.palette.text.disabled} />
               </Box>
-              {!editMode && detailTab === 0 && (
-                <Button size="small" variant="outlined" onClick={startEdit}
-                  startIcon={<IconifyIcon icon="mingcute:edit-2-line" width={14} />}>
-                  수정
-                </Button>
-              )}
-            </Stack>
-
-            <Stack direction="row" gap={1} sx={{ bgcolor: 'background.default', p: 0.75, borderRadius: 999, alignSelf: 'flex-start' }}>
-              {pill('가맹점 정보', detailTab === 0, () => { setDetailTab(0); setEditMode(false); })}
-              {pill(`발주 현황${requestedCount > 0 ? ` · 승인 대기 ${requestedCount}` : ''}`, detailTab === 1, () => { setDetailTab(1); setEditMode(false); })}
-            </Stack>
-
-            {detailTab === 0 && (
-              editMode ? (
-                <Stack gap={2.5}>
-                  <TextField label="가게 이름" name="storeName" value={editForm.storeName} onChange={handleEditChange} size="small" fullWidth required />
-                  <TextField
-                    label="기본 주소" value={editForm.address} size="small" fullWidth required
-                    InputProps={{
-                      readOnly: true,
-                      endAdornment: (
-                        <InputAdornment position="end">
-                          <Button size="small" variant="outlined" onClick={openPostcode}
-                            startIcon={<IconifyIcon icon="mingcute:search-2-line" width={15} />} sx={{ whiteSpace: 'nowrap', mr: 1 }}>
-                            주소 검색
-                          </Button>
-                        </InputAdornment>
-                      ),
-                    }}
-                  />
-                  {editForm.address && (
-                    <TextField label="상세 주소" name="detailAddress" value={editForm.detailAddress} onChange={handleEditChange} size="small" placeholder="동/호수, 건물명 등 (선택)" fullWidth />
-                  )}
-                  {editForm.region && (
-                    <Typography variant="body2" color="primary.main" fontWeight={600}>지역: {editForm.region}</Typography>
-                  )}
-                  <TextField label="전화번호" name="phone" value={editForm.phone} onChange={handleEditChange} size="small" placeholder="010-0000-0000" fullWidth required />
-                  <Stack direction="row" gap={1.5} justifyContent="flex-end">
-                    <Button variant="text" onClick={() => setEditMode(false)}>취소</Button>
-                    <Button onClick={handleEditSubmit} disabled={editSubmitting}
-                      startIcon={editSubmitting ? <CircularProgress size={16} color="inherit" /> : null}>
-                      {editSubmitting ? '저장 중...' : '저장'}
-                    </Button>
+              <Typography color="text.secondary" fontWeight={600}>가맹점을 선택하면 상세 정보가 표시됩니다.</Typography>
+              <Typography variant="caption" color="text.disabled">왼쪽 목록에서 가맹점을 클릭하세요</Typography>
+            </Paper>
+          ) : (
+            <Paper sx={{ border: `1px solid ${theme.palette.divider}`, borderRadius: '10px', height: 600, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+              {/* 헤더 */}
+              <Box sx={{ px: 3, pt: 2.5 }}>
+                <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
+                  <Box>
+                    <Typography variant="h5" fontWeight={800} color="text.primary">{selectedStore.storeName}</Typography>
+                    <Typography variant="body2" color="text.secondary" mt={0.5}>
+                      {selectedStore.address ?? '주소 미등록'}
+                    </Typography>
+                  </Box>
+                  <Stack direction="row" gap={1} alignItems="center">
+                    <Chip label={selectedStore.isActive ? '운영중' : '비활성'}
+                      color={selectedStore.isActive ? 'success' : 'default'} sx={{ fontWeight: 700 }} />
+                    {!editMode && detailTab === 0 && (
+                      <Button size="small" variant="outlined" onClick={startEdit}
+                        startIcon={<IconifyIcon icon="mingcute:edit-2-line" width={14} />}>
+                        수정
+                      </Button>
+                    )}
                   </Stack>
                 </Stack>
-              ) : (
-                <>
-                  <Box>
-                    {infoItems.map((item) => (
-                      <Stack key={item.label} direction="row" alignItems="center" gap={2} sx={{ py: 2.5, ...rowSx }}>
-                        <IconifyIcon icon={item.icon} width={18} color={theme.palette.text.disabled} />
-                        <Typography color="text.secondary" fontSize={15} sx={{ width: 96, flexShrink: 0 }}>{item.label}</Typography>
-                        <Typography fontWeight={600} fontSize={15} sx={{ flex: 1, minWidth: 0, textAlign: 'right' }} noWrap>{item.value}</Typography>
-                      </Stack>
-                    ))}
-                  </Box>
-                  <Button
-                    variant="outlined" fullWidth
-                    startIcon={<IconifyIcon icon="mingcute:truck-line" width={18} />}
-                    onClick={() => navigate(`/admin/orders?storeId=${selectedStore.id}&storeName=${encodeURIComponent(selectedStore.storeName)}`)}
-                  >
-                    이 가맹점 발주 보기
-                  </Button>
-                </>
-              )
-            )}
 
-            {detailTab === 1 && (
-              ordersLoading ? (
-                <Stack alignItems="center" py={6}><CircularProgress /></Stack>
-              ) : pendingOrders.length === 0 ? (
-                <Stack alignItems="center" py={6} gap={1.5}>
-                  <IconifyIcon icon="mingcute:check-circle-fill" color={theme.palette.success.main} width={44} />
-                  <Typography color="text.secondary" fontWeight={600}>진행 중인 발주가 없습니다.</Typography>
-                </Stack>
-              ) : (
-                <Box>
-                  {pendingOrders.map((order: any) => {
-                    const driverUrl = order.deliveryGroupToken
-                      ? `${window.location.origin}/driver/group/${order.deliveryGroupToken}`
-                      : null;
-                    const step = ORDER_STEPS.indexOf(order.status);
-                    return (
-                      <Box key={order.id} sx={{ py: 3, ...rowSx }}>
-                        <Stack direction="row" alignItems="center" gap={2} flexWrap="wrap">
-                          <Box sx={{ flex: 1, minWidth: 0 }}>
-                            <Typography fontWeight={600} fontSize={15} noWrap>
-                              {order.ingredient?.name ?? '-'} <Box component="span" fontWeight={700}>{order.orderedQty ?? order.quantity}{order.ingredient?.unit ?? ''}</Box>
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                              {order.orderedAt ? new Date(order.orderedAt).toLocaleDateString() : '-'}
-                            </Typography>
-                          </Box>
-                          <Typography fontWeight={700} fontSize={14} color={step <= 1 ? 'primary.main' : 'text.secondary'}>
-                            {ORDER_LABEL[order.status] ?? order.status}
-                          </Typography>
-                          {order.status === 'REQUESTED' && (
-                            <Stack direction="row" gap={1}>
-                              <Button size="small" variant="text" color="error"
-                                onClick={async () => {
-                                  try {
-                                    await orderService.updateStatus(order.id, 'REJECTED');
-                                    reloadOrders(selectedStore.id);
-                                    setSuccess('발주가 거절되었습니다.');
-                                  } catch { setError('거절에 실패했습니다.'); }
-                                }}>거절</Button>
-                              <Button size="small"
-                                onClick={async () => {
-                                  try {
-                                    await orderService.approve(order.id);
-                                    reloadOrders(selectedStore.id);
-                                    setSuccess('발주가 승인되었습니다.');
-                                  } catch { setError('승인에 실패했습니다.'); }
-                                }}>승인</Button>
+                <Tabs value={detailTab} onChange={(_, v) => { setDetailTab(v); setEditMode(false); }}
+                  sx={{ mt: 1.5, borderBottom: `1px solid ${theme.palette.divider}` }}>
+                  <Tab label="가맹점 정보" />
+                  <Tab label={
+                    <Stack direction="row" gap={0.75} alignItems="center">
+                      발주 대기
+                      {pendingOrders.length > 0 && (
+                        <Chip label={pendingOrders.length} color="warning" size="small"
+                          sx={{ height: 18, fontSize: 10, fontWeight: 700 }} />
+                      )}
+                    </Stack>
+                  } />
+                </Tabs>
+              </Box>
+
+              {/* 탭 내용 */}
+              <Box sx={{ flex: 1, overflowY: 'auto', p: 3 }}>
+                {detailTab === 0 && (
+                  <>
+                    {editMode ? (
+                      <Stack gap={2}>
+                        <TextField label="가게 이름" name="storeName" value={editForm.storeName} onChange={handleEditChange} size="small" fullWidth required />
+                        <Stack gap={1}>
+                          <TextField
+                            label="기본 주소" value={editForm.address} size="small" fullWidth required
+                            InputProps={{
+                              readOnly: true,
+                              endAdornment: (
+                                <InputAdornment position="end">
+                                  <Button variant="contained" size="small" onClick={openPostcode}
+                                    sx={{ borderRadius: 1.5, px: 1.5, whiteSpace: 'nowrap' }}
+                                    startIcon={<IconifyIcon icon="mingcute:search-2-line" width={15} />}>
+                                    주소 검색
+                                  </Button>
+                                </InputAdornment>
+                              ),
+                            }}
+                          />
+                          {editForm.address && (
+                            <TextField label="상세 주소" name="detailAddress" value={editForm.detailAddress} onChange={handleEditChange} size="small" placeholder="동/호수, 건물명 등 (선택)" fullWidth />
+                          )}
+                          {editForm.region && (
+                            <Stack direction="row" gap={1} alignItems="center">
+                              <IconifyIcon icon="mingcute:location-fill" width={15} color="primary.main" />
+                              <Typography variant="caption" color="primary.main" fontWeight={700}>지역: {editForm.region}</Typography>
                             </Stack>
                           )}
-                          {order.status === 'APPROVED' && (
-                            <Button size="small"
-                              onClick={() => { setHqSendTarget(order.id); setHqSendName(order.ingredient?.name ?? '식자재'); setExpiryDateInput(''); }}>
-                              발송 검수
-                            </Button>
-                          )}
-                          {order.status === 'HQ_SENT' && driverUrl && (
-                            <Button size="small" variant="outlined" startIcon={<IconifyIcon icon="mingcute:link-line" width={16} />}
-                              onClick={() => { navigator.clipboard.writeText(driverUrl); setSuccess('배달기사 링크가 복사되었습니다.'); }}>
-                              기사 링크
-                            </Button>
-                          )}
                         </Stack>
-                        {step >= 0 && (
-                          <Stack direction="row" gap={0.75} mt={2}>
-                            {ORDER_STEPS.map((s, i) => (
-                              <Box key={s} sx={{ flex: 1, height: 4, borderRadius: 2, bgcolor: i <= step ? 'primary.main' : 'divider' }} />
-                            ))}
-                          </Stack>
-                        )}
-                      </Box>
-                    );
-                  })}
-                </Box>
-              )
-            )}
-          </Paper>
-        )}
-      </Box>
-      {/* 유통기한 입력 다이얼로그 */}
-      <Dialog open={hqSendTarget !== null} onClose={() => { setHqSendTarget(null); setExpiryDateInput(''); }} maxWidth="xs" fullWidth>
-        <DialogTitle>발송 검수 완료 — {hqSendName}</DialogTitle>
-        <DialogContent>
-          <Stack gap={2} pt={1}>
-            <Typography variant="body2" color="text.secondary">
-              유통기한을 입력하면 QR 코드가 생성됩니다. (선택 사항)
-            </Typography>
-            <TextField
-              label="유통기한" type="date" value={expiryDateInput}
-              onChange={(e) => setExpiryDateInput(e.target.value)}
-              InputLabelProps={{ shrink: true }} fullWidth size="small"
-            />
-          </Stack>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => { setHqSendTarget(null); setExpiryDateInput(''); }}>취소</Button>
-          <Button variant="contained" color="success" onClick={async () => {
-            if (hqSendTarget === null) return;
-            try {
-              const result = await orderService.hqSend(hqSendTarget, expiryDateInput || undefined);
-              setSuccess('발송 검수가 완료되었습니다.');
-              setHqSendTarget(null);
-              setExpiryDateInput('');
-              if (result?.qrToken) {
-                const qrUrl = `${window.location.origin}/driver/scan?token=${result.qrToken}`;
-                setQrData({ data: qrUrl, name: hqSendName });
-              }
-              reloadOrders(selectedStore.id);
-            } catch {
-              setError('발송 검수 처리에 실패했습니다.');
-              setHqSendTarget(null);
-            }
-          }}>
-            발송 검수완료
-          </Button>
-        </DialogActions>
-      </Dialog>
+                        <TextField label="전화번호" name="phone" value={editForm.phone} onChange={handleEditChange} size="small" placeholder="010-0000-0000" fullWidth required />
+                        <Stack direction="row" gap={1.5} mt={1}>
+                          <Button variant="contained" fullWidth size="large" onClick={handleEditSubmit}
+                            disabled={editSubmitting}
+                            startIcon={editSubmitting ? <CircularProgress size={18} color="inherit" /> : null}
+                            sx={{ borderRadius: '10px', py: 1.5 }}>
+                            {editSubmitting ? '저장 중...' : '저장'}
+                          </Button>
+                          <Button variant="outlined" size="large" onClick={() => setEditMode(false)}
+                            sx={{ borderRadius: '10px', py: 1.5, minWidth: 80 }}>
+                            취소
+                          </Button>
+                        </Stack>
+                      </Stack>
+                    ) : (
+                      <>
+                        <Grid container spacing={2}>
+                          {infoItems.map((item) => (
+                            <Grid item xs={12} sm={6} key={item.label}>
+                              <Stack direction="row" gap={1} alignItems="center">
+                                <IconifyIcon icon={item.icon} width={15} color={theme.palette.text.secondary} />
+                                <Typography variant="body2" color="text.secondary" sx={{ minWidth: 72 }}>{item.label}</Typography>
+                                <Typography variant="body2" fontWeight={600} color="text.primary" noWrap>{item.value}</Typography>
+                              </Stack>
+                            </Grid>
+                          ))}
+                        </Grid>
+                        <Divider sx={{ my: 2.5 }} />
+                        <Button
+                          variant="contained" fullWidth size="large"
+                          startIcon={<IconifyIcon icon="mingcute:chart-bar-fill" width={20} />}
+                          sx={{ borderRadius: '10px', py: 1.5 }}
+                          onClick={() => navigate(`/admin/stats?storeId=${selectedStore.id}&storeName=${encodeURIComponent(selectedStore.storeName)}`)}
+                        >
+                          매출 통계 보기
+                        </Button>
+                      </>
+                    )}
+                  </>
+                )}
 
-      {/* QR 코드 표시 */}
-      {qrData && (
-        <QrCodeDisplay
-          data={qrData.data}
-          title={`${qrData.name} QR 코드`}
-          subtitle="이 QR 코드를 패키지에 부착하세요"
-          onClose={() => setQrData(null)}
-        />
-      )}
+                {detailTab === 1 && (
+                  <>
+                    {ordersLoading ? (
+                      <Box sx={{ display: 'flex', justifyContent: 'center', pt: 4 }}>
+                        <CircularProgress />
+                      </Box>
+                    ) : pendingOrders.length === 0 ? (
+                      <Stack alignItems="center" justifyContent="center" gap={1.5} sx={{ pt: 6 }}>
+                        <IconifyIcon icon="mingcute:check-circle-fill" color={theme.palette.success.main} width={44} />
+                        <Typography color="text.secondary" fontWeight={600}>대기 중인 발주가 없습니다.</Typography>
+                      </Stack>
+                    ) : (
+                      <Stack gap={1.5}>
+                        {pendingOrders.map((order: any) => (
+                          <Paper key={order.id} variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
+                            <Stack direction="row" justifyContent="space-between" alignItems="center">
+                              <Box>
+                                <Typography fontWeight={700} fontSize={14}>
+                                  {order.ingredient?.name ?? '-'}
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                  {order.orderedQty ?? order.quantity} {order.ingredient?.unit ?? ''} · {order.orderedAt ? new Date(order.orderedAt).toLocaleDateString() : '-'}
+                                </Typography>
+                              </Box>
+                              <Stack direction="row" gap={1}>
+                                <Button size="small" variant="contained" color="primary"
+                                  onClick={async () => {
+                                    try {
+                                      await orderService.approve(order.id);
+                                      setPendingOrders(prev => prev.filter(o => o.id !== order.id));
+                                      setSuccess('발주가 승인되었습니다.');
+                                    } catch { setError('승인에 실패했습니다.'); }
+                                  }}
+                                  sx={{ borderRadius: 2, fontSize: 12 }}>
+                                  승인
+                                </Button>
+                                <Button size="small" variant="outlined" color="error"
+                                  onClick={async () => {
+                                    try {
+                                      await orderService.updateStatus(order.id, 'REJECTED');
+                                      setPendingOrders(prev => prev.filter(o => o.id !== order.id));
+                                      setSuccess('발주가 거절되었습니다.');
+                                    } catch { setError('거절에 실패했습니다.'); }
+                                  }}
+                                  sx={{ borderRadius: 2, fontSize: 12 }}>
+                                  거절
+                                </Button>
+                              </Stack>
+                            </Stack>
+                          </Paper>
+                        ))}
+                      </Stack>
+                    )}
+                  </>
+                )}
+              </Box>
+            </Paper>
+          )}
+        </Grid>
+      </Grid>
     </Stack>
   );
 };
