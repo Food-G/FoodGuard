@@ -37,10 +37,39 @@ def load_cards(nodes_dir: Path) -> dict:
     return cards
 
 
+DEPLOY_FILES = ["docker-compose.yml", "frontend/Dockerfile", "frontend/nginx.conf", "backend/Dockerfile", "ai-service/Dockerfile"]
+
+
+def summary(server_commit: str | None) -> dict:
+    """보드 위쪽 상태 막대용: 배포 브랜치와 서버, 브랜치별 배포 브랜치와의 차이·경고 (보드 meta/branches 문서)."""
+    def last(ref):
+        h, a, d, s = git("log", "-1", "--format=%h%x1f%an%x1f%ad%x1f%s", "--date=format:%m-%d %H:%M", ref).strip().split("\x1f", 3)
+        return {"hash": h, "author": a, "date": d, "msg": s}
+    head = f"origin/{DEPLOY}"
+    deploy = {"branch": DEPLOY, "head": last(head)}
+    if server_commit:
+        deploy["server"] = server_commit[:7]
+        deploy["undeployed"] = int(git("rev-list", "--count", f"{server_commit}..{head}").strip() or 0)
+    deploy_files = set(git("ls-tree", "-r", "--name-only", head).split())
+    rows = []
+    for b in BRANCHES:
+        if b == DEPLOY:
+            continue
+        ref = f"origin/{b}"
+        warn = [f"배포 파일 없음: {f}" for f in DEPLOY_FILES if f in deploy_files and git("ls-tree", "--name-only", ref, f).strip() == ""]
+        gone = [l for l in git("diff", "--name-status", "--diff-filter=D", f"{head}...{ref}").splitlines() if l]
+        if len(gone) >= 10:
+            warn.append(f"{DEPLOY} 대비 지운 파일 {len(gone)}개")
+        rows.append({"name": b, "ahead": int(git("rev-list", "--count", f"{head}..{ref}").strip()),
+                     "behind": int(git("rev-list", "--count", f"{ref}..{head}").strip()), "last": last(ref), "warn": warn})
+    return {"deploy": deploy, "branches": rows}
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--nodes", required=True, help="ArtifactData list 의 out_dir 아래 nodes 폴더")
     ap.add_argument("--since", default="2026-10-01", help="이 날짜 이후 커밋만 본다")
+    ap.add_argument("--server-commit", help="배포 서버가 돌리는 커밋 (서버에서 git log -1 로 확인). 주면 미배포 커밋 수를 낸다")
     args = ap.parse_args()
 
     cards = load_cards(Path(args.nodes))
@@ -83,7 +112,7 @@ def main() -> None:
         if new != cur:
             status[cid] = new
 
-    json.dump({"link": link, "merged_now": merged_now, "status": status, "untagged": untagged},
+    json.dump({"link": link, "merged_now": merged_now, "status": status, "untagged": untagged, "summary": summary(args.server_commit)},
               sys.stdout, ensure_ascii=False, indent=1)
 
 
