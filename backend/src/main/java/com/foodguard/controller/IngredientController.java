@@ -3,6 +3,7 @@ package com.foodguard.controller;
 import com.foodguard.entity.Ingredient;
 import com.foodguard.service.IngredientService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -30,6 +31,8 @@ public class IngredientController {
         return ResponseEntity.ok(ingredientService.getAll());
     }
 
+    // 전 매장 공용 목록이라 수정·삭제는 본사만 (점주가 지우면 다른 매장의 발주·재고·레시피까지 지워진다)
+    @PreAuthorize("hasRole('HQ_ADMIN')")
     @PutMapping("/{id}")
     public ResponseEntity<Ingredient> update(@PathVariable Long id,
                                              @RequestBody Map<String, Object> body) {
@@ -41,6 +44,7 @@ public class IngredientController {
         ));
     }
 
+    @PreAuthorize("hasRole('HQ_ADMIN')")
     @DeleteMapping("/{id}")
     public ResponseEntity<String> delete(@PathVariable Long id) {
         return ResponseEntity.ok(ingredientService.delete(id));

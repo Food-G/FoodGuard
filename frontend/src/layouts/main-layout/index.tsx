@@ -94,7 +94,7 @@ const MainLayout = ({ children, role, onLogout }: MainLayoutProps): ReactElement
           </>
         )}
       </Box>
-      <Footer role={role} />
+      <Footer />
     </Stack>
   );
 };

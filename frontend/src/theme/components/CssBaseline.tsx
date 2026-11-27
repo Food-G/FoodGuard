@@ -12,7 +12,7 @@ const CssBaseline: Components<Omit<Theme, 'components'>>['MuiCssBaseline'] = {
       scrollBehavior: 'smooth',
       WebkitOverflowScrolling: 'touch',
       boxSizing: 'border-box',
-      scrollbarColor: '#21222D #171821',
+      scrollbarWidth: 'none', // 오른쪽 페이지 스크롤바 숨김 (스크롤은 그대로 된다)
     },
     '*, *::before, *::after': {
       margin: 0,

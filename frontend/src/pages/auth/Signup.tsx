@@ -235,7 +235,7 @@ const Signup = () => {
                 InputProps={{
                   endAdornment: (
                     <InputAdornment position="end">
-                      <IconButton onClick={() => setShowPassword(!showPassword)} edge="end">
+                      <IconButton onClick={() => setShowPassword(!showPassword)}>
                         <IconifyIcon icon={showPassword ? 'mingcute:eye-2-line' : 'mingcute:eye-close-line'} />
                       </IconButton>
                     </InputAdornment>
@@ -255,7 +255,7 @@ const Signup = () => {
                 InputProps={{
                   endAdornment: (
                     <InputAdornment position="end">
-                      <IconButton onClick={() => setShowConfirmPassword(!showConfirmPassword)} edge="end">
+                      <IconButton onClick={() => setShowConfirmPassword(!showConfirmPassword)}>
                         <IconifyIcon icon={showConfirmPassword ? 'mingcute:eye-2-line' : 'mingcute:eye-close-line'} />
                       </IconButton>
                     </InputAdornment>
@@ -322,7 +322,7 @@ const Signup = () => {
                   readOnly: true,
                   endAdornment: (
                     <InputAdornment position="end">
-                      <IconifyIcon icon="mingcute:search-line" />
+                      <IconifyIcon icon="mingcute:search-line" sx={{ mr: 1.5 }} />
                     </InputAdornment>
                   ),
                 }}

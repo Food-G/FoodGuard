@@ -24,11 +24,15 @@ public class OrderRequestController {
     public ResponseEntity<OrderRequest> create(@RequestBody Map<String, Object> body) {
         Long storeId = Long.parseLong(body.get("storeId").toString());
         guard.assertCanAccessStore(storeId);
+        double quantity = Double.parseDouble(body.get("quantity").toString());
+        // ingredientId 대신 이름·단위로 보내면 식자재가 없을 때 자동 등록한다
+        if (body.get("ingredientId") == null) {
+            return ResponseEntity.ok(orderRequestService.createByName(storeId,
+                    body.get("ingredientName") == null ? null : body.get("ingredientName").toString(),
+                    body.get("unit") == null ? null : body.get("unit").toString(), quantity));
+        }
         return ResponseEntity.ok(orderRequestService.create(
-                storeId,
-                Long.parseLong(body.get("ingredientId").toString()),
-                Double.parseDouble(body.get("quantity").toString())
-        ));
+                storeId, Long.parseLong(body.get("ingredientId").toString()), quantity));
     }
 
     @GetMapping("/{storeId}")

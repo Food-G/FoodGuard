@@ -118,13 +118,13 @@ function App() {
 
             <Route path="/staff" element={
               <ProtectedRoute role="OWNER">
-                <StaffList />
+                <StaffList user={user} />
               </ProtectedRoute>
             } />
 
             <Route path="/staff/attendance" element={
               <ProtectedRoute role="OWNER">
-                <StaffAttendance />
+                <StaffAttendance user={user} />
               </ProtectedRoute>
             } />
 

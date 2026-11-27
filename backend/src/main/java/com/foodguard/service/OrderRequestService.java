@@ -35,6 +35,7 @@ public class OrderRequestService {
     private final OrderRequestRepository orderRequestRepository;
     private final StoreRepository storeRepository;
     private final IngredientRepository ingredientRepository;
+    private final IngredientService ingredientService;
     private final PredictionResultRepository predictionResultRepository;
     private final MenuIngredientRepository menuIngredientRepository;
     private final InventoryRepository inventoryRepository;
@@ -43,10 +44,21 @@ public class OrderRequestService {
 
     // 발주 요청
     public OrderRequest create(Long storeId, Long ingredientId, Double quantity) {
-        Store store = storeRepository.findById(storeId)
-                .orElseThrow(() -> new RuntimeException("가맹점을 찾을 수 없습니다."));
         Ingredient ingredient = ingredientRepository.findById(ingredientId)
                 .orElseThrow(() -> new RuntimeException("식자재를 찾을 수 없습니다."));
+        return create(storeId, ingredient, quantity);
+    }
+
+    /** 이름·단위로 발주: 식자재 목록에 없으면 자동 등록한 뒤 발주한다 (식자재 목록 화면을 따로 거치지 않음). */
+    @Transactional
+    public OrderRequest createByName(Long storeId, String ingredientName, String unit, Double quantity) {
+        return create(storeId, ingredientService.findOrCreate(ingredientName, null, unit), quantity);
+    }
+
+    private OrderRequest create(Long storeId, Ingredient ingredient, Double quantity) {
+        if (quantity == null || !(quantity > 0)) throw new IllegalStateException("발주 수량은 0보다 커야 합니다.");
+        Store store = storeRepository.findById(storeId)
+                .orElseThrow(() -> new RuntimeException("가맹점을 찾을 수 없습니다."));
 
         OrderRequest order = new OrderRequest();
         order.setStore(store);

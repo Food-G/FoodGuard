@@ -8,6 +8,7 @@ import com.foodguard.repository.MenuRepository;
 import com.foodguard.repository.NotificationRepository;
 import com.foodguard.repository.OrderRequestRepository;
 import com.foodguard.repository.SalesDataRepository;
+import com.foodguard.repository.StaffRepository;
 import com.foodguard.repository.StoreRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
@@ -42,6 +43,7 @@ public class StoreAccessGuard {
     private final SalesDataRepository salesDataRepository;
     private final NotificationRepository notificationRepository;
     private final DonationRecordRepository donationRecordRepository;
+    private final StaffRepository staffRepository;
 
     // ── 현재 사용자 ────────────────────────────────────────────────────
 
@@ -132,6 +134,12 @@ public class StoreAccessGuard {
     public void assertCanAccessDonation(Long donationId) {
         assertCanAccessStore(donationRecordRepository.findById(donationId)
                 .orElseThrow(() -> new AccessDeniedException("기부 기록을 찾을 수 없습니다."))
+                .getStoreId());
+    }
+
+    public void assertCanAccessStaff(Long staffId) {
+        assertCanAccessStore(staffRepository.findById(staffId)
+                .orElseThrow(() -> new AccessDeniedException("직원을 찾을 수 없습니다."))
                 .getStoreId());
     }
 

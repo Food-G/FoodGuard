@@ -1,7 +1,7 @@
 import { ReactNode } from 'react';
 import { Box, Stack, Typography, alpha, keyframes } from '@mui/material';
 import IconifyIcon from './base/IconifyIcon';
-import EcoScene from './EcoScene';
+import authIllust from '../assets/auth-illust.svg';
 
 // 로그인·회원가입 공용 비주얼 패널: 데스크톱은 왼쪽에 고정(폼이 길어도 따라오지 않음), 모바일은 상단 배너
 export const fadeUp = keyframes`from { opacity: 0; transform: translateY(20px) } to { opacity: 1; transform: none }`;
@@ -46,8 +46,8 @@ const AuthVisual = ({ eyebrow, title, features }: AuthVisualProps) => (
 
     {/* 일러스트 + 문구 */}
     <Stack direction={{ xs: 'row', md: 'column' }} alignItems={{ xs: 'center', md: 'flex-start' }} gap={{ xs: 2, md: 4 }} sx={{ position: 'relative', my: { xs: 2, md: 0 } }}>
-      <Box sx={{ width: { xs: 130, sm: 180, md: 'min(70%, 46vh)', lg: 'min(62%, 46vh)' }, maxWidth: 480, flexShrink: 0, mx: { md: 'auto' }, ...enter(1) }}>
-        <EcoScene tone="light" />
+      <Box sx={{ width: { xs: 150, sm: 210, md: 'min(94%, 60vh)', lg: 'min(90%, 60vh)' }, maxWidth: 640, flexShrink: 0, mx: { md: 'auto' }, ...enter(1) }}>
+        <Box component="img" src={authIllust} alt="FoodGuard 매장 일러스트" sx={{ display: 'block', width: 1, height: 'auto' }} />
       </Box>
       <Box minWidth={0}>
         <Typography sx={{ fontSize: { xs: 11, md: 13 }, letterSpacing: '0.3em', fontWeight: 700, color: '#1D9E75', ...enter(2) }}>

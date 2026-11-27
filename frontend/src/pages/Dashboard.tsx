@@ -5,7 +5,7 @@ import {
 } from '@mui/material';
 import IconifyIcon from '../components/base/IconifyIcon';
 import { CARD_ICON, HqBriefing, TONE, useOwnerBriefing } from '../components/AgentBriefing';
-import heroBg from '../assets/hero-bg.svg';
+import heroBg from '../assets/hero-slide.jpg';
 import { menuFor, MenuLink } from '../layouts/main-layout/menu';
 import { AGENTS } from './AgentCenter';
 import { agentService, AgentProposal, AgentRun } from '../services/agentService';
@@ -289,7 +289,7 @@ const Dashboard = ({ user }: any) => {
       <Box sx={{
         position: 'relative', overflow: 'hidden', pb: { xs: 10, md: 9 },
         // 배경 사진(글자 없는 숲·채소 그림) + 왼쪽 글씨가 잘 읽히도록 흰빛 그라데이션
-        background: `linear-gradient(90deg, rgba(255,255,255,.82) 0%, rgba(255,255,255,.55) 34%, rgba(255,255,255,0) 58%), url(${heroBg}) right bottom / cover no-repeat`,
+        background: `linear-gradient(90deg, rgba(238,242,233,.94) 0%, rgba(238,242,233,.8) 22%, rgba(238,242,233,0) 32%), url(${heroBg}) 78% center / auto 100% no-repeat, #EEF2E9`,
         borderBottom: '1px solid rgba(80,70,140,.10)',
       }}>
         <Box sx={{ height: { xs: 64, lg: 112 } }} />
@@ -425,15 +425,22 @@ const Dashboard = ({ user }: any) => {
               </Stack>
             </Box>
           </Reveal>
+          {/* 카드 슬라이드: 왼쪽·오른쪽 여백(44px)에 각각 마우스를 올리면 그쪽 화살표만 나타난다 (키보드 포커스 때도) */}
           <Box sx={{ position: 'relative', minWidth: 0 }}>
             {[-1, 1].map((d) => (
-              <IconButton key={d} onClick={() => scrollBy(d)} aria-label={d < 0 ? '이전 카드' : '다음 카드'} sx={{
-                display: { xs: 'none', md: 'flex' }, position: 'absolute', top: '50%', transform: 'translateY(-50%)', zIndex: 2,
-                [d < 0 ? 'left' : 'right']: 0, width: 34, height: 34, bgcolor: '#1B1F3B', color: 'common.white',
-                '&:hover': { bgcolor: '#1B1F3B', opacity: 0.85 },
+              <Box key={d} sx={{
+                display: { xs: 'none', md: 'flex' }, alignItems: 'center', justifyContent: 'center',
+                position: 'absolute', top: 0, bottom: 0, [d < 0 ? 'left' : 'right']: 0, width: 44, zIndex: 2,
+                '&:hover .slide-arrow, &:focus-within .slide-arrow': { opacity: 1 },
               }}>
-                <IconifyIcon icon={d < 0 ? 'mingcute:left-line' : 'mingcute:right-line'} width={18} />
-              </IconButton>
+                <IconButton className="slide-arrow" onClick={() => scrollBy(d)} aria-label={d < 0 ? '이전 카드' : '다음 카드'} sx={{
+                  width: 34, height: 34, bgcolor: '#1B1F3B', color: 'common.white',
+                  opacity: 0.3, transition: 'opacity .25s ease',
+                  '&:hover': { bgcolor: '#1B1F3B' },
+                }}>
+                  <IconifyIcon icon={d < 0 ? 'mingcute:left-line' : 'mingcute:right-line'} width={18} />
+                </IconButton>
+              </Box>
             ))}
             <Box ref={scroller} sx={{
               display: 'flex', gap: 1.5, overflowX: 'auto', scrollSnapType: 'x mandatory', pb: 1, px: { md: 5.5 }, scrollPaddingLeft: { md: 44 },
@@ -761,11 +768,9 @@ const Dashboard = ({ user }: any) => {
           </Box>
         )}
 
-        {/* 2줄: 안내 카드 세 개 */}
-        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' }, gap: 2, mt: 2.5 }}>
+        {/* 2줄: 안내 카드 두 개 */}
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' }, gap: 2, mt: 2.5 }}>
           {[
-            { title: 'AI 코파일럿', desc: '매장 데이터에 대해 궁금한 걸 물어보세요.', icon: 'mingcute:chat-3-line', color: '#5468C4',
-              buttons: [{ label: '대화 시작하기', on: () => window.dispatchEvent(new Event('fg:open-copilot')) }] },
             { title: '에이전트 실행 기록', desc: `최근 7일 동안 ${runs.filter((r) => Date.now() - new Date(r.startedAt).getTime() < 7 * 86400000).length}회 실행됐어요.`, icon: 'mingcute:robot-line', color: '#1D9E75',
               buttons: [{ label: '에이전트 센터', on: () => navigate('/agents') }, { label: '승인함', on: () => navigate('/agent-inbox') }] },
             isHq

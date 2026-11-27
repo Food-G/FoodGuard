@@ -22,13 +22,24 @@ public class IngredientService {
     private final OrderRequestRepository orderRequestRepository;
     private final InventoryLedger ledger;
 
-    // 식자재 등록
+    // 식자재 등록: 같은 이름·단위가 이미 있으면 그것을 돌려준다 (전 매장 공용 목록이라 중복을 만들지 않는다)
     public Ingredient create(String name, String category, String unit) {
-        Ingredient ingredient = new Ingredient();
-        ingredient.setName(name);
-        ingredient.setCategory(category);
-        ingredient.setUnit(UnitConverter.validateBaseUnit(unit));
-        return ingredientRepository.save(ingredient);
+        return findOrCreate(name, category, unit);
+    }
+
+    /** 발주·레시피에서 이름으로 식자재를 지정할 때: 있으면 재사용, 없으면 자동 등록. */
+    @Transactional
+    public Ingredient findOrCreate(String name, String category, String unit) {
+        String n = name == null ? "" : name.trim().replaceAll("\\s+", " ");
+        if (n.isEmpty() || n.length() > 100) throw new IllegalStateException("식자재 이름은 1~100자로 입력해 주세요.");
+        String u = UnitConverter.validateBaseUnit(unit);
+        return ingredientRepository.findFirstByNameAndUnitOrderByIdAsc(n, u).orElseGet(() -> {
+            Ingredient ingredient = new Ingredient();
+            ingredient.setName(n);
+            ingredient.setCategory(category == null ? "" : category);
+            ingredient.setUnit(u);
+            return ingredientRepository.save(ingredient);
+        });
     }
 
     // 전체 식자재 조회

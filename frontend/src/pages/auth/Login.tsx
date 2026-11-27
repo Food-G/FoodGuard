@@ -10,7 +10,6 @@ import {
   InputAdornment,
   Alert,
   alpha,
-  Divider,
 } from '@mui/material';
 import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import IconifyIcon from '../../components/base/IconifyIcon';
@@ -106,7 +105,7 @@ const Login = ({ onLogin }: { onLogin: (token: string) => void }) => {
               InputProps={{
                 endAdornment: (
                   <InputAdornment position="end">
-                    <IconButton onClick={() => setShowPassword(!showPassword)} edge="end">
+                    <IconButton onClick={() => setShowPassword(!showPassword)}>
                       <IconifyIcon icon={showPassword ? 'mingcute:eye-2-line' : 'mingcute:eye-close-line'} />
                     </IconButton>
                   </InputAdornment>
@@ -134,22 +133,7 @@ const Login = ({ onLogin }: { onLogin: (token: string) => void }) => {
             로그인하기
           </Button>
 
-          <Box sx={enter(6)}>
-            <Divider>
-              <Typography variant="body2" color="text.disabled">또는</Typography>
-            </Divider>
-          </Box>
-
-          <Stack direction="row" gap={2} sx={enter(7)}>
-            <Button fullWidth variant="outlined" sx={{ borderRadius: 3, py: 1.4, borderColor: 'divider', color: 'text.primary' }}>
-              <IconifyIcon icon="flat-color-icons:google" width={22} sx={{ mr: 1 }} /> Google
-            </Button>
-            <Button fullWidth variant="outlined" sx={{ borderRadius: 3, py: 1.4, borderColor: 'divider', color: 'text.primary' }}>
-              <IconifyIcon icon="logos:facebook" width={22} sx={{ mr: 1 }} /> Facebook
-            </Button>
-          </Stack>
-
-          <Box textAlign="center" sx={enter(8)}>
+          <Box textAlign="center" sx={enter(6)}>
             <Typography variant="body2" color="text.secondary">
               계정이 없으신가요?{' '}
               <Link component={RouterLink} to="/signup" fontWeight={700} underline="none">

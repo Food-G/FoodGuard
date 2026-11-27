@@ -23,7 +23,7 @@ export const AGENTS: Record<string, AgentMeta> = {
 };
 
 // 비전문가용 설명: 무엇을 하는지 / 언제 일하는지 / 결과는 어디서 보는지
-const PLAIN: Record<string, { short: string; does: string; when: string; result: string }> = {
+export const PLAIN: Record<string, { short: string; does: string; when: string; result: string }> = {
   order_advisor: { short: '무엇을 얼마나 주문할지 정리해요', does: '내일 팔릴 양과 지금 남은 재고를 비교해서, 모자랄 재료의 주문서(발주안)를 미리 써 둡니다.', when: '매일 아침 8시', result: 'AI 승인함에 발주안이 올라와요. 승인하면 실제 발주가 들어갑니다.' },
   waste: { short: '버려질 것 같은 재료를 찾아요', does: '유통기한이 얼마 남지 않은 재료를 찾아서, 버리기 전에 할 수 있는 일(빨리 쓰기, 기부 등)을 알려줍니다.', when: '매일 아침 9시', result: '폐기 예측 & 기부 화면과 AI 승인함에서 볼 수 있어요.' },
   donation: { short: '남는 재료를 기부처와 연결해요', does: '폐기 위험 직원이 찾은 재료를 받아줄 가까운 기부처를 골라 연결을 제안합니다.', when: '폐기 위험 직원이 일을 마치면 이어서 자동으로', result: 'AI 승인함에 기부 제안이 올라오고, 승인하면 기부 이력에 남아요.' },
