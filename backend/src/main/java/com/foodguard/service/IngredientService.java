@@ -69,6 +69,21 @@ public class IngredientService {
         return new java.util.ArrayList<>(byId.values());
     }
 
+    static final int MAX_IMAGE_LENGTH = 400_000; // 화면에서 줄여 올리므로 넉넉한 한도 (약 300KB 사진)
+
+    // 사진만 바꾼다. null·빈 값 = 자동 일러스트로 되돌림
+    @Transactional
+    public Ingredient updateImage(Long id, String imageUrl) {
+        Ingredient ingredient = getById(id);
+        String v = imageUrl == null || imageUrl.isBlank() ? null : imageUrl;
+        if (v != null && !(v.startsWith("icon:") || v.startsWith("data:image/"))) {
+            throw new RuntimeException("사진 형식이 올바르지 않습니다.");
+        }
+        if (v != null && v.length() > MAX_IMAGE_LENGTH) throw new RuntimeException("사진이 너무 큽니다. 더 작은 사진을 골라 주세요.");
+        ingredient.setImageUrl(v);
+        return ingredientRepository.save(ingredient);
+    }
+
     public Ingredient getById(Long id) {
         return ingredientRepository.findById(id).orElseThrow(() -> new RuntimeException("식자재를 찾을 수 없습니다."));
     }

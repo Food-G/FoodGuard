@@ -48,6 +48,26 @@ class IngredientWithoutStoreIdTest extends IntegrationTest {
     }
 
     @Test
+    void imageCanBeChosenResetAndIsValidated() throws Exception {
+        User owner = user("OWNER");
+        store(owner);
+        postAs(owner, "/api/ingredients", Map.of("name", "토마토", "unit", "kg", "imageUrl", "icon:tomato")).andExpect(status().isOk());
+        Ingredient created = ingredients.findAll().stream().filter(i -> "토마토".equals(i.getName())).findFirst().orElseThrow();
+        assertEquals("icon:tomato", created.getImageUrl());
+
+        // 이름·단위만 고치면 사진은 그대로
+        putAs(owner, "/api/ingredients/" + created.getId(), Map.of("name", "방울토마토", "unit", "kg")).andExpect(status().isOk());
+        assertEquals("icon:tomato", ingredients.findById(created.getId()).orElseThrow().getImageUrl());
+
+        // 형식이 다르면 거부, 빈 값이면 자동으로 되돌림
+        putAs(owner, "/api/ingredients/" + created.getId(), Map.of("name", "방울토마토", "unit", "kg", "imageUrl", "javascript:alert(1)"))
+                .andExpect(status().isBadRequest());
+        putAs(owner, "/api/ingredients/" + created.getId(), Map.of("name", "방울토마토", "unit", "kg", "imageUrl", ""))
+                .andExpect(status().isOk());
+        assertEquals(null, ingredients.findById(created.getId()).orElseThrow().getImageUrl());
+    }
+
+    @Test
     void updateWithNameAndUnitOnlyKeepsOrderSettings() throws Exception {
         User owner = user("OWNER");
         Store mine = store(owner);

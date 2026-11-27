@@ -22,8 +22,11 @@ public class IngredientController {
         String category = String.valueOf(body.getOrDefault("category", ""));
         String unit = body.get("unit").toString();
         // storeId 를 안 보내는 화면(메뉴 관리·식자재 목록)은 로그인한 점주의 매장으로 등록한다
-        if (body.get("storeId") == null) return ResponseEntity.ok(ingredientService.create(name, category, unit));
-        return ResponseEntity.ok(ingredientService.create(Long.parseLong(body.get("storeId").toString()), name, category, unit));
+        Ingredient created = body.get("storeId") == null
+                ? ingredientService.create(name, category, unit)
+                : ingredientService.create(Long.parseLong(body.get("storeId").toString()), name, category, unit);
+        if (body.containsKey("imageUrl")) created = ingredientService.updateImage(created.getId(), (String) body.get("imageUrl"));
+        return ResponseEntity.ok(created);
     }
 
     @GetMapping
@@ -38,6 +41,7 @@ public class IngredientController {
                                              @RequestBody Map<String, Object> body) {
         // 보내지 않은 항목(이름·단위만 고치는 화면)은 기존 값을 유지한다
         Ingredient current = ingredientService.getById(id);
+        if (body.containsKey("imageUrl")) ingredientService.updateImage(id, (String) body.get("imageUrl"));
         return ResponseEntity.ok(ingredientService.update(
                 id,
                 body.get("name").toString(),

@@ -48,6 +48,10 @@ public class Ingredient {
     @Column(name = "order_cycle_days")
     private Integer orderCycleDays;
 
+    // 식자재 사진. null = 이름으로 자동 일러스트, "icon:<이름>" = 고른 일러스트, "data:image/..." = 올린 사진 (줄여서 저장)
+    @Column(name = "image_url", columnDefinition = "LONGTEXT")
+    private String imageUrl;
+
     @Column(name = "created_at", insertable = false, updatable = false)
     private LocalDateTime createdAt;
 }
