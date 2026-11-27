@@ -1,54 +1,31 @@
 import { ReactNode } from 'react';
-import { Box, Stack, Typography } from '@mui/material';
-import IconifyIcon from './base/IconifyIcon';
+import { Box, Stack } from '@mui/material';
+import AuthVisual, { enter } from './AuthVisual';
 
-const POINTS = [
-  { icon: 'mingcute:brain-line', title: 'AI 수요 예측', desc: '날씨·요일·특이사항을 반영해 메뉴별 7일 판매량을 예측해요' },
-  { icon: 'mingcute:refresh-2-line', title: '발주 추천', desc: '재고·보관기한·입고 주기를 계산해 필요한 만큼만 주문해요' },
-  { icon: 'mingcute:leaf-line', title: '폐기 줄이기', desc: '유통기한이 임박한 식자재는 할인 판매나 기부로 이어 줘요' },
+const FEATURES = [
+  { icon: 'mingcute:brain-fill', text: 'AI 수요 예측으로 필요한 만큼만 발주' },
+  { icon: 'mingcute:refresh-2-line', text: '재고·보관기한을 계산한 발주 추천' },
+  { icon: 'mingcute:heart-line', text: '남는 식자재는 할인 판매나 기부로' },
 ];
 
-// 로그인·회원가입 공통: 왼쪽 브랜드 패널(넓은 화면만) + 오른쪽 입력
+// 로그인·회원가입 공통: 왼쪽 일러스트 패널(모바일은 상단 배너) + 오른쪽 입력
 const AuthShell = ({ children, maxWidth = 420 }: { children: ReactNode; maxWidth?: number }) => (
-  <Box sx={{ minHeight: '100vh', display: 'grid', gridTemplateColumns: { xs: '1fr', md: '5fr 6fr' }, bgcolor: 'background.default' }}>
+  <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: { xs: 'column', md: 'row' } }}>
+    <AuthVisual
+      eyebrow="AI FOOD MANAGEMENT"
+      title={<>버려지는 식자재 없이,<br />똑똑한 매장 운영</>}
+      features={FEATURES}
+    />
     <Stack
-      justifyContent="space-between"
-      sx={{ display: { xs: 'none', md: 'flex' }, bgcolor: 'primary.main', color: 'common.white', p: { md: 10, lg: 14 } }}
+      alignItems="center"
+      justifyContent="center"
+      sx={{
+        flex: { md: '1 1 45%' }, bgcolor: 'background.paper', position: 'relative',
+        px: { xs: 3, sm: 5 }, py: { xs: 4, md: 6 },
+        mt: { xs: -4, md: 0 }, borderRadius: { xs: '28px 28px 0 0', md: 0 }, // 모바일: 배너 위로 살짝 겹치는 시트
+      }}
     >
-      <Stack direction="row" alignItems="center" gap={1.5}>
-        <IconifyIcon icon="mingcute:leaf-fill" width={30} />
-        <Typography fontSize={22} fontWeight={800}>FoodGuard</Typography>
-      </Stack>
-      <Box>
-        <Typography fontSize={{ md: 34, lg: 40 }} fontWeight={700} lineHeight={1.35} mb={3}>
-          내일 팔릴 만큼만,<br />똑똑하게 발주해요
-        </Typography>
-        <Typography fontSize={16} sx={{ opacity: 0.75 }} mb={8}>
-          프랜차이즈 가맹점의 식자재 낭비를 줄이는 AI 발주 플랫폼
-        </Typography>
-        <Stack gap={5}>
-          {POINTS.map((p) => (
-            <Stack key={p.title} direction="row" gap={3} alignItems="flex-start">
-              <Box sx={{ width: 44, height: 44, borderRadius: 3, bgcolor: 'rgba(255,255,255,0.12)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <IconifyIcon icon={p.icon} width={22} />
-              </Box>
-              <Box>
-                <Typography fontWeight={700} fontSize={16}>{p.title}</Typography>
-                <Typography fontSize={14} sx={{ opacity: 0.7 }}>{p.desc}</Typography>
-              </Box>
-            </Stack>
-          ))}
-        </Stack>
-      </Box>
-      <Typography fontSize={13} sx={{ opacity: 0.5 }}>© 2026 FoodGuard Team</Typography>
-    </Stack>
-
-    <Stack alignItems="center" justifyContent="center" sx={{ px: { xs: 4, sm: 8 }, py: 10 }}>
-      <Stack direction="row" alignItems="center" gap={1.5} mb={8} sx={{ display: { xs: 'flex', md: 'none' } }}>
-        <IconifyIcon icon="mingcute:leaf-fill" width={30} color="#1F4D3A" />
-        <Typography fontSize={24} fontWeight={800} color="primary.main">FoodGuard</Typography>
-      </Stack>
-      <Box sx={{ width: '100%', maxWidth }}>{children}</Box>
+      <Box sx={{ width: 1, maxWidth, ...enter(2) }}>{children}</Box>
     </Stack>
   </Box>
 );

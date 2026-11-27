@@ -7,14 +7,16 @@ const FilledInput: Components<Omit<Theme, 'components'>>['MuiFilledInput'] = {
   },
   styleOverrides: {
     root: ({ theme }) => ({
-      borderRadius: theme.shape.borderRadius * 2,
-      backgroundColor: theme.palette.background.paper,
+      borderRadius: theme.shape.borderRadius,
+      backgroundColor: '#F4F6FA',
+      border: '1px solid #E3E7EF',
       padding: 0,
       '&:hover': {
-        backgroundColor: theme.palette.grey[100],
+        backgroundColor: '#EEF1F6',
       },
       '&.Mui-focused': {
-        backgroundColor: theme.palette.grey[50],
+        backgroundColor: theme.palette.background.paper,
+        borderColor: theme.palette.primary.main,
       },
       '&::before, &::after': {
         borderBottom: 'none',

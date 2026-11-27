@@ -13,7 +13,7 @@ const DataGrid: DataGridComponents<Omit<Theme, 'components'>>['MuiDataGrid'] = {
           visibility: 'visible',
         },
         '*::-webkit-scrollbar-thumb': {
-          background: theme.palette.text.disabled,
+          background: theme.palette.info.main,
         },
       },
       '& .MuiDataGrid-container--top [role=row]': {
@@ -39,8 +39,8 @@ const DataGrid: DataGridComponents<Omit<Theme, 'components'>>['MuiDataGrid'] = {
     cell: ({ theme }) => ({
       display: 'flex',
       alignItems: 'center',
-      color: theme.palette.text.primary,
-      fontSize: theme.typography.pxToRem(14),      fontWeight: theme.typography.body2.fontWeight,
+      color: theme.palette.common.black,
+      fontSize: theme.typography.body2.fontSize,      fontWeight: theme.typography.body2.fontWeight,
       '&:focus': {
         outline: 'none !important',
       },
@@ -67,9 +67,9 @@ const DataGrid: DataGridComponents<Omit<Theme, 'components'>>['MuiDataGrid'] = {
       },
     }),
     columnHeaderTitle: ({ theme }) => ({
-      color: theme.palette.text.secondary,
-      fontSize: theme.typography.pxToRem(13),
-      fontWeight: 600,
+      color: theme.palette.common.black,
+      fontSize: theme.typography.subtitle2.fontSize,
+      fontWeight: theme.typography.subtitle2.fontWeight,
     }),
     columnSeparator: () => ({
       display: 'none',
@@ -80,7 +80,7 @@ const DataGrid: DataGridComponents<Omit<Theme, 'components'>>['MuiDataGrid'] = {
     row: ({ theme }) => ({
       backgroundColor: theme.palette.background.paper,
       '&:hover': {
-        backgroundColor: '#F9FAFB',
+        backgroundColor: theme.palette.background.paper,
       },
     }),
     withBorderColor: ({ theme }) => ({
@@ -99,7 +99,7 @@ const DataGrid: DataGridComponents<Omit<Theme, 'components'>>['MuiDataGrid'] = {
         overflowY: 'hidden',
       },
     }),
-    selectedRowCount: () => ({
+    selectedRowCount: ({}) => ({
       display: 'none',
     }),
   },

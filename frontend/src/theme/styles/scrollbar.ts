@@ -2,7 +2,7 @@ import { Theme } from '@mui/material';
 
 const scrollbar = (theme: Theme) => ({
   '@supports (-moz-appearance:none)': {
-    scrollbarColor: `${theme.palette.text.disabled} transparent`,
+    scrollbarColor: `${theme.palette.grey[800]} transparent`,
   },
   '*::-webkit-scrollbar': {
     visibility: 'hidden',
@@ -14,7 +14,7 @@ const scrollbar = (theme: Theme) => ({
   '*::-webkit-scrollbar-thumb': {
     visbility: 'hidden',
     borderRadius: 3,
-    backgroundColor: theme.palette.text.disabled,
+    backgroundColor: theme.palette.grey[800],
   },
   '&:hover, &:focus': {
     '*::-webkit-scrollbar, *::-webkit-scrollbar-thumb': {
