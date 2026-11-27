@@ -88,9 +88,12 @@ public class OrderRequestController {
     public ResponseEntity<OrderRequest> updateStatus(@PathVariable Long id,
                                                      @RequestBody Map<String, Object> body) {
         guard.assertCanAccessOrder(id);
-        return ResponseEntity.ok(orderRequestService.updateStatus(
-                id, body.get("status").toString()
-        ));
+        String status = body.get("status").toString();
+        // 상태 변경은 본사가 한다. 점주는 배달기사가 넘긴 발주를 검수 완료(DONE)하는 것만 할 수 있다 (발주 화면의 '검수' 버튼)
+        if (!guard.currentUser().isHqAdmin()) {
+            return ResponseEntity.ok(orderRequestService.ownerInspect(id, status));
+        }
+        return ResponseEntity.ok(orderRequestService.updateStatus(id, status));
     }
 
     @DeleteMapping("/{id}")

@@ -98,7 +98,7 @@ const Orders = ({ user }: any) => {
         await loadOrders(storeId);
       }
     } catch (e: any) {
-      try { setError(JSON.parse(e.message).error); } catch { setError('자동 발주 등록에 실패했습니다.'); }
+      setError(e?.message || '자동 발주 등록에 실패했습니다.');
     } finally {
       setOrdering(false);
     }

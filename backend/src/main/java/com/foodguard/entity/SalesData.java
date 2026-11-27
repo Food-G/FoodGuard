@@ -69,4 +69,22 @@ public class SalesData {
     public Integer getMenuPrice() {
         return menu != null ? menu.getPrice() : null;
     }
+
+    // 매출 통계·판매 입력·대시보드 화면은 menu.menuName, menu.price × quantity 로 매출을 계산한다.
+    // price 는 실제 판매 단가 (할인 판매는 unit_price, 매출 = COALESCE(unit_price, 메뉴 가격))
+    @JsonProperty("menu")
+    public java.util.Map<String, Object> getMenuSummary() {
+        if (menu == null) return null;
+        java.util.Map<String, Object> m = new java.util.LinkedHashMap<>();
+        m.put("id", menu.getId());
+        m.put("menuName", menu.getMenuName());
+        m.put("price", unitPrice != null ? unitPrice : menu.getPrice());
+        return m;
+    }
+
+    @JsonProperty("totalPrice")
+    public Integer getTotalPrice() {
+        Integer price = unitPrice != null ? unitPrice : (menu != null ? menu.getPrice() : null);
+        return price != null && quantity != null ? price * quantity : null;
+    }
 }

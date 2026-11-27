@@ -55,7 +55,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/orders/admin/**", "/api/stats/**", "/api/sales/all-stores/**", "/api/stores")
                                 .hasAnyRole("HQ_ADMIN", "AGENT")
                         .requestMatchers("/api/orders/admin/**", "/api/stats/**", "/api/sales/all-stores/**").hasRole("HQ_ADMIN")
-                        .requestMatchers(HttpMethod.PUT, "/api/orders/*/status").hasRole("HQ_ADMIN")
+                        // 발주 상태 변경(PUT /api/orders/{id}/status)은 점주에게 검수 완료만 허용 (OrderRequestController)
                         .requestMatchers(HttpMethod.POST, "/api/orders/*/hq-send").hasRole("HQ_ADMIN")
                         // 나머지는 로그인 + 매장 소유 검사 (security.StoreAccessInterceptor·StoreAccessBodyAdvice)
                         // AGENT 계정은 조회와 제안·실행기록 쓰기만 (isAllowed)

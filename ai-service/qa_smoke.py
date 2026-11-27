@@ -141,6 +141,10 @@ c, ing = api('POST', '/ingredients', {'storeId': S, 'name': f'QA양상추{ts}', 
 check('식자재 등록', c, 200, None if c == 200 else ing)
 I = ing['id']
 check('식자재 조회', api('GET', f'/ingredients?storeId={S}', t=T)[0], 200)
+# junho 화면(메뉴 관리·식자재 목록)은 storeId 없이 부른다. 점주는 자기 매장이 등록했거나 쓰는 식자재만 본다
+c, mine = api('GET', '/ingredients', t=T)
+check('식자재 목록 (storeId 없이): 내 식자재 포함', c == 200 and any(x['id'] == I for x in mine), True)
+check('식자재 목록 (storeId 없이): 다른 매장 식자재 없음', c == 200 and not any(x['id'] in (60002, 90001) for x in mine), True)
 check('식자재 설정 저장', api('PUT', f'/ingredients/{I}', {'name': ing['name'], 'category': '채소', 'unit': 'kg', 'shelfLifeDays': 4, 'leadTimeDays': 1, 'orderCycleDays': 3}, T)[0], 200)
 check('식자재 음수 설정 거부', api('PUT', f'/ingredients/{I}', {'name': ing['name'], 'unit': 'kg', 'shelfLifeDays': -1}, T)[0], 400)
 check('식자재: 필수값 누락 400', api('POST', '/ingredients', {'storeId': S}, T)[0], 400)
@@ -220,6 +224,9 @@ for i in range(1, 36):
         check('판매 등록', c, 200, _)
         break
 check('판매 조회', len(api('GET', f'/sales/{S}', t=T)[1]), 35)
+row = api('GET', f'/sales/{S}', t=T)[1][0]
+# 매출 통계·대시보드 화면은 menu.menuName, menu.price × quantity 로 매출을 계산한다
+check('판매 행: 화면이 읽는 메뉴 정보', (row.get('menu', {}).get('menuName') is not None, row.get('menu', {}).get('price') is not None, row.get('totalPrice') is not None), [(True, True, True)])
 c, sm = api('GET', f'/sales/{S}/summary?start={today - timedelta(days=7)}&end={today}', t=T)
 check('판매량 집계', c, 200, None if c == 200 else sm)
 check('판매량 집계: 일자 8개', len(sm.get('byDay', [])), 8)
@@ -298,6 +305,16 @@ check('입고 후 재고 5', [float(x.get('currentQty', 0)) for x in inv if x['i
 c, o2 = api('GET', f'/orders/owner-scan?token={qr[0]}')
 inv2 = api('GET', f'/inventory/{S}', t=T)[1]
 check('점주 QR 재스캔해도 재고 안 늘어남', [float(x.get('currentQty', 0)) for x in inv2 if x['ingredient']['id'] == I], [[5.0]])
+# 발주 화면 '검수' 버튼: 점주는 기사 수령(DRIVER_RECEIVED) 발주의 검수 완료만 할 수 있다 (재고 기대값이 바뀌지 않게 다른 식자재로)
+c, ing3 = api('POST', '/ingredients', {'storeId': S, 'name': f'QA검수{ts}', 'unit': '개'}, T)
+c, o3 = api('POST', '/orders', {'storeId': S, 'ingredientId': ing3['id'], 'quantity': 3}, T) if c == 200 else (c, ing3)
+check('점주 검수용 발주', c, 200, None if c == 200 else o3)
+if c == 200:
+    check('점주 검수: 기사 수령 전 거부', api('PUT', f"/orders/{o3['id']}/status", {'status': 'DONE'}, T)[0], 403)
+    api('PUT', f"/orders/{o3['id']}/status", {'status': 'APPROVED'}, H)
+    api('PUT', f"/orders/{o3['id']}/status", {'status': 'DRIVER_RECEIVED'}, H)
+    check('점주 검수: 기사 수령 후 완료', api('PUT', f"/orders/{o3['id']}/status", {'status': 'DONE'}, T)[0], 200)
+    check('점주 검수 후 재고 3', [float(x.get('currentQty', 0)) for x in api('GET', f'/inventory/{S}', t=T)[1] if x['ingredient']['id'] == ing3['id']], [[3.0]])
 c, o3 = api('POST', '/orders', {'storeId': S, 'ingredientId': I, 'quantity': 1}, T)
 check('요청 상태 취소', api('DELETE', f"/orders/{o3['id']}", t=T)[0], 200)
 check('완료 발주 취소 거부', api('DELETE', f'/orders/{OID}', t=T)[0], 400)

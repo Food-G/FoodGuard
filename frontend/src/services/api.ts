@@ -14,7 +14,15 @@ const getHeaders = () => {
 const handleResponse = async (response: Response) => {
   if (!response.ok) {
     const error = await response.text();
-    throw new Error(error || 'API Request Failed');
+    // 백엔드 오류 응답은 {"error": "안내 문구"} (일부는 {"message": ...}). 화면에는 문구만 보여 준다
+    let message = error;
+    try {
+      const parsed = JSON.parse(error);
+      message = parsed?.error ?? parsed?.message ?? error;
+    } catch {
+      // JSON 이 아니면 본문 그대로
+    }
+    throw new Error(message || 'API Request Failed');
   }
   
   const contentType = response.headers.get('content-type');

@@ -19,7 +19,7 @@ log = logging.getLogger(__name__)
 # agent → crontab (분 시 일 월 요일). echo 는 검증용이라 수동 실행만 한다.
 SCHEDULES: dict[str, str] = {
     "audit": "30 6 * * *",
-    "mlops": "0 7 * * *",
+    # mlops(모델 교체 판정)는 메뉴별 모델의 챌린저 학습을 전제로 한다. jihwan 글로벌 모델에는 챌린저 학습이 없어 자동 실행하지 않는다
     "order_advisor": "0 8 * * *",
     "waste": "0 9 * * *",
     "weekly": "0 8 * * 1",

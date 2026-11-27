@@ -139,7 +139,7 @@ class ReportTest(unittest.TestCase):
 class WiringTest(unittest.TestCase):
     def test_등록과_스케줄(self):
         self.assertIs(AGENTS["mlops"], mlops)
-        self.assertEqual(SCHEDULES["mlops"], "0 7 * * *")
+        self.assertNotIn("mlops", SCHEDULES)   # 글로벌 모델에는 챌린저 학습이 없어 자동 실행하지 않는다
 
 
 if __name__ == "__main__":

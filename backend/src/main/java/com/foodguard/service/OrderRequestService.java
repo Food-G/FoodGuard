@@ -14,6 +14,7 @@ import com.foodguard.repository.PredictionResultRepository;
 import com.foodguard.repository.StoreRepository;
 import com.foodguard.util.UnitConverter;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -136,6 +137,17 @@ public class OrderRequestService {
         }
 
         return orderRequestRepository.save(order);
+    }
+
+    // 점주 검수: 배달기사가 받은(DRIVER_RECEIVED) 발주를 입고 완료로 바꾸고 재고에 넣는다
+    @Transactional
+    public OrderRequest ownerInspect(Long id, String status) {
+        OrderRequest order = getById(id);
+        if (!"DONE".equals(status) || !"DRIVER_RECEIVED".equals(order.getStatus())) {
+            throw new AccessDeniedException("점주는 배달기사 수령 후 검수 완료만 할 수 있습니다.");
+        }
+        order.setOwnerReceivedAt(LocalDateTime.now());
+        return updateStatus(id, status);
     }
 
     // 발주 취소 (REQUESTED 상태만 가능)
